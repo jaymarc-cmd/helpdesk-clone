@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { Star, StarHalf, X, type LucideIcon } from 'lucide-react';
 import type { Difficulty, Priority } from '../types';
 
 export function ProgressBar({ value, tone }: { value: number; tone?: 'success' | 'warning' | 'danger' }) {
@@ -10,28 +11,51 @@ export function ProgressBar({ value, tone }: { value: number; tone?: 'success' |
   );
 }
 
-export function Stars({ value }: { value: number }) {
+/** 0–5 rating drawn with icons; supports halves. */
+export function Stars({ value, size = 15 }: { value: number; size?: number }) {
   const full = Math.floor(value);
   const half = value - full >= 0.5;
   return (
-    <span className="stars" aria-label={`${value} out of 5 stars`} title={`${value} / 5`}>
-      {'★'.repeat(full)}
-      {half ? '⯪' : ''}
-      <span style={{ opacity: 0.25 }}>{'★'.repeat(5 - full - (half ? 1 : 0))}</span>
+    <span className="stars" role="img" aria-label={`${value} out of 5 stars`} title={`${value} / 5`}>
+      {Array.from({ length: 5 }, (_, i) => {
+        if (i < full) return <Star key={i} size={size} className="star on" fill="currentColor" strokeWidth={1.5} />;
+        if (i === full && half)
+          return (
+            <span key={i} className="star-half">
+              <Star size={size} className="star" strokeWidth={1.5} />
+              <StarHalf size={size} className="star on" fill="currentColor" strokeWidth={1.5} />
+            </span>
+          );
+        return <Star key={i} size={size} className="star" strokeWidth={1.5} />;
+      })}
     </span>
   );
 }
 
-export function PriorityPill({ p }: { p: Priority }) {
-  return <span className={`pill prio-${p}`}>{p}</span>;
+const PRIORITY_LABEL: Record<Priority, string> = { P1: 'Critical', P2: 'High', P3: 'Medium', P4: 'Low' };
+
+export function PriorityPill({ p, long }: { p: Priority; long?: boolean }) {
+  return (
+    <span className={`pill prio-${p}`} title={`${p} · ${PRIORITY_LABEL[p]}`}>
+      <span className="prio-dot" aria-hidden />
+      {p}
+      {long && <span className="prio-long">{PRIORITY_LABEL[p]}</span>}
+    </span>
+  );
 }
 
-export function DifficultyDots({ d }: { d: Difficulty }) {
-  const label = ['', 'Beginner', 'Intermediate', 'Advanced'][d];
+const DIFF_LABEL = ['', 'Beginner', 'Intermediate', 'Advanced'];
+
+/** Signal-strength style difficulty meter (1–3 bars). */
+export function DifficultyDots({ d, showLabel }: { d: Difficulty; showLabel?: boolean }) {
   return (
-    <span className="diff small" title={label} aria-label={label}>
-      {'●'.repeat(d)}
-      <span style={{ opacity: 0.25 }}>{'●'.repeat(3 - d)}</span>
+    <span className="difficulty" title={DIFF_LABEL[d]} aria-label={`Difficulty: ${DIFF_LABEL[d]}`}>
+      <span className="meter" aria-hidden>
+        {[1, 2, 3].map((i) => (
+          <i key={i} className={i <= d ? 'on' : ''} style={{ height: 4 + i * 3 }} />
+        ))}
+      </span>
+      {showLabel && <span className="difficulty-label">{DIFF_LABEL[d]}</span>}
     </span>
   );
 }
@@ -42,13 +66,16 @@ export function scoreTone(score: number): 'success' | 'warning' | 'danger' {
   return 'danger';
 }
 
-export function ScoreRing({ score, label }: { score: number; label?: string }) {
+export function ScoreRing({ score, label, size = 120 }: { score: number; label?: string; size?: number }) {
   const color = score >= 80 ? 'var(--success)' : score >= 60 ? 'var(--warning)' : 'var(--danger)';
   return (
-    <div className="score-ring" style={{ background: `conic-gradient(${color} ${score * 3.6}deg, var(--surface-3) 0)` }}>
+    <div
+      className="score-ring"
+      style={{ width: size, height: size, background: `conic-gradient(${color} ${score * 3.6}deg, var(--surface-3) 0)` }}
+    >
       <span>
         <div className="center">
-          {score}
+          <div className="score-value">{score}</div>
           {label && <div className="grade">{label}</div>}
         </div>
       </span>
@@ -56,7 +83,7 @@ export function ScoreRing({ score, label }: { score: number; label?: string }) {
   );
 }
 
-export function Modal({ children, onClose }: { children: ReactNode; onClose?: () => void }) {
+export function Modal({ children, onClose, title }: { children: ReactNode; onClose?: () => void; title?: string }) {
   useEffect(() => {
     if (!onClose) return;
     const h = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -65,11 +92,87 @@ export function Modal({ children, onClose }: { children: ReactNode; onClose?: ()
   }, [onClose]);
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+      <div className="modal" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
+        {(title || onClose) && (
+          <div className="modal-head">
+            {title ? <h2>{title}</h2> : <span />}
+            {onClose && (
+              <button className="icon-btn" onClick={onClose} aria-label="Close">
+                <X size={18} />
+              </button>
+            )}
+          </div>
+        )}
         {children}
       </div>
     </div>
   );
+}
+
+/** Consistent page title block: eyebrow, title, one-line description and actions. */
+export function PageHeader({
+  eyebrow,
+  title,
+  description,
+  actions,
+}: {
+  eyebrow?: ReactNode;
+  title: ReactNode;
+  description?: ReactNode;
+  actions?: ReactNode;
+}) {
+  return (
+    <header className="page-head">
+      <div className="page-head-text">
+        {eyebrow && <div className="eyebrow">{eyebrow}</div>}
+        <h1>{title}</h1>
+        {description && <p>{description}</p>}
+      </div>
+      {actions && <div className="page-actions">{actions}</div>}
+    </header>
+  );
+}
+
+export function EmptyState({ icon: Icon, title, children }: { icon: LucideIcon; title: string; children?: ReactNode }) {
+  return (
+    <div className="empty">
+      <span className="empty-icon">
+        <Icon size={22} strokeWidth={1.75} aria-hidden />
+      </span>
+      <div className="empty-title">{title}</div>
+      {children && <div className="empty-body">{children}</div>}
+    </div>
+  );
+}
+
+/** Square tinted tile holding an icon. */
+export function IconTile({ icon: Icon, tone = 'primary', size = 'md' }: { icon: LucideIcon; tone?: 'primary' | 'success' | 'warning' | 'danger' | 'info' | 'neutral'; size?: 'sm' | 'md' | 'lg' }) {
+  const px = size === 'sm' ? 15 : size === 'lg' ? 24 : 18;
+  return (
+    <span className={`icon-tile tone-${tone} size-${size}`} aria-hidden>
+      <Icon size={px} strokeWidth={2} />
+    </span>
+  );
+}
+
+export function StatTile({ label, value, sub, icon, tone }: { label: string; value: ReactNode; sub?: ReactNode; icon?: LucideIcon; tone?: 'primary' | 'success' | 'warning' | 'danger' | 'info' | 'neutral' }) {
+  return (
+    <div className="card stat">
+      <div className="stat-top">
+        <span className="stat-label">{label}</span>
+        {icon && <IconTile icon={icon} tone={tone ?? 'neutral'} size="sm" />}
+      </div>
+      <span className="stat-value">{value}</span>
+      {sub && <span className="stat-sub">{sub}</span>}
+    </div>
+  );
+}
+
+/** Stable, realistic-looking incident number for a scenario id (e.g. "INC-48213"). */
+export function ticketNumber(id: string): string {
+  let h = 0;
+  for (const c of id) h = (h * 31 + c.charCodeAt(0)) | 0;
+  return `INC-${(Math.abs(h) % 90000) + 10000}`;
 }
 
 export function formatClock(sec: number): string {
