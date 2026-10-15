@@ -33,7 +33,7 @@ import { pickQuestions, scoreAnswer } from '../engine/interview';
 import { useStore } from '../state/store';
 import { uid } from '../state/storage';
 import type { InterviewAnswerResult, InterviewQuestion } from '../types';
-import { DifficultyDots, EmptyState, PageHeader, ProgressBar, ScoreRing, StatTile, formatClock, scoreTone, timeAgo, useNow } from '../components/ui';
+import { DifficultyDots, EmptyState, PageHeader, ScoreRing, StatTile, formatClock, scoreTone, timeAgo, useNow } from '../components/ui';
 import { useDictation, useSpeaker } from '../components/speech';
 import '../styles/interview-kb.css';
 
@@ -136,7 +136,7 @@ export function InterviewPage() {
             <span className="label" id="iv-focus-label">
               Focus area
             </span>
-            <div className="seg" role="group" aria-labelledby="iv-focus-label">
+            <div className="seg iv-focus-seg" role="group" aria-labelledby="iv-focus-label">
               {CATS.map((c) => {
                 const Icon = CAT_ICON[c];
                 return (
@@ -194,10 +194,10 @@ export function InterviewPage() {
               <li>
                 {voiceOn ? <Volume2 size={15} aria-hidden /> : <VolumeX size={15} aria-hidden />}
                 {voiceOn ? (
-                  <span>Questions read aloud</span>
+                  <span>Read aloud</span>
                 ) : (
                   <span>
-                    Voice off · <Link to="/settings">Turn on in Settings</Link>
+                    Voice off · <Link to="/settings">Turn on</Link>
                   </span>
                 )}
               </li>
@@ -286,6 +286,7 @@ function LiveInterview({ questions, perQ, onFinish }: { questions: InterviewQues
   const [answer, setAnswer] = useState('');
   const [results, setResults] = useState<InterviewAnswerResult[]>([]);
   const qStart = useRef(Date.now());
+  const answerRef = useRef<HTMLTextAreaElement>(null);
   const now = useNow(500);
   const q = questions[idx];
   const left = perQ - (now - qStart.current) / 1000;
@@ -294,6 +295,7 @@ function LiveInterview({ questions, perQ, onFinish }: { questions: InterviewQues
 
   useEffect(() => {
     qStart.current = Date.now();
+    answerRef.current?.focus({ preventScroll: true });
     speak(q.question, { pitch: 1, rate: 1 });
     return () => stop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -336,7 +338,16 @@ function LiveInterview({ questions, perQ, onFinish }: { questions: InterviewQues
       />
 
       <div className="iv-progress">
-        <ProgressBar value={idx / questions.length} />
+        <ol className="iv-steps" aria-label="Interview progress">
+          {questions.map((x, i) => (
+            <li key={x.id} className={i < idx ? 'done' : i === idx ? 'current' : ''} aria-current={i === idx ? 'step' : undefined}>
+              <span className="iv-sr">
+                Question {i + 1}
+                {i < idx ? ', answered' : i === idx ? ', current' : ''}
+              </span>
+            </li>
+          ))}
+        </ol>
         <span className="tiny muted num">
           {idx} of {questions.length} answered
         </span>
@@ -372,6 +383,7 @@ function LiveInterview({ questions, perQ, onFinish }: { questions: InterviewQues
             )}
           </div>
           <textarea
+            ref={answerRef}
             id="iv-answer-input"
             value={answer}
             onChange={(e) => setAnswer(e.target.value)}
@@ -443,38 +455,36 @@ function Results({ questions, results, onAgain }: { questions: InterviewQuestion
       />
 
       <section className="card iv-overview" aria-label="Overall result">
-        <ScoreRing score={score} label="Overall" />
-        <div className="iv-overview-body">
-          <div className="iv-overview-title">
-            <span className={`pill pill-${tone}`}>{rating}</span>
-            <span className="small muted">
-              {plural(results.length, 'question')} reviewed
-            </span>
-          </div>
-          <dl className="iv-figures">
-            <div>
-              <dt className="label">Key points covered</dt>
-              <dd className="num">
-                {matched}
-                <span className="faint"> / {totalPoints}</span>
-              </dd>
-            </div>
-            <div>
-              <dt className="label">Answered</dt>
-              <dd className="num">
-                {answered}
-                <span className="faint"> / {results.length}</span>
-              </dd>
-            </div>
-            <div>
-              <dt className="label">Time used</dt>
-              <dd className="num">{formatClock(seconds)}</dd>
-            </div>
-          </dl>
-          <p className="small muted iv-overview-note">
-            Scores reflect how many key points your answer covered. Real interviewers also judge delivery, so practice saying these out loud.
-          </p>
+        <div className="iv-overview-ring">
+          <ScoreRing score={score} label="Overall" />
         </div>
+        <div className="iv-overview-title">
+          <span className={`pill pill-${tone}`}>{rating}</span>
+          <span className="small muted">{plural(results.length, 'question')} reviewed</span>
+        </div>
+        <dl className="iv-figures">
+          <div>
+            <dt className="label">Key points covered</dt>
+            <dd className="num">
+              {matched}
+              <span className="faint"> / {totalPoints}</span>
+            </dd>
+          </div>
+          <div>
+            <dt className="label">Answered</dt>
+            <dd className="num">
+              {answered}
+              <span className="faint"> / {results.length}</span>
+            </dd>
+          </div>
+          <div>
+            <dt className="label">Time used</dt>
+            <dd className="num">{formatClock(seconds)}</dd>
+          </div>
+        </dl>
+        <p className="small muted iv-overview-note">
+          Scores reflect how many key points your answer covered. Real interviewers also judge delivery, so practice saying these out loud.
+        </p>
       </section>
 
       {results.map((r, i) => {
@@ -504,9 +514,9 @@ function Results({ questions, results, onAgain }: { questions: InterviewQuestion
 
             <div className="grid grid-2">
               <div className="iv-col">
-                <div className="iv-block">
+                <div className="iv-block iv-yours">
                   <span className="label">Your answer</span>
-                  {r.answer ? <p className="small iv-answer-text">{r.answer}</p> : <p className="small faint iv-answer-text">No answer recorded.</p>}
+                  {r.answer ? <p className="small iv-answer-text">{r.answer}</p> : <p className="small faint iv-answer-text iv-answer-empty">No answer recorded.</p>}
                 </div>
                 <div className="iv-block">
                   <span className="label num">
@@ -535,7 +545,7 @@ function Results({ questions, results, onAgain }: { questions: InterviewQuestion
                 </div>
               </div>
               <div className="iv-col">
-                <div className="iv-block">
+                <div className="iv-block iv-sample">
                   <span className="label">Sample strong answer</span>
                   <p className="small iv-answer-text">{q.sampleAnswer}</p>
                 </div>

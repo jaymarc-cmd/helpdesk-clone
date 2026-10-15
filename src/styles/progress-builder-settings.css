@@ -1,6 +1,5 @@
 /* Progress, Scenario Builder and Settings pages.
-   Page CSS is evaluated before styles.css, so any rule that overrides a global class
-   uses at least two classes to win regardless of load order. */
+   Overrides of global classes use at least two classes so they win regardless of load order. */
 
 /* ---------- Shared page frame ---------- */
 .pbs-page {
@@ -48,10 +47,46 @@
 .callout.pbs-callout-center > svg {
   margin-top: 0;
 }
+@media (max-width: 640px) {
+  .callout.pbs-callout-center {
+    align-items: flex-start;
+  }
+  .callout.pbs-callout-center > svg {
+    margin-top: 4px;
+  }
+}
 .pbs-modal-text {
   margin: 0;
   color: var(--text-muted);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+}
+.pbs-empty-text {
+  margin: 0 0 12px;
+  text-wrap: balance;
+}
+
+/* Cards whose last block (empty state, footer) should fill / pin to the bottom. */
+.card.pbs-card-col {
+  display: flex;
+  flex-direction: column;
+}
+.card.pbs-card-col > .empty {
+  flex: 1;
+  justify-content: center;
+}
+
+/* Full-bleed tables inside cards: row rules run edge to edge and cell text lines up
+   with the card heading. Matches the card's 20px padding. */
+.table-wrap.pbs-bleed {
+  margin-inline: -20px;
+}
+.pbs-bleed > .table th:first-child,
+.pbs-bleed > .table td:first-child {
+  padding-left: 20px;
+}
+.pbs-bleed > .table th:last-child,
+.pbs-bleed > .table td:last-child {
+  padding-right: 20px;
 }
 .pbs-modal-actions {
   display: flex;
@@ -183,6 +218,47 @@
   width: 52px;
   height: 5px;
 }
+.pbs-cats-foot {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.pbs-cat-table {
+  margin-bottom: 16px;
+}
+.pbs-cats-foot-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.pbs-cats-foot-value {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  line-height: 1.2;
+}
+.pbs-cats-foot-value .faint {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+@media (max-width: 640px) {
+  .table.pbs-cat-table th,
+  .table.pbs-cat-table td {
+    padding-inline: 6px;
+  }
+  .pbs-passed {
+    gap: 6px;
+  }
+  .pbs-passed > .progress {
+    width: 32px;
+  }
+}
 .pbs-ticket {
   display: flex;
   flex-direction: column;
@@ -195,12 +271,120 @@
 .pbs-nowrap {
   white-space: nowrap;
 }
+.pbs-h-time-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.pbs-h-icon {
+  display: none;
+  color: var(--text-faint);
+}
+
+/* Ticket history on phones: each row becomes a compact two-part card
+   (title + score on top, category / mode / time / when below). */
+@media (max-width: 640px) {
+  .pbs-history thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .table.pbs-history,
+  .pbs-history tbody {
+    display: block;
+  }
+  .pbs-history tr {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'ticket ticket ticket score'
+      'ticket ticket ticket csat'
+      'cat mode time when';
+    align-items: center;
+    gap: 4px 8px;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .pbs-history tbody tr:last-child {
+    border-bottom: 0;
+    padding-bottom: 4px;
+  }
+  .pbs-bleed > .table.pbs-history td:nth-child(n) {
+    display: block;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    min-width: 0;
+  }
+  .pbs-history .pbs-ticket {
+    min-width: 0;
+    margin-bottom: 4px;
+  }
+  .pbs-history .pbs-h-ticket {
+    grid-area: ticket;
+    align-self: start;
+  }
+  .pbs-history .pbs-h-score {
+    grid-area: score;
+    justify-self: end;
+    align-self: start;
+  }
+  .pbs-history .pbs-h-csat {
+    grid-area: csat;
+    justify-self: end;
+    align-self: start;
+  }
+  .pbs-history .pbs-h-cat {
+    grid-area: cat;
+  }
+  .pbs-history .pbs-h-mode {
+    grid-area: mode;
+  }
+  .pbs-history .pbs-h-time {
+    grid-area: time;
+    color: var(--text-muted);
+  }
+  .pbs-history .pbs-h-when {
+    grid-area: when;
+    justify-self: end;
+  }
+  .pbs-history .pbs-h-cat .pbs-cat {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+  }
+  .pbs-h-icon {
+    display: inline;
+  }
+}
+@media (max-width: 374px) {
+  .pbs-h-icon {
+    display: none;
+  }
+}
 
 /* ---------- Progress: badges ---------- */
-.pbs-badge-grid {
+.grid.pbs-badge-grid {
   list-style: none;
   margin: 0;
   padding: 0;
+  gap: 12px;
+}
+@media (max-width: 640px) {
+  .grid.pbs-badge-grid {
+    gap: 8px;
+  }
+  .pbs-badge.badge-tile {
+    gap: 10px;
+    padding: 10px;
+  }
+  .pbs-badge.badge-tile .icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+  }
 }
 .pbs-badge.badge-tile {
   align-items: flex-start;
@@ -247,6 +431,46 @@
 .card-head.pbs-flush {
   margin-bottom: 0;
 }
+/* Sibling card headings share one height so their titles line up across columns. */
+.pbs-builder .split-main .card > .card-head {
+  min-height: 34px;
+}
+.pbs-builder .json-editor {
+  display: block;
+}
+@media (max-width: 640px) {
+  .pbs-builder .json-editor {
+    min-height: 340px;
+  }
+}
+.pbs-msg-list code,
+.pbs-saved code {
+  background: var(--surface);
+}
+.pbs-modal-subject {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  min-width: 0;
+}
+.pbs-modal-subject > svg {
+  color: var(--text-muted);
+}
+.pbs-modal-subject-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.pbs-modal-subject-text strong {
+  font-size: 0.92rem;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
 .pbs-btn-row {
   display: flex;
   align-items: center;
@@ -265,6 +489,7 @@
   gap: 10px;
   flex-wrap: wrap;
   min-width: 0;
+  min-height: 34px;
 }
 .pill.pbs-idpill {
   display: inline-block;
@@ -284,6 +509,8 @@
 .pbs-startfrom select {
   flex: 1;
   min-width: 0;
+  padding: 6px 10px;
+  font-size: 0.86rem;
 }
 .pbs-editor-foot {
   display: flex;
@@ -321,6 +548,10 @@
 .pbs-scn.editing {
   border-color: var(--primary);
   background: var(--primary-soft);
+}
+.pbs-scn.editing .pill.pill-primary {
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--primary);
 }
 .pbs-scn-main {
   display: flex;
@@ -485,13 +716,25 @@
   flex: 1 1 220px;
   min-width: 0;
   display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 6px;
 }
-.pbs-profile-form > label.field {
-  flex: 1 1 200px;
+.pbs-field-label {
+  font-weight: 600;
+  font-size: 0.86rem;
+}
+.pbs-name-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
   min-width: 0;
+}
+.pbs-name-row > input {
+  flex: 1;
+  min-width: 0;
+}
+.pbs-name-row > .btn {
+  flex-shrink: 0;
 }
 
 .pbs-prefs {
@@ -613,8 +856,19 @@ input.pbs-switch[type='checkbox']:focus-visible {
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
+}
+@media (max-width: 480px) {
+  .pbs-inventory {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 640px) {
+  .pbs-data-actions > .btn,
+  .pbs-danger-zone > .btn {
+    flex: 1 1 100%;
+  }
 }
 .pbs-inventory li {
   display: flex;
@@ -636,6 +890,34 @@ input.pbs-switch[type='checkbox']:focus-visible {
 .pbs-inventory-label {
   font-size: 0.74rem;
   color: var(--text-muted);
+}
+.pbs-reset-summary {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.pbs-reset-summary li {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 8px 14px;
+  min-width: 0;
+}
+.pbs-reset-summary .pbs-inventory-value {
+  font-size: 1rem;
+}
+.pbs-reset-summary li.zero .pbs-inventory-value {
+  color: var(--text-faint);
+}
+@media (max-width: 480px) {
+  .pbs-reset-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 .pbs-danger-zone {
   display: flex;

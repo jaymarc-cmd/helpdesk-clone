@@ -18,7 +18,13 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
+}
+.qr-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
 }
 
 /* ---------- Queue: filter bar ---------- */
@@ -26,6 +32,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  container-type: inline-size;
 }
 .queue-filter-row {
   display: flex;
@@ -37,26 +44,77 @@
   flex: 1 1 260px;
   min-width: 0;
 }
+/* Theme-aware clear button for the native search field. */
+.queue-search input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-left: 6px;
+  cursor: pointer;
+  background-color: var(--text-faint);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M18 6 6 18M6 6l12 12'/%3E%3C/svg%3E")
+    center / 14px 14px no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M18 6 6 18M6 6l12 12'/%3E%3C/svg%3E")
+    center / 14px 14px no-repeat;
+}
+.queue-search input::-webkit-search-cancel-button:hover {
+  background-color: var(--text);
+}
 .queue-select {
   width: auto;
   flex: 0 1 200px;
   min-width: 0;
 }
-.queue-filter-foot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px 16px;
-  min-width: 0;
+/* Too narrow for one line: search gets its own row and the two selects split the next one,
+   rather than one select wrapping alone. */
+@container (max-width: 660px) {
+  .queue-search {
+    flex-basis: 100%;
+  }
+  .queue-select {
+    flex: 1 1 0;
+  }
 }
 .seg.queue-cats {
-  flex: 0 1 auto;
+  align-self: flex-start;
   min-width: 0;
   max-width: 100%;
   flex-wrap: nowrap;
   overflow-x: auto;
-  scrollbar-width: thin;
+  overscroll-behavior-x: contain;
+  scroll-padding-inline: 44px;
+  scrollbar-width: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .seg.queue-cats {
+    scroll-behavior: smooth;
+  }
+}
+.seg.queue-cats::-webkit-scrollbar {
+  display: none;
+}
+/* When the categories cannot fit on one line they scroll sideways; the clipped edge fades so the
+   hidden options read as "more this way" (classes are set from the measured overflow). */
+.seg.queue-cats.fade-end {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 44px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 44px), transparent);
+}
+.seg.queue-cats.fade-start {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 44px);
+  mask-image: linear-gradient(to right, transparent, #000 44px);
+}
+.seg.queue-cats.fade-start.fade-end {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 44px, #000 calc(100% - 44px), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 44px, #000 calc(100% - 44px), transparent);
+}
+@media (hover: hover) and (pointer: fine) {
+  /* Mouse users need a visible handle to scroll sideways. */
+  .seg.queue-cats.fade-start,
+  .seg.queue-cats.fade-end {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+  }
 }
 .queue-cats button {
   flex-shrink: 0;
@@ -71,27 +129,76 @@
 .seg button.active .seg-count {
   color: var(--primary);
 }
+
+/* ---------- Queue: results ---------- */
+.queue-results-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
 .queue-results {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
   flex-wrap: wrap;
+  min-height: 30px;
   min-width: 0;
+}
+.queue-results-text {
+  margin: 0;
+  font-size: 0.86rem;
+  color: var(--text-muted);
+}
+.queue-results-text strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.queue-results .btn {
+  margin-right: -10px;
 }
 
 /* ---------- Queue: ticket cards ---------- */
+.queue-card {
+  container-type: inline-size;
+}
 .queue-card-top {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
-  gap: 8px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: 'id tags status';
+  align-items: center;
+  gap: 6px 8px;
+}
+.queue-card-top > .ticket-id {
+  grid-area: id;
+}
+.queue-card-top > .pill {
+  grid-area: status;
+  justify-self: end;
 }
 .queue-card-tags {
+  grid-area: tags;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 8px;
+  gap: 6px;
   min-width: 0;
+}
+/* Narrow cards: ID and status share the first line, the tags get a full line of their own
+   instead of one pill wrapping on its own under the ID. */
+@container (max-width: 309px) {
+  .queue-card-top {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'id status'
+      'tags tags';
+  }
+}
+.pill.queue-new {
+  color: var(--text-muted);
+  border-color: var(--border-strong);
+  padding-block: 1px;
 }
 .queue-card:hover .title {
   color: var(--primary);
@@ -157,7 +264,7 @@
 .review-summary {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 24px 28px;
   flex-wrap: wrap;
 }
 .review-summary-body {
@@ -166,12 +273,18 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  container-type: inline-size;
 }
 .review-facts {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 14px 24px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px 36px;
   margin: 0;
+}
+@container (min-width: 520px) {
+  .review-facts {
+    grid-template-columns: minmax(0, 1.4fr) minmax(max-content, 1fr) minmax(max-content, 1fr);
+  }
 }
 .review-facts > div {
   display: flex;
@@ -188,11 +301,56 @@
   min-width: 0;
   overflow-wrap: anywhere;
 }
+/* Diagnosis text flows inline so the verdict pill follows the last word instead of dropping to its own row. */
+.review-facts dd.review-diagnosis {
+  display: block;
+}
+.review-diagnosis strong {
+  /* Trailing gap, so a pill that wraps to the next line starts flush left. */
+  margin-right: 8px;
+}
+.review-diagnosis .pill {
+  vertical-align: 1px;
+}
 .review-outcome-icon {
   color: var(--primary);
 }
 .row.review-pills {
   gap: 8px;
+}
+
+/* ---------- Review: score breakdown ---------- */
+.review-breakdown > .card-head {
+  margin-bottom: 4px;
+}
+.review-sections {
+  columns: 2 300px;
+  column-gap: 40px;
+}
+.review-section {
+  break-inside: avoid;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 0 18px;
+  border-top: 1px solid var(--border);
+}
+.review-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.review-section-head h3 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+  min-width: 0;
+}
+.review-section-head h3 svg {
+  color: var(--text-muted);
 }
 
 /* ---------- Review: ideal path ---------- */
@@ -203,7 +361,7 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 .review-steps li {
   counter-increment: step;
@@ -213,12 +371,15 @@
   gap: 12px;
   align-items: start;
   font-size: 0.9rem;
+  line-height: 1.5;
   overflow-wrap: anywhere;
+  padding-top: 1px;
 }
 .review-steps li::before {
   content: counter(step);
   width: 24px;
   height: 24px;
+  margin-top: -1px;
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -228,14 +389,15 @@
   background: var(--primary-soft);
   color: var(--primary);
 }
+/* Rail joining each step marker to the next one. */
 .review-steps li:not(:last-child)::after {
   content: '';
   position: absolute;
   left: 11.5px;
-  top: 28px;
-  bottom: -8px;
+  top: 26px;
+  bottom: -10px;
   width: 1px;
-  background: var(--border);
+  background: var(--border-strong);
 }
 
 /* ---------- Review: debrief, KB links, submission ---------- */
@@ -273,6 +435,9 @@
   border-color: var(--primary);
   text-decoration: none;
 }
+.review-kb a:hover .review-kb-chev {
+  color: var(--primary);
+}
 .review-kb a > svg:first-child {
   color: var(--primary);
 }
@@ -286,15 +451,6 @@
 }
 .stack.review-submission {
   gap: 18px;
-}
-.review-block > .review-subhead {
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.review-subhead svg {
-  color: var(--text-muted);
 }
 .review-quote {
   margin: 0;
@@ -318,7 +474,7 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  max-height: 360px;
+  max-height: 420px;
   gap: 0;
 }
 .review-log li {
@@ -349,14 +505,13 @@
 }
 
 @media (max-width: 640px) {
-  .queue-select {
-    flex: 1 1 140px;
-  }
-  .queue-card-foot {
-    flex-wrap: wrap;
-  }
   .review-summary {
     justify-content: center;
+  }
+  /* On a phone the page already scrolls; a nested scroller would trap the thumb. */
+  .log.review-log {
+    max-height: none;
+    overflow: visible;
   }
 }
 
@@ -364,5 +519,8 @@
   .log.review-log {
     max-height: none;
     overflow: visible;
+  }
+  .review-section {
+    break-inside: avoid;
   }
 }

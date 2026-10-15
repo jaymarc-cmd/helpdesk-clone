@@ -99,15 +99,26 @@ export function SettingsPage() {
                 setMsg({ text: 'Name updated.', tone: 'success', where: 'profile' });
               }}
             >
-              <label className="field">
+              <label className="pbs-field-label" htmlFor="pbs-name">
                 Your name
-                <input type="text" value={name} onChange={(e) => setName(e.target.value)} maxLength={40} />
-                <span className="hint">Shown in the sidebar, on your dashboard and on your printed training record.</span>
               </label>
-              <button className="btn btn-primary">
-                <Save size={16} aria-hidden />
-                Save
-              </button>
+              <div className="pbs-name-row">
+                <input
+                  id="pbs-name"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  maxLength={40}
+                  aria-describedby="pbs-name-hint"
+                />
+                <button type="submit" className="btn btn-primary">
+                  <Save size={16} aria-hidden />
+                  Save
+                </button>
+              </div>
+              <span className="hint" id="pbs-name-hint">
+                Shown in the sidebar, on your dashboard and on your printed training record.
+              </span>
             </form>
           </div>
           {msg?.where === 'profile' && <StatusNote notice={msg} />}
@@ -151,10 +162,7 @@ export function SettingsPage() {
           <label className="pbs-pref">
             <IconTile icon={Volume2} tone={s.voice ? 'primary' : 'neutral'} size="sm" />
             <span className="pbs-pref-text">
-              <span className="pbs-pref-title">
-                Spoken voices
-                <span className={`pill ${s.voice ? 'pill-success' : ''}`} aria-hidden>{s.voice ? 'On' : 'Off'}</span>
-              </span>
+              <span className="pbs-pref-title">Spoken voices</span>
               <span className="pbs-pref-desc">Read callers and interview questions aloud during voice calls and mock interviews.</span>
             </span>
             <span className="pbs-pref-control">
@@ -169,7 +177,7 @@ export function SettingsPage() {
           </label>
 
           <div className="pbs-pref pbs-pref-wide">
-            <IconTile icon={Gauge} tone="neutral" size="sm" />
+            <IconTile icon={Gauge} tone={s.voice ? 'primary' : 'neutral'} size="sm" />
             <div className="pbs-pref-text">
               <label className="pbs-pref-title" htmlFor="pbs-voice-rate">
                 Voice speed
@@ -201,12 +209,9 @@ export function SettingsPage() {
           </div>
 
           <label className="pbs-pref">
-            <IconTile icon={Lightbulb} tone={s.hints ? 'warning' : 'neutral'} size="sm" />
+            <IconTile icon={Lightbulb} tone={s.hints ? 'primary' : 'neutral'} size="sm" />
             <span className="pbs-pref-text">
-              <span className="pbs-pref-title">
-                Show hint button
-                <span className={`pill ${s.hints ? 'pill-success' : ''}`} aria-hidden>{s.hints ? 'On' : 'Off'}</span>
-              </span>
+              <span className="pbs-pref-title">Show hint button</span>
               <span className="pbs-pref-desc">Offers hints inside tickets. Each hint used costs 3 points.</span>
             </span>
             <span className="pbs-pref-control">
@@ -241,7 +246,7 @@ export function SettingsPage() {
               </li>
             ))}
           </ul>
-          <div className="pbs-btn-row">
+          <div className="pbs-btn-row pbs-data-actions">
             <button type="button" className="btn download-btn" onClick={() => downloadJson(`${APP_NAME.toLowerCase()}-progress.json`, state)}>
               <Download size={16} aria-hidden />
               Export progress
@@ -299,6 +304,14 @@ export function SettingsPage() {
             <p className="pbs-modal-text">
               This deletes your ticket history, calls, interviews, shifts, badges and custom scenarios. Your name and settings are kept.
             </p>
+            <ul className="pbs-reset-summary" aria-label="Will be deleted">
+              {inventory.map((it) => (
+                <li key={it.label} className={it.value ? '' : 'zero'}>
+                  <span className="pbs-inventory-value">{it.value}</span>
+                  <span className="pbs-inventory-label">{it.label}</span>
+                </li>
+              ))}
+            </ul>
             <div className="pbs-modal-actions">
               <button type="button" className="btn" onClick={() => setConfirmReset(false)} autoFocus>
                 Cancel

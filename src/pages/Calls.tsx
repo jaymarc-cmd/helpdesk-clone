@@ -79,7 +79,7 @@ export function CallsPage() {
                   <span className="pill pill-outline">Not attempted</span>
                 )}
               </div>
-              <Link className="btn btn-primary btn-block" to={`/call/${c.id}`}>
+              <Link className="btn btn-block sc-call-cta" to={`/call/${c.id}`}>
                 <PhoneCall size={16} aria-hidden />
                 Take call
               </Link>
@@ -98,7 +98,7 @@ export function CallsPage() {
             <span className="pill num">{state.calls.length} completed</span>
           </div>
           <div className="table-wrap">
-            <table className="table">
+            <table className="table sc-rtable">
               <thead>
                 <tr>
                   <th>Call</th>
@@ -113,14 +113,16 @@ export function CallsPage() {
                   .slice(0, 10)
                   .map((c) => (
                     <tr key={c.id}>
-                      <td>{c.title}</td>
-                      <td>
+                      <td className="sc-rtable-title">{c.title}</td>
+                      <td data-label="Score">
                         <span className={`pill pill-${scoreTone(c.score)}`}>{c.score}</span>
                       </td>
-                      <td>
+                      <td data-label="Final mood">
                         <span className={`pill pill-${moodTone(c.finalMood)}`}>{c.finalMood}/10</span>
                       </td>
-                      <td className="muted">{timeAgo(c.completedAt)}</td>
+                      <td className="muted" data-label="When">
+                        {timeAgo(c.completedAt)}
+                      </td>
                     </tr>
                   ))}
               </tbody>

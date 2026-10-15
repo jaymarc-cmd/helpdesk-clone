@@ -16,12 +16,12 @@ import {
   Info,
   LayoutList,
   Lightbulb,
+  ListChecks,
   MessageCircleQuestion,
   MessagesSquare,
   MousePointerClick,
   NotebookPen,
   Printer,
-  Reply,
   RotateCcw,
   Route,
   ScanSearch,
@@ -71,6 +71,12 @@ const OUTCOME_ICON: Record<Outcome, LucideIcon> = {
   pending: Hourglass,
 };
 
+function formatCompleted(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+}
+
 export function TicketReview() {
   const { attemptId } = useParams();
   const { state, getScenario } = useStore();
@@ -80,16 +86,25 @@ export function TicketReview() {
 
   if (!attempt) {
     return (
-      <div className="card">
-        <EmptyState icon={SearchX} title="Attempt not found">
-          <div className="qr-empty-body">
-            <span>This review is no longer in your history. It may have been cleared, or the link is out of date.</span>
-            <Link className="btn btn-sm" to="/tickets">
-              <ArrowLeft size={14} aria-hidden />
-              Back to queue
-            </Link>
-          </div>
-        </EmptyState>
+      <div>
+        <PageHeader eyebrow="Ticket review" title="Review not found" />
+        <div className="card">
+          <EmptyState icon={SearchX} title="This attempt isn't in your history">
+            <div className="qr-empty-body">
+              <span>It may have been cleared, or the link is out of date. Every ticket you close is listed in your ticket history.</span>
+              <div className="qr-empty-actions">
+                <Link className="btn btn-primary btn-sm" to="/tickets">
+                  <ArrowLeft size={14} aria-hidden />
+                  Back to queue
+                </Link>
+                <Link className="btn btn-sm" to="/progress">
+                  <History size={14} aria-hidden />
+                  Ticket history
+                </Link>
+              </div>
+            </div>
+          </EmptyState>
+        </div>
       </div>
     );
   }
@@ -106,6 +121,8 @@ export function TicketReview() {
   const kbIds = scenario ? scenario.kb.filter((k) => KB_BY_ID[k]) : [];
   const note = attempt.submission.note.trim();
   const reply = attempt.submission.reply.trim();
+  const checks = r.sections.flatMap((s) => s.items);
+  const checksMet = checks.filter((it) => it.ok).length;
 
   return (
     <div>
@@ -129,7 +146,9 @@ export function TicketReview() {
             </span>
             <span>
               <CalendarCheck size={14} aria-hidden />
-              Completed {new Date(attempt.completedAt).toLocaleString()}
+              <span>
+                Completed <time dateTime={attempt.completedAt}>{formatCompleted(attempt.completedAt)}</time>
+              </span>
             </span>
           </span>
         }
@@ -175,8 +194,8 @@ export function TicketReview() {
             <dl className="review-facts">
               <div>
                 <dt className="label">Your diagnosis</dt>
-                <dd>
-                  <strong>{rootLabel ?? '—'}</strong>
+                <dd className="review-diagnosis">
+                  <strong>{rootLabel ?? 'Not recorded'}</strong>
                   {diagnosisCorrect !== undefined && (
                     <span className={`pill ${diagnosisCorrect ? 'pill-success' : 'pill-danger'}`}>
                       {diagnosisCorrect ? <Check aria-hidden /> : <X aria-hidden />}
@@ -225,23 +244,32 @@ export function TicketReview() {
           </div>
         </section>
 
-        <div className="grid grid-2">
-          {r.sections.map((sec) => {
-            const Icon = SECTION_ICON[sec.key] ?? CircleCheck;
-            const ratio = sec.max ? sec.score / sec.max : 0;
-            const tone = scoreTone(ratio * 100);
-            return (
-              <section className="card" key={sec.key}>
-                <div className="card-head">
-                  <h3>
-                    <Icon size={17} aria-hidden />
-                    {sec.label}
-                  </h3>
-                  <span className={`pill pill-${tone} num`}>
-                    {sec.score}/{sec.max}
-                  </span>
-                </div>
-                <div className="stack">
+        <section className="card review-breakdown" aria-labelledby="review-breakdown-h">
+          <div className="card-head">
+            <h2 id="review-breakdown-h">
+              <ListChecks size={18} aria-hidden />
+              Score breakdown
+            </h2>
+            <span className="pill num">
+              {checksMet} of {checks.length} checks met
+            </span>
+          </div>
+          <div className="review-sections">
+            {r.sections.map((sec) => {
+              const Icon = SECTION_ICON[sec.key] ?? CircleCheck;
+              const ratio = sec.max ? sec.score / sec.max : 0;
+              const tone = scoreTone(ratio * 100);
+              return (
+                <section className="review-section" key={sec.key} aria-labelledby={`review-sec-${sec.key}`}>
+                  <div className="review-section-head">
+                    <h3 id={`review-sec-${sec.key}`}>
+                      <Icon size={16} aria-hidden />
+                      {sec.label}
+                    </h3>
+                    <span className={`pill pill-${tone} num`}>
+                      {sec.score}/{sec.max}
+                    </span>
+                  </div>
                   <ProgressBar value={ratio} tone={tone} />
                   <ul className="check-list">
                     {sec.items.map((it, i) => (
@@ -251,11 +279,11 @@ export function TicketReview() {
                       </li>
                     ))}
                   </ul>
-                </div>
-              </section>
-            );
-          })}
-        </div>
+                </section>
+              );
+            })}
+          </div>
+        </section>
 
         {scenario && (
           <div className="grid grid-2">
@@ -308,19 +336,19 @@ export function TicketReview() {
 
         <div className="grid grid-2">
           <section className="card">
+            <div className="card-head">
+              <h2>
+                <NotebookPen size={18} aria-hidden />
+                Your submission
+              </h2>
+            </div>
             <div className="stack review-submission">
               <div className="review-block">
-                <h3 className="review-subhead">
-                  <NotebookPen size={17} aria-hidden />
-                  Your work notes
-                </h3>
+                <div className="label">Work notes</div>
                 <p className={`review-quote${note ? '' : ' is-empty'}`}>{note ? attempt.submission.note : 'No work notes were written.'}</p>
               </div>
               <div className="review-block">
-                <h3 className="review-subhead">
-                  <Reply size={17} aria-hidden />
-                  Your reply
-                </h3>
+                <div className="label">Reply to requester</div>
                 <p className={`review-quote${reply ? '' : ' is-empty'}`}>{reply ? attempt.submission.reply : 'No reply was sent to the requester.'}</p>
               </div>
             </div>
@@ -328,10 +356,10 @@ export function TicketReview() {
 
           <section className="card">
             <div className="card-head">
-              <h3>
-                <History size={17} aria-hidden />
+              <h2>
+                <History size={18} aria-hidden />
                 Timeline
-              </h3>
+              </h2>
               <span className="pill num">
                 {attempt.log.length} event{attempt.log.length === 1 ? '' : 's'}
               </span>

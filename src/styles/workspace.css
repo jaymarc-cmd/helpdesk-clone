@@ -1,5 +1,12 @@
 /* Ticket workspace. Builds on the tokens and primitives in styles.css.
-   Every rule is scoped under .ws-root because page CSS is bundled before styles.css. */
+   Every rule is scoped under .ws-root so it never leaks into other pages.
+
+   Layout tiers (viewport width):
+     >= 1380px  three columns: context | investigation | resolution (sticky)
+     1080-1379  investigation + resolution (sticky); context cards under the investigation
+     < 1080     one column: investigation, context cards, resolution
+   The investigation and resolution panels are size containers, so their insides
+   (tabs, tool grids, the resolution form) adapt to the width they actually get. */
 
 .ws-root {
   min-width: 0;
@@ -15,6 +22,10 @@
   white-space: nowrap;
   border: 0;
 }
+.ws-root .ws-notfound-card {
+  max-width: 560px;
+  margin: 24px auto 0;
+}
 .ws-root .ws-notfound {
   display: flex;
   flex-direction: column;
@@ -24,53 +35,66 @@
 
 /* ---------- Header ---------- */
 .ws-root .ws-header {
-  align-items: flex-end;
-  gap: 16px;
-}
-.ws-root .ws-heading {
-  flex: 1 1 420px;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.ws-root .ws-meta {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'back meta meta'
+    'title title controls';
   align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  min-width: 0;
+  column-gap: 12px;
+  row-gap: 8px;
+  margin-bottom: 18px;
 }
 .ws-root .ws-back {
+  grid-area: back;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 3px 9px 3px 5px;
+  margin-left: -5px;
   border-radius: var(--radius-sm);
   color: var(--text-muted);
   font-weight: 600;
   font-size: 0.84rem;
+  white-space: nowrap;
 }
 .ws-root .ws-back:hover {
   background: var(--surface-3);
   color: var(--text);
   text-decoration: none;
 }
-.ws-root .ws-sep {
-  width: 1px;
-  height: 16px;
-  background: var(--border-strong);
+.ws-root .ws-meta {
+  grid-area: meta;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  min-width: 0;
+  padding-left: 12px;
+  border-left: 1px solid var(--border-strong);
 }
 .ws-root .ws-title {
+  grid-area: title;
   margin: 0;
   font-size: 1.5rem;
   overflow-wrap: anywhere;
 }
 .ws-root .ws-controls {
+  grid-area: controls;
+  align-self: center;
+  justify-self: end;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
+}
+.ws-root .ws-controls .btn {
+  height: 36px;
+}
+.ws-root .ws-controls .timer {
+  height: 36px;
+  padding-block: 0;
 }
 .ws-root .ws-timer-target {
   font-size: 0.74rem;
@@ -79,6 +103,43 @@
 }
 .ws-root .timer.over .ws-timer-target {
   color: var(--danger);
+}
+@media (max-width: 640px) {
+  .ws-root .ws-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'back controls'
+      'meta meta'
+      'title title';
+    row-gap: 10px;
+    margin-bottom: 14px;
+  }
+  .ws-root .ws-meta {
+    padding-left: 0;
+    border-left: 0;
+  }
+  /* The priority colour and code carry the meaning; drop the word to keep the row on one line. */
+  .ws-root .ws-meta .prio-long {
+    display: none;
+  }
+  .ws-root .ws-controls {
+    align-self: center;
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+  .ws-root .ws-controls .btn {
+    height: 34px;
+    padding-inline: 10px;
+  }
+  .ws-root .ws-controls .timer {
+    height: 34px;
+    padding-inline: 10px;
+    font-size: 0.92rem;
+    gap: 6px;
+  }
+  .ws-root .ws-title {
+    font-size: 1.3rem;
+  }
 }
 
 .ws-root .ws-hint {
@@ -95,27 +156,112 @@
 }
 
 /* ---------- Layout ---------- */
+.ws-root .workspace {
+  display: grid;
+  gap: 16px;
+  align-items: start;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'center'
+    'left'
+    'res';
+}
+.ws-root .workspace > .ws-center {
+  grid-area: center;
+}
+.ws-root .workspace > .ws-left {
+  grid-area: left;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  gap: 16px;
+  min-width: 0;
+}
+.ws-root .workspace > .ws-resolution {
+  grid-area: res;
+}
+/* When the context cards sit under the investigation, lead with what changes as you work. */
+@media (max-width: 1379px) {
+  .ws-root .ws-left > .ws-findings {
+    order: -1;
+  }
+}
+@media (min-width: 1080px) {
+  .ws-root .workspace {
+    grid-template-columns: minmax(0, 1fr) 320px;
+    grid-template-areas:
+      'center res'
+      'left res';
+  }
+}
+@media (min-width: 1380px) {
+  .ws-root .workspace {
+    grid-template-columns: 264px minmax(0, 1fr) 320px;
+    grid-template-areas: 'left center res';
+  }
+  .ws-root .workspace > .ws-left {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .ws-root .ws-left > .card {
+    padding: 16px;
+  }
+}
+
 .ws-root .ws-center {
   padding: 0;
-}
-.ws-root .ws-tabs {
-  padding: 0 8px;
+  container: ws-center / inline-size;
 }
 .ws-root .ws-panel {
   padding: 16px;
   min-width: 0;
 }
-@media (max-width: 860px) {
-  /* On phones, put the conversation first; context cards follow it, then the resolution form. */
-  .ws-root .ws-center {
-    order: -1;
-  }
-  .ws-root .ws-title {
-    font-size: 1.3rem;
+@media (max-width: 640px) {
+  .ws-root .ws-panel {
+    padding: 12px;
   }
 }
 
-/* ---------- Left column ---------- */
+/* Tabs: inline icon + label when there is room, stacked equal-width cells when narrow. */
+.ws-root .ws-tabs {
+  padding: 0 8px;
+  gap: 0;
+}
+.ws-root .ws-tabs .tab {
+  padding: 12px 12px 11px;
+}
+.ws-root .ws-tab-short {
+  display: none;
+}
+@container ws-center (max-width: 579px) {
+  .ws-root .ws-tabs {
+    padding: 0 4px;
+    overflow: hidden;
+  }
+  .ws-root .ws-tabs .tab {
+    flex: 1 1 0;
+    min-width: 0;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    padding: 10px 2px 8px;
+    font-size: 0.76rem;
+    line-height: 1.2;
+  }
+}
+@container ws-center (max-width: 419px) {
+  .ws-root .ws-tab-long {
+    display: none;
+  }
+  .ws-root .ws-tab-short {
+    display: inline;
+  }
+}
+
+/* ---------- Context column ---------- */
+.ws-root .ws-left > .card {
+  min-width: 0;
+}
 .ws-root .ws-requester-head {
   display: flex;
   align-items: center;
@@ -141,11 +287,25 @@
   gap: 6px;
   font-family: var(--font-display);
   font-weight: 700;
+  line-height: 1.25;
   overflow-wrap: anywhere;
 }
 .ws-root .ws-requester-title {
   font-size: 0.8rem;
   color: var(--text-muted);
+  line-height: 1.35;
+}
+.ws-root .kv {
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: 16px;
+  row-gap: 7px;
+  align-items: baseline;
+}
+.ws-root .kv dd .pill {
+  vertical-align: middle;
+}
+.ws-root .ws-email {
+  overflow-wrap: break-word;
 }
 .ws-root .ws-channel {
   display: inline-flex;
@@ -166,7 +326,7 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin: 0 -8px;
+  margin: -4px -8px 0;
 }
 .ws-root .ws-link-btn {
   width: 100%;
@@ -179,7 +339,7 @@
   color: var(--text);
 }
 .ws-root .ws-link-btn svg {
-  margin-top: 2px;
+  margin-top: 1px;
   color: var(--primary);
 }
 .ws-root .ws-link-btn:hover {
@@ -203,21 +363,23 @@
   border-radius: var(--radius);
   background: var(--bg);
   min-width: 0;
+  overflow: hidden;
 }
 .ws-root .ws-chat-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 6px 8px;
   flex-wrap: wrap;
   padding: 8px 12px;
   border-bottom: 1px solid var(--border);
+  background: var(--surface);
   font-size: 0.8rem;
   color: var(--text-muted);
 }
 .ws-root .ws-chat-frame .chat {
-  min-height: 240px;
-  padding: 12px;
+  min-height: 220px;
+  padding: 14px 12px;
 }
 .ws-root .ws-chat-frame .msg.requester {
   background: var(--surface);
@@ -226,6 +388,11 @@
   padding: 4px 10px;
   border-radius: var(--radius-sm);
   font-weight: 600;
+  text-align: left;
+}
+.ws-root .msg.system.ws-sys svg {
+  align-self: flex-start;
+  margin-top: 3px;
 }
 .ws-root .msg.system.ws-sys.ok {
   background: var(--success-soft);
@@ -246,6 +413,14 @@
   text-transform: uppercase;
   opacity: 0.85;
   margin-bottom: 2px;
+}
+@media (max-width: 640px) {
+  .ws-root .ws-chat-frame .chat {
+    padding: 12px 10px;
+  }
+  .ws-root .ws-chat-frame .msg {
+    max-width: 90%;
+  }
 }
 
 .ws-root .ws-composer {
@@ -269,6 +444,62 @@
   margin-bottom: 8px;
 }
 
+/* Suggested questions: one calm list instead of a cloud of wrapping pills. */
+.ws-root .suggestions.ws-questions {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+}
+.ws-root .ws-questions .suggestion {
+  width: 100%;
+  max-width: none;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+  padding: 8px 12px;
+  gap: 10px;
+  align-items: flex-start;
+  line-height: 1.4;
+  font-size: 0.86rem;
+  transition: background 0.12s, color 0.12s;
+}
+.ws-root .ws-questions .suggestion:last-child {
+  border-bottom: 0;
+}
+.ws-root .ws-questions .suggestion svg {
+  margin-top: 1px;
+  color: var(--text-faint);
+  transition: color 0.12s;
+}
+.ws-root .ws-questions .suggestion:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--primary);
+}
+.ws-root .ws-questions .suggestion:hover:not(:disabled) svg {
+  color: var(--primary);
+}
+.ws-root .ws-questions .suggestion:focus-visible {
+  outline-offset: -2px;
+}
+.ws-root .ws-questions .suggestion.verify {
+  background: var(--success-soft);
+  color: var(--success);
+  font-weight: 600;
+}
+.ws-root .ws-questions .suggestion.verify svg {
+  color: var(--success);
+}
+.ws-root .ws-questions .suggestion.verify:hover:not(:disabled) {
+  background: var(--success-soft);
+  color: var(--success);
+  text-decoration: underline;
+}
+
 .ws-root .ws-guided {
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -277,11 +508,20 @@
 }
 .ws-root .ws-guided > summary {
   padding: 10px 12px;
-  flex-wrap: wrap;
-  row-gap: 2px;
+  align-items: flex-start;
+}
+.ws-root .ws-guided > summary svg {
+  margin-top: 2px;
 }
 .ws-root .ws-guided > summary svg:not(.chev) {
   color: var(--primary);
+}
+.ws-root .ws-guided-text {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 10px;
+  min-width: 0;
 }
 .ws-root .ws-guided-sub {
   font-weight: 400;
@@ -293,19 +533,66 @@
 }
 
 /* ---------- Actions ---------- */
-.ws-root .ws-result-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 600;
-  margin-bottom: 2px;
+.ws-root .action-list.ws-actions {
+  grid-template-columns: minmax(0, 1fr);
 }
-.ws-root .ws-result-label svg {
-  color: var(--text-faint);
+@container ws-center (min-width: 640px) {
+  .ws-root .action-list.ws-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.ws-root .ws-action {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-radius: var(--radius-sm);
+}
+.ws-root .ws-action .action-btn {
+  width: 100%;
+  flex: 1 0 auto;
+}
+.ws-root .ws-action.done {
+  border: 1px solid var(--success);
+  background: var(--success-soft);
+}
+.ws-root .ws-action.done .action-btn {
+  border-color: transparent;
+  background: transparent;
+}
+.ws-root .ws-action-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  margin-top: 2px;
+}
+.ws-root .ws-risky {
+  color: var(--danger);
+  font-size: 0.72rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.ws-root .ws-action-result {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 9px 12px 10px;
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  background: var(--surface);
+  font-size: 0.84rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.ws-root .ws-action-result svg {
+  margin-top: 3px;
+  color: var(--success);
 }
 
 .ws-root .card-head.ws-section-head {
   margin-bottom: 0;
+  margin-top: 4px;
 }
 
 .ws-root .ws-modal-note {
@@ -318,9 +605,15 @@
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: 8px;
+  padding-top: 4px;
 }
 
 /* ---------- Directory / endpoint ---------- */
+@container ws-center (max-width: 639px) {
+  .ws-root .grid.ws-dir-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 .ws-root .ws-subhead {
   display: flex;
   align-items: center;
@@ -352,9 +645,64 @@
   overflow-wrap: anywhere;
   min-width: 0;
 }
-.ws-root .terminal.ws-signin {
-  height: auto;
-  max-height: 220px;
+/* Sign-in log: one row per event; time and result line up, the event text wraps. */
+.ws-root .ws-signin {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 0.84rem;
+}
+.ws-root .ws-signin > li {
+  padding: 7px 0;
+  border-top: 1px solid var(--border);
+}
+.ws-root .ws-signin > li:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.ws-root .ws-signin > li:last-child {
+  padding-bottom: 0;
+}
+.ws-root .ws-signin-row {
+  display: grid;
+  grid-template-columns: 6rem 4.75rem minmax(0, 1fr);
+  column-gap: 10px;
+  row-gap: 2px;
+  align-items: baseline;
+}
+.ws-root .ws-signin-time,
+.ws-root .ws-signin-note {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.ws-root .ws-signin-status .pill {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+  padding: 0 7px;
+}
+.ws-root .ws-signin-event {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 8px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ws-root .ws-signin-event > span:first-child {
+  font-weight: 600;
+}
+.ws-root .ws-signin-detail {
+  color: var(--text-muted);
+}
+@container ws-center (max-width: 479px) {
+  .ws-root .ws-signin-row {
+    grid-template-columns: max-content minmax(0, 1fr);
+  }
+  .ws-root .ws-signin-event {
+    grid-column: 1 / -1;
+  }
 }
 .ws-root .ws-inventory {
   list-style: none;
@@ -372,13 +720,41 @@
   min-width: 0;
 }
 .ws-root .ws-inventory li svg {
-  margin-top: 4px;
+  margin-top: 5px;
   color: var(--text-faint);
 }
 
 /* ---------- Terminal ---------- */
 .ws-root .ws-term {
   min-width: 0;
+}
+.ws-root .ws-term .terminal {
+  height: auto;
+  min-height: 220px;
+  max-height: 420px;
+  scrollbar-width: thin;
+  cursor: text;
+}
+.ws-root .ws-term-entry {
+  margin-bottom: 1.5em;
+}
+/* Wrapped continuation lines are indented so tables and long messages stay readable. */
+.ws-root .ws-term-line {
+  min-height: 1.5em;
+  padding-left: 4ch;
+  text-indent: -4ch;
+}
+.ws-root .ws-term .terminal form {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  column-gap: 1ch;
+}
+.ws-root .ws-term .terminal input {
+  flex: 1 0 14ch;
+  width: auto;
+  min-width: 14ch;
+  caret-color: var(--terminal-prompt);
 }
 .ws-root .ws-term-title {
   flex: 1;
@@ -401,46 +777,132 @@
 .ws-root .ws-kb-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
 }
-.ws-root .action-btn.ws-kb-item {
-  flex-direction: row;
+.ws-root .ws-kb-list.related {
+  border-color: var(--primary);
+}
+.ws-root .ws-kb-item {
+  display: flex;
   align-items: flex-start;
   gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s;
 }
-.ws-root .ws-kb-item > svg {
+.ws-root .ws-kb-item:last-child {
+  border-bottom: 0;
+}
+.ws-root .ws-kb-item:hover {
+  background: var(--surface-2);
+}
+.ws-root .ws-kb-item:focus-visible {
+  outline-offset: -2px;
+}
+.ws-root .ws-kb-item > svg:first-child {
   margin-top: 2px;
   color: var(--primary);
 }
 .ws-root .ws-kb-text {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
   flex: 1;
   min-width: 0;
 }
-.ws-root .ws-kb-item .lbl {
-  flex-wrap: wrap;
+.ws-root .ws-kb-title {
+  font-weight: 600;
+  font-size: 0.88rem;
+  line-height: 1.35;
 }
-.ws-root .ws-kb-modal-meta {
-  margin-bottom: 12px;
+.ws-root .ws-kb-item:hover .ws-kb-title {
+  color: var(--primary);
+}
+.ws-root .ws-kb-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.ws-root .ws-kb-chev {
+  align-self: center;
+  color: var(--text-faint);
 }
 
 /* ---------- Resolution panel ---------- */
 .ws-root .ws-resolution {
+  container: ws-res / inline-size;
+}
+.ws-root .ws-res-layout {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
-.ws-root .ws-resolution .card-head {
-  margin-bottom: 0;
+.ws-root .ws-res-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+.ws-root .ws-res-head h2 svg {
+  color: var(--text-muted);
 }
 .ws-root .ws-res-sub {
   margin: 4px 0 0;
   font-size: 0.8rem;
   color: var(--text-muted);
 }
-@media (min-width: 901px) {
+.ws-root .ws-res-col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+.ws-root .ws-res-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ws-root .ws-submit {
+  width: 100%;
+}
+/* Full-width resolution (one-column layouts): two form columns side by side. */
+@container ws-res (min-width: 640px) {
+  .ws-root .ws-res-layout {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px 28px;
+    align-items: start;
+  }
+  .ws-root .ws-res-head,
+  .ws-root .ws-res-foot {
+    grid-column: 1 / -1;
+  }
+  .ws-root .ws-res-foot {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+  .ws-root .ws-res-foot .callout {
+    flex: 1;
+    min-width: 0;
+  }
+  .ws-root .ws-submit {
+    width: auto;
+  }
+}
+/* Side-column resolution: sticky, scrolls on its own, submit pinned to the bottom. */
+@media (min-width: 1080px) {
   .ws-root .ws-resolution {
     position: sticky;
     top: 16px;
@@ -448,6 +910,16 @@
     overflow-y: auto;
     overscroll-behavior: contain;
     scrollbar-width: thin;
+    padding-bottom: 0;
+  }
+  .ws-root .ws-res-foot {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    margin: 0 -20px;
+    padding: 12px 20px 16px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
   }
 }
 
@@ -466,10 +938,23 @@
 .ws-root .ws-legend {
   margin-bottom: 8px;
 }
+.ws-root .ws-field-tag {
+  margin-left: 4px;
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
 .ws-root .ws-causes {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+.ws-root .ws-causes .radio-row {
+  padding-block: 7px;
+  line-height: 1.4;
 }
 
 .ws-root .ws-field {
@@ -484,17 +969,37 @@
   justify-content: space-between;
   gap: 8px;
   flex-wrap: wrap;
+  margin-block: -4px;
+}
+.ws-root .ws-field-head .btn {
+  margin-right: -6px;
+}
+.ws-root .ws-resolution select,
+.ws-root .ws-resolution textarea {
+  font-weight: 400;
+}
+
+/* Field the validation message points at. */
+.ws-root .ws-invalid .ws-legend,
+.ws-root .ws-invalid .ws-field-label {
+  color: var(--danger);
+}
+.ws-root .ws-invalid .radio-row,
+.ws-root .ws-invalid select,
+.ws-root .ws-invalid textarea {
+  border-color: var(--danger);
 }
 
 .ws-root .seg.ws-outcome {
   display: flex;
+  flex-wrap: nowrap;
   width: 100%;
 }
 .ws-root .seg.ws-outcome button {
   flex: 1 1 0;
   justify-content: center;
   min-width: 0;
-  padding: 7px 8px;
+  padding: 7px 6px;
 }
 .ws-root .seg.ws-outcome button.active svg {
   color: var(--primary);
@@ -508,11 +1013,13 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 2px 4px;
-  font-size: 0.76rem;
+  gap: 2px 3px;
+  font-size: 0.75rem;
   font-weight: 400;
   color: var(--text-muted);
 }
 .ws-root .ws-note-hint svg {
+  width: 11px;
+  height: 11px;
   color: var(--text-faint);
 }

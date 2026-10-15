@@ -1,8 +1,11 @@
 /* App shell (sidebar, toast, first-run screen) and the dashboard.
-   This file is imported from Layout.tsx, which is evaluated before styles.css, so any rule that
-   overrides a global class uses at least two classes to win regardless of load order. */
+   styles.css is imported first (main.tsx), so these rules win ties; overrides of global classes still
+   use two classes so they do not depend on load order. */
 
 /* ---------- Sidebar ---------- */
+.app > .sidebar {
+  border-right: 1px solid var(--rail-line);
+}
 .sidebar .brand-text {
   min-width: 0;
 }
@@ -37,9 +40,34 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.sidebar-footer .xp {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  white-space: nowrap;
+}
 
-/* In the compact top bar the LIVE label is hidden with the other labels; keep a dot on the icon. */
+/* Compact top bar: brand + icon nav. */
 @media (max-width: 900px) {
+  .app > .sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--rail-line);
+  }
+  .sidebar .brand {
+    margin-right: auto;
+  }
+  .sidebar .brand-mark {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+  }
+  .sidebar .nav a {
+    justify-content: center;
+  }
+  .sidebar .nav a.active {
+    box-shadow: inset 0 -2px 0 var(--rail-accent);
+  }
+  /* The LIVE label is hidden with the other labels; keep a dot on the icon. */
   .sidebar .nav a.nav-live {
     position: relative;
   }
@@ -53,6 +81,32 @@
     border-radius: 50%;
     background: var(--danger);
     box-shadow: 0 0 0 2px var(--rail-bg);
+  }
+}
+/* Tablet: there is room for the product name next to the mark. */
+@media (min-width: 561px) and (max-width: 900px) {
+  .sidebar .brand-text {
+    display: block;
+  }
+  .sidebar .brand-text small {
+    display: none;
+  }
+}
+/* Phone: the icons share the full row so every destination stays on screen. */
+@media (max-width: 560px) {
+  .sidebar .brand {
+    padding-right: 2px;
+  }
+  .sidebar .nav {
+    flex: 1 1 auto;
+    justify-content: space-between;
+    gap: 0;
+  }
+  .sidebar .nav a {
+    flex: 1 1 0;
+    min-width: 32px;
+    max-width: 44px;
+    padding: 8px 0;
   }
 }
 
@@ -169,9 +223,15 @@
 .dash .dash-hero {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 360px);
-  align-items: end;
+  align-items: stretch;
   gap: 28px;
   padding: 28px 30px;
+  /* An edge and a faint accent glow keep the band distinct from the page in the dark theme. */
+  border: 1px solid var(--rail-line);
+  background-image: radial-gradient(120% 140% at 100% 0%, color-mix(in srgb, var(--rail-accent) 11%, transparent), transparent 60%),
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: auto, 28px 28px, 28px 28px;
 }
 .dash .dash-hero-main {
   min-width: 0;
@@ -191,7 +251,8 @@
   max-width: 60ch;
 }
 .dash .dash-rank {
-  margin-top: 8px;
+  margin-top: auto;
+  padding-top: 8px;
   max-width: 480px;
   display: flex;
   flex-direction: column;
@@ -252,6 +313,10 @@
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
+.dash .dash-next-live {
+  border-color: color-mix(in srgb, var(--danger) 45%, transparent);
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+}
 .dash .dash-next-label {
   display: flex;
   align-items: center;
@@ -262,6 +327,10 @@
   letter-spacing: 0.09em;
   text-transform: uppercase;
   color: var(--rail-accent);
+}
+.dash .dash-next-label .live-dot {
+  font-size: inherit;
+  letter-spacing: inherit;
 }
 .dash .dash-next-title {
   font-family: var(--font-display);
@@ -289,6 +358,9 @@
 }
 
 /* Figures */
+.dash .dash-stats {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
 .dash .dash-stats .stat {
   gap: 6px;
 }
@@ -316,7 +388,6 @@
   flex-wrap: wrap;
   gap: 6px;
 }
-
 /* Quick start */
 .dash .dash-section {
   display: flex;
@@ -326,9 +397,13 @@
 .dash .dash-section > .label {
   margin: 0;
 }
+.dash .dash-quick {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
 .dash-quick .quick {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto 1fr;
   grid-template-areas:
     'icon arrow'
     'text text';
@@ -341,13 +416,15 @@
 }
 .dash-quick .quick-text {
   grid-area: text;
+  align-self: stretch;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 .dash-quick .quick-meta {
-  margin-top: 6px;
+  margin-top: auto;
+  padding-top: 6px;
   font-family: var(--mono);
   font-size: 0.68rem;
   letter-spacing: 0.06em;
@@ -367,6 +444,10 @@
 }
 
 /* Panels */
+.dash .dash-panel {
+  display: flex;
+  flex-direction: column;
+}
 .dash .dash-head-text {
   flex: 1 1 200px;
   min-width: 0;
@@ -395,6 +476,9 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
+  /* When the neighbouring panel is taller, spread the rows instead of leaving a hole at the bottom. */
+  flex: 1;
+  justify-content: space-between;
 }
 .dash .mastery > li {
   display: flex;
@@ -419,6 +503,9 @@
 .dash .mastery-name {
   font-weight: 600;
   font-size: 0.9rem;
+}
+.dash .mastery-top .pill {
+  line-height: 1.4;
 }
 .dash .mastery-count {
   margin-left: auto;
@@ -470,64 +557,65 @@
   align-items: center;
   gap: 2px 6px;
   font-size: 0.76rem;
+  line-height: 1.4;
   color: var(--text-muted);
+}
+.dash .activity-meta .pill {
+  padding: 0 7px;
+  font-size: 0.7rem;
+  line-height: 1.45;
 }
 .dash .activity-score {
   flex-shrink: 0;
 }
 
 .dash .dash-empty {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding-bottom: 12px;
 }
 .dash .dash-empty .empty {
-  padding: 12px 12px 4px;
-}
-.dash .dash-rec {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.dash .dash-rec-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 8px;
-}
-.dash .dash-rec-title {
-  font-family: var(--font-display);
-  font-weight: 700;
-  line-height: 1.3;
-  overflow-wrap: anywhere;
+  padding: 12px 12px 8px;
 }
 
 /* Narrow main column (container-based, so the sidebar width does not matter) */
+@container dash (max-width: 960px) {
+  .dash .dash-stats,
+  .dash .dash-quick {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .dash-quick .quick {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-rows: none;
+    grid-template-areas: 'icon text arrow';
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+  }
+  .dash-quick .quick-meta {
+    padding-top: 2px;
+  }
+}
 @container dash (max-width: 760px) {
   .dash .dash-hero {
     grid-template-columns: minmax(0, 1fr);
     gap: 22px;
     padding: 22px 20px;
   }
-}
-@container dash (max-width: 640px) {
-  .dash-quick .quick {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    grid-template-areas: 'icon text arrow';
-    align-items: center;
-    gap: 12px;
-    padding: 14px;
-  }
-  .dash-quick .quick-meta {
-    margin-top: 2px;
+  .dash .dash-rank {
+    max-width: none;
   }
 }
-@container dash (max-width: 520px) {
+@container dash (max-width: 560px) {
   .dash .dash-hero h1 {
     font-size: 1.5rem;
   }
-  .dash .dash-stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .dash .dash-stats,
+  .dash .dash-quick {
     gap: 10px;
   }
   .dash .dash-stats .stat {
@@ -535,5 +623,26 @@
   }
   .dash .dash-stats .stat-value {
     font-size: 1.4rem;
+  }
+  /* Quick links become a compact 2 x 2 launcher; the descriptions are dropped. */
+  .dash-quick .quick {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+      'icon arrow'
+      'text text';
+    align-items: start;
+    gap: 10px;
+    padding: 14px;
+  }
+  .dash-quick .quick-desc {
+    display: none;
+  }
+  .dash-quick .quick-text {
+    gap: 0;
+  }
+  .dash-quick .quick-text strong {
+    font-size: 0.92rem;
+    line-height: 1.3;
   }
 }

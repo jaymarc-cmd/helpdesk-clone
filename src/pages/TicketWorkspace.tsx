@@ -1,4 +1,5 @@
-import { useEffect, useId, useMemo, useReducer, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useReducer, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -24,9 +25,11 @@ import {
   Info,
   Laptop,
   Lightbulb,
+  Link2,
   ListChecks,
   Lock,
   Mail,
+  MessageCircleQuestion,
   MessageSquare,
   MessagesSquare,
   Radio,
@@ -59,8 +62,9 @@ import '../styles/workspace.css';
 
 type Tab = 'conversation' | 'directory' | 'endpoint' | 'terminal' | 'kb';
 
-const TABS: { id: Tab; label: string; icon: LucideIcon }[] = [
-  { id: 'conversation', label: 'Conversation', icon: MessageSquare },
+/** `short` replaces the label when the investigation panel is phone-narrow. */
+const TABS: { id: Tab; label: string; short?: string; icon: LucideIcon }[] = [
+  { id: 'conversation', label: 'Conversation', short: 'Chat', icon: MessageSquare },
   { id: 'directory', label: 'Directory', icon: IdCard },
   { id: 'endpoint', label: 'Endpoint', icon: Laptop },
   { id: 'terminal', label: 'Terminal', icon: SquareTerminal },
@@ -82,6 +86,9 @@ const OUTCOMES: { id: Outcome; label: string; desc: string; icon: LucideIcon }[]
   { id: 'pending', label: 'Pending', desc: 'Pending (waiting on user)', icon: Hourglass },
 ];
 
+/** Actions that ask for confirmation before they run. */
+const DESTRUCTIVE = new Set(['reimage', 'remote_restart', 'isolate_device', 'repair_office', 'revoke_sessions']);
+
 /** Prefix the session engine puts on agent messages sent by a guided step. */
 const GUIDED_PREFIX = '[Guided step] ';
 
@@ -92,7 +99,7 @@ export function TicketWorkspace() {
   if (!scenario) {
     return (
       <div className="ws-root">
-        <div className="card">
+        <div className="card ws-notfound-card">
           <EmptyState icon={SearchX} title="Ticket not found">
             <span className="ws-notfound">
               The ticket may have been removed, or the link is out of date.
@@ -123,6 +130,7 @@ function Workspace({ scenario }: { scenario: Scenario }) {
   const [tab, setTab] = useState<Tab>('conversation');
   const [hint, setHint] = useState<string | null>(null);
   const [kbOpen, setKbOpen] = useState<string | null>(null);
+  const tabIds = useId();
 
   const inShift =
     params.get('mode') === 'shift' &&
@@ -173,29 +181,26 @@ function Workspace({ scenario }: { scenario: Scenario }) {
   return (
     <div className="ws-root">
       <header className="ws-header">
-        <div className="ws-heading">
-          <div className="ws-meta">
-            <Link to={inShift ? '/shift' : '/tickets'} className="ws-back">
-              <ArrowLeft size={15} aria-hidden />
-              {inShift ? 'Shift board' : 'Queue'}
-            </Link>
-            <span className="ws-sep" aria-hidden />
-            <span className="ticket-id">{ticketNumber(scenario.id)}</span>
-            <PriorityPill p={scenario.priority} long />
-            <span className="pill pill-outline">
-              <CategoryIcon category={scenario.category} size={12} />
-              {scenario.category}
+        <Link to={inShift ? '/shift' : '/tickets'} className="ws-back">
+          <ArrowLeft size={15} aria-hidden />
+          {inShift ? 'Shift board' : 'Queue'}
+        </Link>
+        <div className="ws-meta">
+          <span className="ticket-id">{ticketNumber(scenario.id)}</span>
+          <PriorityPill p={scenario.priority} long />
+          <span className="pill pill-outline">
+            <CategoryIcon category={scenario.category} size={12} />
+            {scenario.category}
+          </span>
+          <DifficultyDots d={scenario.difficulty} showLabel />
+          {inShift && (
+            <span className="pill pill-danger">
+              <Radio size={12} aria-hidden />
+              Shift
             </span>
-            <DifficultyDots d={scenario.difficulty} showLabel />
-            {inShift && (
-              <span className="pill pill-danger">
-                <Radio size={12} aria-hidden />
-                Shift
-              </span>
-            )}
-          </div>
-          <h1 className="ws-title">{scenario.title}</h1>
+          )}
         </div>
+        <h1 className="ws-title">{scenario.title}</h1>
         <div className="ws-controls">
           {state.settings.hints && (
             <button className="btn btn-sm" onClick={showHint} title={`Costs ${HINT_PENALTY} points`}>
@@ -226,20 +231,38 @@ function Workspace({ scenario }: { scenario: Scenario }) {
       )}
 
       <div className="workspace">
-        <aside className="ws-left stack" aria-label="Ticket details">
+        <aside className="ws-left" aria-label="Ticket details">
           <TicketInfo scenario={scenario} s={s} onKb={openKb} />
         </aside>
 
         <section className="card ws-center" aria-label="Investigation">
-          <div className="tabs ws-tabs" role="tablist">
-            {TABS.map(({ id: t, label, icon: Icon }) => (
-              <button key={t} role="tab" aria-selected={tab === t} className={`tab ${tab === t ? 'active' : ''}`} onClick={() => openTab(t)}>
+          <div className="tabs ws-tabs" role="tablist" aria-label="Investigation tools">
+            {TABS.map(({ id: t, label, short, icon: Icon }) => (
+              <button
+                key={t}
+                id={`${tabIds}-${t}`}
+                role="tab"
+                aria-selected={tab === t}
+                aria-controls={`${tabIds}-panel`}
+                aria-label={short ? label : undefined}
+                className={`tab ${tab === t ? 'active' : ''}`}
+                onClick={() => openTab(t)}
+              >
                 <Icon size={16} aria-hidden />
-                {label}
+                {short ? (
+                  <>
+                    <span className="ws-tab-long">{label}</span>
+                    <span className="ws-tab-short" aria-hidden>
+                      {short}
+                    </span>
+                  </>
+                ) : (
+                  label
+                )}
               </button>
             ))}
           </div>
-          <div className="ws-panel" role="tabpanel">
+          <div className="ws-panel" role="tabpanel" id={`${tabIds}-panel`} aria-labelledby={`${tabIds}-${tab}`}>
             {tab === 'conversation' && <Conversation scenario={scenario} s={s} dispatch={dispatch} at={at} />}
             {tab === 'directory' && <DirectoryTool scenario={scenario} s={s} dispatch={dispatch} at={at} />}
             {tab === 'endpoint' && <EndpointTool s={s} dispatch={dispatch} at={at} />}
@@ -252,24 +275,41 @@ function Workspace({ scenario }: { scenario: Scenario }) {
       </div>
 
       {kbOpen && kbArticle && (
-        <Modal title={kbArticle.title} onClose={() => setKbOpen(null)}>
+        <WsModal title={kbArticle.title} onClose={() => setKbOpen(null)}>
           <div className="stack">
-            <div className="row">
+            <div className="ws-pill-wrap">
               <span className="pill pill-outline">
                 <BookOpen size={12} aria-hidden />
                 {kbArticle.category}
               </span>
-              {scenario.kb.includes(kbOpen) && <span className="pill pill-primary">Related</span>}
+              {scenario.kb.includes(kbOpen) && (
+                <span className="pill pill-primary">
+                  <Link2 size={12} aria-hidden />
+                  Related to this ticket
+                </span>
+              )}
             </div>
             <Markdown text={kbArticle.body} />
           </div>
-        </Modal>
+        </WsModal>
       )}
     </div>
   );
 }
 
 type Dispatch = (e: Parameters<ReturnType<typeof sessionReducer>>[1]) => void;
+
+/** Modal rendered on <body> so no ancestor (sticky panel, size container) can clip or re-anchor it. */
+function WsModal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+  return createPortal(
+    <div className="ws-root">
+      <Modal title={title} onClose={onClose}>
+        {children}
+      </Modal>
+    </div>,
+    document.body,
+  );
+}
 
 function IdentityPill({ s }: { s: SessionState }) {
   if (s.verified)
@@ -334,7 +374,16 @@ function TicketInfo({ scenario, s, onKb }: { scenario: Scenario; s: SessionState
           <dt>Location</dt>
           <dd>{r.location}</dd>
           <dt>Email</dt>
-          <dd className="small">{r.email}</dd>
+          <dd className="ws-email">
+            {/* Break after the @ rather than mid-word when the column is narrow. */}
+            {r.email.split('@')[0]}
+            {r.email.includes('@') && (
+              <>
+                @<wbr />
+                {r.email.split('@').slice(1).join('@')}
+              </>
+            )}
+          </dd>
           <dt>Phone</dt>
           <dd className="num">{r.phone}</dd>
           <dt>Channel</dt>
@@ -351,7 +400,7 @@ function TicketInfo({ scenario, s, onKb }: { scenario: Scenario; s: SessionState
         </dl>
       </section>
 
-      <section className="card">
+      <section className="card ws-findings">
         <div className="card-head">
           <h3>
             <ScanSearch size={16} aria-hidden />
@@ -528,7 +577,7 @@ function Conversation({ scenario, s, dispatch, at }: { scenario: Scenario; s: Se
           type="text"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder={`Message ${firstName}, or type your own question…`}
+          placeholder={`Type a message to ${firstName}…`}
           aria-label="Message"
         />
         <button type="submit" className="btn btn-primary" disabled={!text.trim() || typing}>
@@ -542,28 +591,34 @@ function Conversation({ scenario, s, dispatch, at }: { scenario: Scenario; s: Se
           <MessagesSquare size={13} aria-hidden />
           Suggested questions
         </div>
-        <div className="suggestions">
-          {!s.verifyAttempted && (
-            <button key={VERIFY_QUESTION_ID} className="suggestion verify" disabled={typing} onClick={() => dispatch({ type: 'verify', at: at() })}>
-              <Fingerprint size={14} aria-hidden />
-              Verify identity
-            </button>
-          )}
-          {available.map((q) => (
-            <button key={q.id} className="suggestion" disabled={typing} onClick={() => dispatch({ type: 'ask', questionId: q.id, at: at() })}>
-              {q.text}
-            </button>
-          ))}
-          {available.length === 0 && s.verifyAttempted && <span className="small muted">No more suggested questions.</span>}
-        </div>
+        {available.length === 0 && s.verifyAttempted ? (
+          <p className="ws-empty-hint">No more suggested questions. Type your own above, or try the tools.</p>
+        ) : (
+          <div className="suggestions ws-questions">
+            {!s.verifyAttempted && (
+              <button key={VERIFY_QUESTION_ID} className="suggestion verify" disabled={typing} onClick={() => dispatch({ type: 'verify', at: at() })}>
+                <Fingerprint size={15} aria-hidden />
+                <span>Verify identity</span>
+              </button>
+            )}
+            {available.map((q) => (
+              <button key={q.id} className="suggestion" disabled={typing} onClick={() => dispatch({ type: 'ask', questionId: q.id, at: at() })}>
+                <MessageCircleQuestion size={15} aria-hidden />
+                <span>{q.text}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <details className="ws-guided">
         <summary>
           <ChevronRight size={16} className="chev" aria-hidden />
           <Compass size={16} aria-hidden />
-          Guided steps
-          <span className="ws-guided-sub">Ask {firstName} to do something</span>
+          <span className="ws-guided-text">
+            <span>Guided steps</span>
+            <span className="ws-guided-sub">Ask {firstName} to do something</span>
+          </span>
         </summary>
         <div className="ws-guided-body">
           <ActionGrid tool="guide" s={s} dispatch={dispatch} at={at} />
@@ -579,57 +634,64 @@ function ActionGrid({ tool, s, dispatch, at }: { tool: ToolId; s: SessionState; 
   const [confirm, setConfirm] = useState<string | null>(null);
   const actions = actionsForTool(tool);
   const results = s.actionResults.filter((r) => ACTION_BY_ID[r.id]?.tool === tool);
-  const destructive = new Set(['reimage', 'remote_restart', 'isolate_device', 'repair_office', 'revoke_sessions']);
+  // Latest result per action, shown under the action that produced it.
+  const resultFor = new Map(results.map((r) => [r.id, r.text]));
+  const latest = results[results.length - 1];
 
   const run = (id: string) => {
-    if (destructive.has(id)) setConfirm(id);
+    if (DESTRUCTIVE.has(id)) setConfirm(id);
     else dispatch({ type: 'action', actionId: id, at: at() });
   };
 
   return (
-    <div className="stack">
-      <div className="action-list">
+    <>
+      <div className="action-list ws-actions">
         {actions.map((a) => {
           const done = s.actions.includes(a.id);
+          const result = resultFor.get(a.id);
+          const locked = a.sensitive && !s.verified;
+          const risky = DESTRUCTIVE.has(a.id);
           return (
-            <button key={a.id} className={`action-btn ${done ? 'done' : ''}`} onClick={() => run(a.id)} title={a.description}>
-              <span className="lbl">
-                {done && <Check size={14} aria-hidden />}
-                {a.label}
-                {done && <span className="ws-sr"> (done)</span>}
-              </span>
-              <span className="desc">{a.description}</span>
-              {a.sensitive && !s.verified && (
-                <span className="lock">
-                  <Lock size={12} aria-hidden />
-                  Requires identity verification
+            <div key={a.id} className={`ws-action ${done ? 'done' : ''}`}>
+              <button className={`action-btn ${done ? 'done' : ''}`} onClick={() => run(a.id)} title={a.description}>
+                <span className="lbl">
+                  {done && <Check size={14} aria-hidden />}
+                  {a.label}
+                  {done && <span className="ws-sr"> (done)</span>}
                 </span>
+                <span className="desc">{a.description}</span>
+                {(locked || risky) && (
+                  <span className="ws-action-flags">
+                    {locked && (
+                      <span className="lock">
+                        <Lock size={12} aria-hidden />
+                        Requires identity verification
+                      </span>
+                    )}
+                    {risky && (
+                      <span className="ws-risky">
+                        <TriangleAlert size={12} aria-hidden />
+                        Disruptive
+                      </span>
+                    )}
+                  </span>
+                )}
+              </button>
+              {result && (
+                <div className="ws-action-result">
+                  <CornerDownRight size={14} aria-hidden />
+                  <span>{result}</span>
+                </div>
               )}
-            </button>
+            </div>
           );
         })}
       </div>
-      {results.length > 0 && (
-        <div>
-          <div className="label ws-label-row">
-            <ListChecks size={13} aria-hidden />
-            Results
-          </div>
-          <div className="result-feed">
-            {[...results].reverse().map((r, i) => (
-              <div key={i} className="result-item">
-                <div className="ws-result-label">
-                  <CornerDownRight size={13} aria-hidden />
-                  {ACTION_BY_ID[r.id]?.label}
-                </div>
-                {r.text}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <div className="ws-sr" aria-live="polite">
+        {latest ? `${ACTION_BY_ID[latest.id]?.label ?? ''}: ${latest.text}` : ''}
+      </div>
       {confirm && (
-        <Modal title="Confirm action" onClose={() => setConfirm(null)}>
+        <WsModal title="Confirm action" onClose={() => setConfirm(null)}>
           <div className="stack">
             <div className="callout warning">
               <TriangleAlert size={18} aria-hidden />
@@ -654,9 +716,9 @@ function ActionGrid({ tool, s, dispatch, at }: { tool: ToolId; s: SessionState; 
               </button>
             </div>
           </div>
-        </Modal>
+        </WsModal>
       )}
-    </div>
+    </>
   );
 }
 
@@ -666,7 +728,7 @@ function DirectoryTool({ scenario, s, dispatch, at }: { scenario: Scenario; s: S
   const StatusIcon = a.status === 'Active' ? CircleCheck : a.status === 'Locked' ? Lock : Ban;
   return (
     <div className="stack">
-      <div className="grid grid-2">
+      <div className="grid grid-2 ws-dir-grid">
         <section className="card card-tight">
           <div className="card-head">
             <h3 className="ws-mono-head">
@@ -760,9 +822,7 @@ function DirectoryTool({ scenario, s, dispatch, at }: { scenario: Scenario; s: S
           )}
         </div>
         {s.signInLogViewed ? (
-          <pre className="terminal ws-signin">
-            {(scenario.signInLog?.lines ?? [`${a.lastLogon}  SUCCESS   Windows sign-in   ${s.device.hostname}`, 'No failures in the last 24 hours.']).join('\n')}
-          </pre>
+          <SignInLog lines={scenario.signInLog?.lines ?? [`${a.lastLogon}  SUCCESS   Windows sign-in   ${s.device.hostname}`, 'No failures in the last 24 hours.']} />
         ) : (
           <p className="ws-empty-hint">Recent authentication events for this account. Loading the log is recorded on the ticket.</p>
         )}
@@ -776,6 +836,42 @@ function DirectoryTool({ scenario, s, dispatch, at }: { scenario: Scenario; s: S
       </div>
       <ActionGrid tool="directory" s={s} dispatch={dispatch} at={at} />
     </div>
+  );
+}
+
+const SIGNIN_TONE: Record<string, string> = { SUCCESS: 'pill-success', FAILURE: 'pill-danger', LOCKOUT: 'pill-warning' };
+
+/**
+ * Sign-in log lines are column-aligned text ("time  STATUS  source  detail…").
+ * Split on runs of 2+ spaces so each event reads as a row that wraps cleanly at any width;
+ * anything that doesn't look like an event is shown as a plain note.
+ */
+function SignInLog({ lines }: { lines: string[] }) {
+  return (
+    <ul className="ws-signin" aria-label="Sign-in events">
+      {lines.map((line, i) => {
+        const [time, status, source, ...rest] = line.trim().split(/\s{2,}/);
+        if (!status || !source || !/^[A-Z][A-Z ]*$/.test(status)) {
+          return (
+            <li key={i} className="ws-signin-note">
+              {line.trim()}
+            </li>
+          );
+        }
+        return (
+          <li key={i} className="ws-signin-row">
+            <span className="ws-signin-time">{time}</span>
+            <span className="ws-signin-status">
+              <span className={`pill ${SIGNIN_TONE[status] ?? 'pill-outline'}`}>{status}</span>
+            </span>
+            <span className="ws-signin-event">
+              <span>{source}</span>
+              {rest.length > 0 && <span className="ws-signin-detail">{rest.join(' · ')}</span>}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
@@ -867,20 +963,33 @@ function Terminal({ s, dispatch, at }: { s: SessionState; dispatch: Dispatch; at
       <div className="ws-term">
         <div className="terminal-bar">
           <SquareTerminal size={14} aria-hidden />
-          <span className="ws-term-title">PowerShell — {s.device.hostname}</span>
+          <span className="ws-term-title">PowerShell · {s.device.hostname}</span>
           <span className="ws-term-status">
             <span className={`status-dot ${s.device.online ? 'ok' : 'bad'}`} aria-hidden />
             {s.device.online ? 'Online' : 'Offline'}
           </span>
         </div>
         <div className="terminal" ref={boxRef} onClick={() => inputRef.current?.focus()}>
-          {s.terminal.length === 0 && <div className="ws-term-banner">Windows PowerShell — remote session established.{'\n\n'}</div>}
-          {s.terminal.map((l, i) => (
-            <div key={i}>
-              <span className="prompt">{prompt}</span> {l.cmd}
-              {'\n'}
-              {l.output}
+          {s.terminal.length === 0 && (
+            <div className="ws-term-banner">
+              {s.device.online
+                ? 'Windows PowerShell: remote session established.'
+                : 'Windows PowerShell: relayed session, no remote connection.'}
               {'\n\n'}
+            </div>
+          )}
+          {s.terminal.map((l, i) => (
+            <div key={i} className="ws-term-entry">
+              <div className="ws-term-line">
+                <span className="prompt">{prompt}</span> {l.cmd}
+              </div>
+              {/* One element per output line so long lines wrap with a hanging indent instead of breaking the columns. */}
+              {l.output !== '' &&
+                l.output.split('\n').map((line, j) => (
+                  <div key={j} className="ws-term-line">
+                    {line}
+                  </div>
+                ))}
             </div>
           ))}
           <form
@@ -943,36 +1052,53 @@ function KbBrowser({ related, onOpen }: { related: string[]; onOpen: (id: string
   const list = KB_ARTICLES.filter((a) =>
     q ? `${a.title} ${a.tags.join(' ')} ${a.body}`.toLowerCase().includes(q.toLowerCase()) : true,
   ).sort((a, b) => Number(related.includes(b.id)) - Number(related.includes(a.id)));
+  const linked = list.filter((a) => related.includes(a.id));
+  const others = list.filter((a) => !related.includes(a.id));
+
+  const item = (a: (typeof KB_ARTICLES)[number]) => (
+    <button key={a.id} className="ws-kb-item" onClick={() => onOpen(a.id)}>
+      <FileText size={16} aria-hidden />
+      <span className="ws-kb-text">
+        <span className="ws-kb-title">{a.title}</span>
+        <span className="ws-kb-meta">
+          {a.category} · {a.tags.slice(0, 4).join(', ')}
+        </span>
+      </span>
+      <ChevronRight size={16} className="ws-kb-chev" aria-hidden />
+    </button>
+  );
+
   return (
     <div className="stack">
       <div className="search">
         <Search size={16} aria-hidden />
         <input type="search" placeholder="Search the knowledge base…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search the knowledge base" />
       </div>
-      <div className="label">
-        {list.length} {list.length === 1 ? 'article' : 'articles'}
-      </div>
       {list.length === 0 ? (
         <EmptyState icon={SearchX} title="No matching articles">
           Try a different keyword, such as a product name or an error message.
         </EmptyState>
       ) : (
-        <div className="ws-kb-list">
-          {list.map((a) => (
-            <button key={a.id} className="action-btn ws-kb-item" onClick={() => onOpen(a.id)}>
-              <FileText size={16} aria-hidden />
-              <span className="ws-kb-text">
-                <span className="lbl">
-                  {a.title}
-                  {related.includes(a.id) && <span className="pill pill-primary">Related</span>}
-                </span>
-                <span className="desc">
-                  {a.category} · {a.tags.slice(0, 4).join(', ')}
-                </span>
-              </span>
-            </button>
-          ))}
-        </div>
+        <>
+          {linked.length > 0 && (
+            <div>
+              <div className="label ws-label-row">
+                <Link2 size={13} aria-hidden />
+                Related to this ticket
+              </div>
+              <div className="ws-kb-list related">{linked.map(item)}</div>
+            </div>
+          )}
+          {others.length > 0 && (
+            <div>
+              <div className="label ws-label-row">
+                <BookOpen size={13} aria-hidden />
+                {q ? (linked.length ? 'Other matches' : 'Matches') : linked.length ? 'Other articles' : 'All articles'} · {others.length}
+              </div>
+              <div className="ws-kb-list">{others.map(item)}</div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -992,121 +1118,182 @@ function ResolutionPanel({
   const [team, setTeam] = useState<Team | ''>('');
   const [note, setNote] = useState('');
   const [reply, setReply] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState<{ field: Field; text: string } | null>(null);
   const firstName = scenario.requester.name.split(' ')[0];
   const ids = useId();
 
   // Shuffle root cause options once so the answer isn't always first.
   const causes = useMemo(() => [...scenario.rootCauses].sort(() => Math.random() - 0.5), [scenario]);
 
+  const fail = (field: Field, text: string) => setError({ field, text });
+  /** Editing the field an error points at clears that error. */
+  const touched = (field: Field) => {
+    if (error?.field === field) setError(null);
+  };
+  const invalid = (field: Field) => (error?.field === field ? 'ws-invalid' : '');
+  const panelRef = useRef<HTMLElement>(null);
+
+  // Take the user to the field the validation message is about (it may be scrolled out of the panel).
+  useEffect(() => {
+    if (!error) return;
+    panelRef.current?.querySelector<HTMLElement>('.ws-invalid input, .ws-invalid select, .ws-invalid textarea')?.focus();
+  }, [error]);
+
   const submit = () => {
-    if (!rootCause) return setError('Choose a root cause.');
-    if (outcome === 'escalate' && !team) return setError('Choose the team to escalate to.');
-    if (note.trim().length < 10) return setError('Write some work notes first.');
-    if (reply.trim().length < 10) return setError(`Write a reply to ${firstName}.`);
+    if (!rootCause) return fail('rootCause', 'Choose a root cause.');
+    if (outcome === 'escalate' && !team) return fail('team', 'Choose the team to escalate to.');
+    if (note.trim().length < 10) return fail('note', 'Write some work notes first.');
+    if (reply.trim().length < 10) return fail('reply', `Write a reply to ${firstName}.`);
     onSubmit({ rootCause, outcome, team: outcome === 'escalate' ? (team as Team) : undefined, note, reply });
   };
 
   const current = OUTCOMES.find((o) => o.id === outcome);
 
   return (
-    <aside className="card ws-resolution" aria-label="Resolution">
-      <div>
-        <div className="card-head">
+    <aside className="card ws-resolution" aria-label="Resolution" ref={panelRef}>
+      <div className="ws-res-layout">
+        <div className="ws-res-head">
           <h2>
             <ClipboardCheck size={18} aria-hidden />
             Resolution
           </h2>
+          <p className="ws-res-sub">Everything below is graded when you submit.</p>
         </div>
-        <p className="ws-res-sub">Root cause, outcome, notes and reply are graded when you submit.</p>
-      </div>
 
-      <fieldset className="ws-fieldset">
-        <legend className="ws-legend">Root cause</legend>
-        <div className="ws-causes">
-          {causes.map((c) => (
-            <label key={c.id} className="radio-row">
-              <input type="radio" name="rc" checked={rootCause === c.id} onChange={() => setRootCause(c.id)} />
-              <span>{c.label}</span>
+        <div className="ws-res-col">
+          <fieldset className={`ws-fieldset ${invalid('rootCause')}`}>
+            <legend className="ws-legend">Root cause</legend>
+            <div className="ws-causes">
+              {causes.map((c) => (
+                <label key={c.id} className="radio-row">
+                  <input
+                    type="radio"
+                    name={`${ids}-rc`}
+                    checked={rootCause === c.id}
+                    onChange={() => {
+                      setRootCause(c.id);
+                      touched('rootCause');
+                    }}
+                  />
+                  <span>{c.label}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
+          <div className="ws-field">
+            <span className="ws-field-label" id={`${ids}-outcome`}>
+              Outcome
+            </span>
+            <div className="seg ws-outcome" role="radiogroup" aria-labelledby={`${ids}-outcome`}>
+              {OUTCOMES.map(({ id: o, label, desc, icon: Icon }) => (
+                <button key={o} type="button" role="radio" aria-checked={outcome === o} className={outcome === o ? 'active' : ''} onClick={() => setOutcome(o)} title={desc}>
+                  <Icon size={15} aria-hidden />
+                  {label}
+                </button>
+              ))}
+            </div>
+            {current && <span className="ws-outcome-desc">{current.desc}</span>}
+          </div>
+
+          {outcome === 'escalate' && (
+            <div className={`ws-field ${invalid('team')}`}>
+              <label className="ws-field-label" htmlFor={`${ids}-team`}>
+                Assign to team
+              </label>
+              <select
+                id={`${ids}-team`}
+                value={team}
+                onChange={(e) => {
+                  setTeam(e.target.value as Team);
+                  touched('team');
+                }}
+              >
+                <option value="">Select a team…</option>
+                {TEAMS.map((t) => (
+                  <option key={t}>{t}</option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+
+        <div className="ws-res-col">
+          <div className={`ws-field ${invalid('note')}`}>
+            <label className="ws-field-label" htmlFor={`${ids}-note`}>
+              Work notes <span className="ws-field-tag">internal</span>
             </label>
-          ))}
+            <span className="ws-note-hint" id={`${ids}-note-hint`}>
+              Symptom
+              <ChevronRight size={12} aria-hidden />
+              findings
+              <ChevronRight size={12} aria-hidden />
+              cause
+              <ChevronRight size={12} aria-hidden />
+              actions
+              <ChevronRight size={12} aria-hidden />
+              result
+            </span>
+            <textarea
+              id={`${ids}-note`}
+              aria-describedby={`${ids}-note-hint`}
+              value={note}
+              onChange={(e) => {
+                setNote(e.target.value);
+                touched('note');
+              }}
+              rows={4}
+              placeholder="e.g. Verified ID. Sign-in log showed…"
+            />
+          </div>
+
+          <div className={`ws-field ${invalid('reply')}`}>
+            <div className="ws-field-head">
+              <label className="ws-field-label" htmlFor={`${ids}-reply`}>
+                Reply to {firstName}
+              </label>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => {
+                  setReply(
+                    `Hi ${firstName},\n\nThank you for reaching out. \n\n[What happened and what I did]\n\n[Anything you need to do next]\n\nIf it happens again, just reply to this ticket and we'll pick it straight back up.\n\nKind regards,\nService Desk`,
+                  );
+                  touched('reply');
+                }}
+              >
+                <FileText size={14} aria-hidden />
+                Template
+              </button>
+            </div>
+            <textarea
+              id={`${ids}-reply`}
+              value={reply}
+              onChange={(e) => {
+                setReply(e.target.value);
+                touched('reply');
+              }}
+              rows={4}
+              placeholder={`Hi ${firstName}, …`}
+            />
+          </div>
         </div>
-      </fieldset>
 
-      <div className="ws-field">
-        <span className="ws-field-label" id={`${ids}-outcome`}>
-          Outcome
-        </span>
-        <div className="seg ws-outcome" role="radiogroup" aria-labelledby={`${ids}-outcome`}>
-          {OUTCOMES.map(({ id: o, label, desc, icon: Icon }) => (
-            <button key={o} type="button" role="radio" aria-checked={outcome === o} className={outcome === o ? 'active' : ''} onClick={() => setOutcome(o)} title={desc}>
-              <Icon size={15} aria-hidden />
-              {label}
-            </button>
-          ))}
-        </div>
-        {current && <span className="ws-outcome-desc">{current.desc}</span>}
-      </div>
-
-      {outcome === 'escalate' && (
-        <label className="field">
-          Assign to team
-          <select value={team} onChange={(e) => setTeam(e.target.value as Team)}>
-            <option value="">Select a team…</option>
-            {TEAMS.map((t) => (
-              <option key={t}>{t}</option>
-            ))}
-          </select>
-        </label>
-      )}
-
-      <label className="field">
-        Work notes (internal)
-        <span className="ws-note-hint">
-          Symptom
-          <ChevronRight size={12} aria-hidden />
-          findings
-          <ChevronRight size={12} aria-hidden />
-          cause
-          <ChevronRight size={12} aria-hidden />
-          actions
-          <ChevronRight size={12} aria-hidden />
-          result
-        </span>
-        <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={5} placeholder="e.g. Verified ID. Sign-in log showed…" />
-      </label>
-
-      <div className="ws-field">
-        <div className="ws-field-head">
-          <label className="ws-field-label" htmlFor={`${ids}-reply`}>
-            Reply to {firstName}
-          </label>
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            onClick={() =>
-              setReply(
-                `Hi ${firstName},\n\nThank you for reaching out. \n\n[What happened and what I did]\n\n[Anything you need to do next]\n\nIf it happens again, just reply to this ticket and we'll pick it straight back up.\n\nKind regards,\nService Desk`,
-              )
-            }
-          >
-            <FileText size={14} aria-hidden />
-            Template
+        <div className="ws-res-foot">
+          {error && (
+            <div className="callout danger small" role="alert">
+              <CircleAlert size={16} aria-hidden />
+              <div className="callout-body">{error.text}</div>
+            </div>
+          )}
+          <button className="btn btn-primary btn-lg ws-submit" onClick={submit}>
+            <CheckCheck size={18} aria-hidden />
+            Submit &amp; close ticket
           </button>
         </div>
-        <textarea id={`${ids}-reply`} value={reply} onChange={(e) => setReply(e.target.value)} rows={6} placeholder={`Hi ${firstName}, …`} />
       </div>
-
-      {error && (
-        <div className="callout danger small" role="alert">
-          <CircleAlert size={16} aria-hidden />
-          <div className="callout-body">{error}</div>
-        </div>
-      )}
-      <button className="btn btn-primary btn-lg btn-block" onClick={submit}>
-        <CheckCheck size={18} aria-hidden />
-        Submit &amp; close ticket
-      </button>
     </aside>
   );
 }
+
+type Field = 'rootCause' | 'team' | 'note' | 'reply';

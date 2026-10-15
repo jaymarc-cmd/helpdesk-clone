@@ -5,6 +5,7 @@ import {
   ChartNoAxesColumn,
   ChevronRight,
   CircleCheck,
+  Clock,
   Crosshair,
   Gauge,
   GraduationCap,
@@ -13,7 +14,6 @@ import {
   Inbox,
   LibraryBig,
   PhoneCall,
-  Play,
   Smile,
   Target,
   TicketCheck,
@@ -23,12 +23,14 @@ import {
 } from 'lucide-react';
 import { BUILTIN_SCENARIOS } from '../data/scenarios';
 import { BADGES, bestByScenario, categoryStats, overallStats, rankFor, totalXp } from '../engine/progress';
+import { shiftEndsAt } from '../engine/shift';
 import { useStore } from '../state/store';
 import { CATEGORIES } from '../types';
 import { CATEGORY_ICON, CategoryIcon } from '../components/icons';
-import { DifficultyDots, EmptyState, IconTile, PriorityPill, ProgressBar, Stars, StatTile, scoreTone, ticketNumber, timeAgo } from '../components/ui';
+import { EmptyState, IconTile, ProgressBar, Stars, StatTile, scoreTone, ticketNumber, timeAgo, useNow } from '../components/ui';
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+const fmt = (n: number) => n.toLocaleString('en-US');
 
 const SCORE_LABEL: Record<'success' | 'warning' | 'danger', string> = {
   success: 'On target',
@@ -52,16 +54,20 @@ export function Dashboard() {
     BUILTIN_SCENARIOS.find((s) => (best[s.id] ?? 0) < 70);
 
   const recent = [...state.tickets].reverse().slice(0, 5);
-  const firstName = state.profile?.name.split(' ')[0] ?? 'there';
+  const firstName = state.profile?.name.trim().split(/\s+/)[0];
+  const greeting = firstName ? `Good to see you, ${firstName}` : 'Welcome to the service desk';
 
   const shift = state.activeShift;
+  const now = useNow(15_000);
   const waiting = shift ? shift.tickets.filter((t) => t.status === 'waiting').length : 0;
+  const handled = shift ? shift.tickets.filter((t) => t.status === 'done').length : 0;
+  const minutesLeft = shift ? Math.ceil((shiftEndsAt(shift) - now) / 60_000) : 0;
   const passed = CATEGORIES.reduce((n, c) => n + cats[c].completed, 0);
   const scoreState = scoreTone(stats.avgScore);
   const csatTone = stats.avgCsat >= 4 ? 'success' : stats.avgCsat >= 3 ? 'warning' : 'danger';
 
   const lead = shift
-    ? `Your shift is running with ${plural(waiting, 'ticket')} waiting in the shift queue.`
+    ? 'You are on shift. Work the waiting tickets before their SLA timers run out.'
     : stats.tickets === 0
       ? 'Your queue is open. Start with the recommended ticket, or run a timed shift when you feel ready.'
       : recommended
@@ -109,9 +115,8 @@ export function Dashboard() {
           <div className="eyebrow">
             <Headset size={14} aria-hidden />
             <span>Service desk · Harbor &amp; Pine Logistics</span>
-            {shift && <span className="live-dot">SHIFT LIVE</span>}
           </div>
-          <h1 id="dash-greeting">Good to see you, {firstName}</h1>
+          <h1 id="dash-greeting">{greeting}</h1>
           <p className="dash-lead">{lead}</p>
 
           <div className="dash-rank">
@@ -121,15 +126,30 @@ export function Dashboard() {
                 Level {rank.level}
               </span>
               <span className="dash-rank-title">{rank.current.title}</span>
-              <span className="dash-rank-xp">{xp} XP</span>
+              <span className="dash-rank-xp">{fmt(xp)} XP</span>
             </div>
             <ProgressBar value={rank.progress} />
-            <div className="dash-rank-next">{rank.next ? `${rank.next.xp - xp} XP to ${rank.next.title}` : 'Top rank reached'}</div>
+            <div className="dash-rank-next">{rank.next ? `${fmt(rank.next.xp - xp)} XP to ${rank.next.title}` : 'Top rank reached'}</div>
           </div>
         </div>
 
         <div className="dash-hero-side">
-          {recommended ? (
+          {shift ? (
+            <div className="dash-next dash-next-live">
+              <div className="dash-next-label">
+                <span className="live-dot">Shift in progress</span>
+              </div>
+              <div className="dash-next-title">{waiting === 0 ? 'No tickets waiting' : `${plural(waiting, 'ticket')} waiting`}</div>
+              <div className="dash-next-meta">
+                <span className="inline-icon">
+                  <Clock size={13} aria-hidden />
+                  {minutesLeft > 0 ? `${minutesLeft} min left` : 'Time is up'}
+                </span>
+                <span>{handled} handled</span>
+                {shift.pending.length > 0 && <span>{shift.pending.length} still to arrive</span>}
+              </div>
+            </div>
+          ) : recommended ? (
             <div className="dash-next">
               <div className="dash-next-label">
                 <Target size={13} aria-hidden />
@@ -210,7 +230,7 @@ export function Dashboard() {
           sub={stats.tickets ? <span className={`pill pill-${scoreState}`}>{SCORE_LABEL[scoreState]}</span> : 'No graded tickets yet'}
         />
         <StatTile
-          label="Customer satisfaction"
+          label="Satisfaction"
           icon={Smile}
           tone={stats.tickets ? csatTone : 'neutral'}
           value={
@@ -223,7 +243,7 @@ export function Dashboard() {
               '–'
             )
           }
-          sub={stats.tickets ? 'Average CSAT, out of 5' : 'Rated when you close a ticket'}
+          sub={stats.tickets ? 'Average CSAT, out of 5' : 'Rated after each ticket'}
         />
         <StatTile
           label="Badges"
@@ -235,7 +255,7 @@ export function Dashboard() {
               <span className="dash-value-of">/{BADGES.length}</span>
             </span>
           }
-          sub={`${plural(stats.calls, 'call')} · ${plural(stats.interviews, 'interview')} · ${plural(stats.shifts, 'shift')}`}
+          sub={state.badges.length >= BADGES.length ? 'Full set collected' : `${BADGES.length - state.badges.length} still to unlock`}
         />
       </section>
 
@@ -249,7 +269,7 @@ export function Dashboard() {
               <IconTile icon={q.icon} tone="primary" />
               <span className="quick-text">
                 <strong>{q.title}</strong>
-                <span className="small muted">{q.text}</span>
+                <span className="small muted quick-desc">{q.text}</span>
                 <span className="quick-meta">{q.meta}</span>
               </span>
               <ArrowRight className="quick-arrow" size={16} aria-hidden />
@@ -258,8 +278,8 @@ export function Dashboard() {
         </div>
       </section>
 
-      <section className="grid grid-2">
-        <div className="card">
+      <section className="grid grid-2 dash-panels">
+        <div className="card dash-panel">
           <div className="card-head">
             <div className="dash-head-text">
               <h2>
@@ -308,7 +328,7 @@ export function Dashboard() {
           </ul>
         </div>
 
-        <div className="card">
+        <div className="card dash-panel">
           <div className="card-head">
             <div className="dash-head-text">
               <h2>
@@ -325,29 +345,12 @@ export function Dashboard() {
           {recent.length === 0 ? (
             <div className="dash-empty">
               <EmptyState icon={Inbox} title="No tickets closed yet">
-                Closed tickets appear here with their score and grade.
-                {recommended ? ' This one is a good place to start.' : ''}
+                Every ticket you close lands here with its score and grade, so you can reopen the review and see what to improve.
               </EmptyState>
-              {recommended && (
-                <div className="card card-flat card-tight dash-rec">
-                  <div className="dash-rec-meta">
-                    <span className="ticket-id">{ticketNumber(recommended.id)}</span>
-                    <PriorityPill p={recommended.priority} />
-                    <span className="pill">
-                      <CategoryIcon category={recommended.category} />
-                      {recommended.category}
-                    </span>
-                    <DifficultyDots d={recommended.difficulty} />
-                  </div>
-                  <div className="dash-rec-title">{recommended.title}</div>
-                  <div>
-                    <Link className="btn btn-primary btn-sm" to={`/ticket/${recommended.id}`}>
-                      <Play size={14} aria-hidden />
-                      Start this ticket
-                    </Link>
-                  </div>
-                </div>
-              )}
+              <Link className="btn btn-sm" to="/tickets">
+                <Inbox size={14} aria-hidden />
+                Browse the queue
+              </Link>
             </div>
           ) : (
             <ul className="activity">

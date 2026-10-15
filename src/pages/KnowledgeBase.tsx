@@ -1,18 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { BookOpen, Check, CircleCheck, Clock, FileText, Info, Search, SearchX, Tag, X } from 'lucide-react';
+import { ArrowRight, BookOpen, Check, CircleCheck, Clock, FileText, Info, Search, SearchX, Tag, X, type LucideIcon } from 'lucide-react';
 import { KB_ARTICLES, KB_BY_ID } from '../data/kb';
 import { useStore } from '../state/store';
-import { EmptyState, Markdown, PageHeader, ProgressBar } from '../components/ui';
-import { CategoryIcon } from '../components/icons';
+import { EmptyState, IconTile, Markdown, PageHeader, ProgressBar } from '../components/ui';
+import { CATEGORY_ICON } from '../components/icons';
 import type { KbArticle } from '../types';
 import '../styles/interview-kb.css';
 
 const CATS = ['All', 'General', 'Accounts', 'Network', 'Hardware', 'Software', 'Email', 'Security'] as const;
+type Cat = (typeof CATS)[number];
+type ArticleCat = KbArticle['category'];
 
-function ArticleCategoryIcon({ category, size = 14 }: { category: KbArticle['category']; size?: number }) {
-  if (category === 'General') return <Info size={size} aria-hidden />;
-  return <CategoryIcon category={category} size={size} />;
+const ARTICLE_CATS = CATS.filter((c): c is Exclude<Cat, 'All'> => c !== 'All');
+
+function categoryIcon(category: ArticleCat): LucideIcon {
+  return category === 'General' ? Info : CATEGORY_ICON[category];
 }
 
 function readingMinutes(body: string) {
@@ -23,9 +26,10 @@ export function KnowledgeBase() {
   const { id } = useParams();
   const { state, dispatch } = useStore();
   const [q, setQ] = useState('');
-  const [cat, setCat] = useState<(typeof CATS)[number]>('All');
+  const [cat, setCat] = useState<Cat>('All');
   const article = id ? KB_BY_ID[id] : undefined;
   const articleRef = useRef<HTMLElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
 
   useEffect(() => {
     if (article) dispatch({ type: 'kbRead', id: article.id });
@@ -39,15 +43,30 @@ export function KnowledgeBase() {
     }
   }, [article]);
 
+  // Keep the open article visible inside the scrolling list (e.g. when it is opened from a ticket).
+  useEffect(() => {
+    const listEl = listRef.current;
+    const row = listEl?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!listEl || !row) return;
+    const top = row.offsetTop;
+    const bottom = top + row.offsetHeight;
+    if (top < listEl.scrollTop || bottom > listEl.scrollTop + listEl.clientHeight) {
+      listEl.scrollTop = Math.max(0, top - (listEl.clientHeight - row.offsetHeight) / 2);
+    }
+  }, [id]);
+
   const list = KB_ARTICLES.filter(
     (a) =>
       (cat === 'All' || a.category === cat) &&
       (!q || `${a.title} ${a.tags.join(' ')} ${a.body}`.toLowerCase().includes(q.toLowerCase())),
   );
 
-  const readCount = KB_ARTICLES.filter((a) => state.kbRead.includes(a.id)).length;
+  const isReadId = (aid: string) => state.kbRead.includes(aid);
+  const readCount = KB_ARTICLES.filter((a) => isReadId(a.id)).length;
   const filtered = q !== '' || cat !== 'All';
-  const isRead = article ? state.kbRead.includes(article.id) : false;
+  const isRead = article ? isReadId(article.id) : false;
+  const nextUnread = KB_ARTICLES.find((a) => !isReadId(a.id));
+  const ArticleIcon = article ? categoryIcon(article.category) : null;
 
   return (
     <div className="kb-page">
@@ -69,11 +88,16 @@ export function KnowledgeBase() {
         }
       />
 
-      <div className="split-side">
+      <div className={`split-side kb-split ${article ? 'has-article' : 'no-article'}`}>
         <nav className="card kb-side" aria-label="Knowledge base articles">
-          <div className="search">
+          <div className="search kb-search">
             <Search size={16} aria-hidden />
             <input type="search" placeholder="Search articles…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search articles" />
+            {q && (
+              <button type="button" className="icon-btn kb-search-clear" onClick={() => setQ('')} aria-label="Clear search">
+                <X size={15} aria-hidden />
+              </button>
+            )}
           </div>
 
           <div className="seg kb-seg" role="group" aria-label="Filter by category">
@@ -104,17 +128,17 @@ export function KnowledgeBase() {
           </div>
 
           {list.length > 0 ? (
-            <ul className="kb-list">
+            <ul className="kb-list" ref={listRef}>
               {list.map((a) => {
                 const active = a.id === id;
-                const read = state.kbRead.includes(a.id);
+                const read = isReadId(a.id);
                 return (
                   <li key={a.id}>
                     <Link to={`/kb/${a.id}`} className={`kb-row ${active ? 'active' : ''}`} aria-current={active ? 'page' : undefined}>
                       <FileText size={16} className="kb-row-icon" aria-hidden />
                       <span className="kb-row-text">
                         <span className="kb-row-title">{a.title}</span>
-                        <span className="kb-row-cat">{a.category}</span>
+                        {cat === 'All' && <span className="kb-row-cat">{a.category}</span>}
                       </span>
                       {read && (
                         <span className="kb-row-read" title="Read">
@@ -134,21 +158,15 @@ export function KnowledgeBase() {
           )}
         </nav>
 
-        <article className="card kb-article" ref={articleRef} aria-label={article ? article.title : 'Article'}>
+        <article className="card kb-article" ref={articleRef} aria-label={article ? article.title : 'Browse the knowledge base'}>
           {article ? (
             <>
               <header className="kb-article-head">
-                <div className="kb-tags">
+                <div className="kb-eyebrow">
                   <span className="pill pill-primary">
-                    <ArticleCategoryIcon category={article.category} />
+                    {ArticleIcon && <ArticleIcon aria-hidden />}
                     {article.category}
                   </span>
-                  {article.tags.map((t) => (
-                    <span key={t} className="pill pill-outline">
-                      <Tag aria-hidden />
-                      {t}
-                    </span>
-                  ))}
                 </div>
                 <h1 className="kb-title">{article.title}</h1>
                 <div className="kb-meta">
@@ -157,9 +175,22 @@ export function KnowledgeBase() {
                     {readingMinutes(article.body)} min read
                   </span>
                   {isRead && (
-                    <span className="pill pill-success">
-                      <CircleCheck aria-hidden />
+                    <span className="inline-icon kb-read-flag">
+                      <CircleCheck size={14} aria-hidden />
                       Read
+                    </span>
+                  )}
+                  {article.tags.length > 0 && (
+                    <span className="kb-tagline">
+                      <Tag size={14} aria-hidden />
+                      <span className="kb-sr">Tags: </span>
+                      <span className="kb-tag-list">
+                        {article.tags.map((t) => (
+                          <span key={t} className="kb-tag">
+                            {t}
+                          </span>
+                        ))}
+                      </span>
                     </span>
                   )}
                 </div>
@@ -167,9 +198,53 @@ export function KnowledgeBase() {
               <Markdown text={article.body} />
             </>
           ) : (
-            <EmptyState icon={BookOpen} title="Select an article">
-              Pick a runbook or policy from the list to read it. You can also open related articles straight from inside any ticket.
-            </EmptyState>
+            <div className="kb-home">
+              <div className="kb-home-intro">
+                <IconTile icon={BookOpen} tone="primary" size="md" />
+                <div className="kb-home-text">
+                  <h2>Browse the library</h2>
+                  <p className="small muted">Pick a runbook or policy from the list, or narrow the list to one category below.</p>
+                </div>
+              </div>
+
+              <div className="kb-home-section">
+                <span className="label" id="kb-cats-label">
+                  Categories
+                </span>
+                <ul className="kb-cats" aria-labelledby="kb-cats-label">
+                  {ARTICLE_CATS.map((c) => {
+                    const inCat = KB_ARTICLES.filter((a) => a.category === c);
+                    const readInCat = inCat.filter((a) => isReadId(a.id)).length;
+                    const done = inCat.length > 0 && readInCat === inCat.length;
+                    return (
+                      <li key={c}>
+                        <button type="button" className={`kb-cat ${cat === c ? 'active' : ''}`} aria-pressed={cat === c} onClick={() => setCat(c)}>
+                          <IconTile icon={categoryIcon(c)} tone={cat === c ? 'primary' : 'neutral'} size="sm" />
+                          <span className="kb-cat-name">{c}</span>
+                          <span className="kb-cat-bar" aria-hidden>
+                            <ProgressBar value={readInCat / Math.max(1, inCat.length)} tone={done ? 'success' : undefined} />
+                          </span>
+                          <span className="kb-cat-count num">
+                            {readInCat}
+                            <span className="faint"> / {inCat.length} read</span>
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+
+              {nextUnread && (
+                <Link to={`/kb/${nextUnread.id}`} className="kb-next">
+                  <span className="kb-next-text">
+                    <span className="label">Next unread</span>
+                    <span className="kb-next-title">{nextUnread.title}</span>
+                  </span>
+                  <ArrowRight size={16} aria-hidden />
+                </Link>
+              )}
+            </div>
           )}
         </article>
       </div>

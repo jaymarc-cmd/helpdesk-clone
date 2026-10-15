@@ -26,6 +26,7 @@ import {
   Timer,
   Trash2,
   TriangleAlert,
+  Trophy,
   type LucideIcon,
 } from 'lucide-react';
 import { SHIFT_SLA_MIN, shiftEndsAt, slaDeadline } from '../engine/shift';
@@ -49,23 +50,28 @@ import {
 import { CategoryIcon } from '../components/icons';
 import '../styles/shift-calls.css';
 
-const DURATIONS: { min: number; label: string; desc: string; detail: string; icon: LucideIcon }[] = [
+const DURATIONS: { min: number; label: string; desc: string; detail: string; icon: LucideIcon; recommended?: boolean }[] = [
   { min: 15, label: 'Quick shift', desc: '~4 tickets', detail: 'A short run to practise triage under a clock.', icon: Timer },
-  { min: 25, label: 'Standard shift', desc: '~7 tickets', detail: 'A realistic mix of priorities arriving over time.', icon: Clock },
+  { min: 25, label: 'Standard shift', desc: '~7 tickets', detail: 'A realistic mix of priorities arriving over time.', icon: Clock, recommended: true },
   { min: 40, label: 'Full shift', desc: '~11 tickets', detail: 'Sustained load with overlapping SLA windows.', icon: CalendarClock },
 ];
 
 const PRIORITIES = Object.keys(SHIFT_SLA_MIN) as Priority[];
 
+/** Tickets worked during the shift, captured before the shift is closed so the report can link to each review. */
+type HandledRow = { scenarioId: string; attemptId?: string; slaBreached?: boolean };
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
 export function ShiftPage() {
   const { state, dispatch, getScenario, finishShift } = useStore();
   const navigate = useNavigate();
   const now = useNow();
-  const [report, setReport] = useState<ShiftReport | null>(null);
+  const [report, setReport] = useState<{ report: ShiftReport; handled: HandledRow[] } | null>(null);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const shift = state.activeShift;
 
-  if (report) return <ReportView report={report} onClose={() => setReport(null)} />;
+  if (report) return <ReportView report={report.report} handled={report.handled} onClose={() => setReport(null)} />;
 
   if (!shift) {
     return (
@@ -81,11 +87,11 @@ export function ShiftPage() {
           description="Tickets arrive over time with SLA clocks running. Prioritise, work fast, and keep every ticket inside its SLA."
         />
 
-        <section className="grid grid-3" aria-label="Choose a shift length">
+        <section className="sc-durations" aria-label="Choose a shift length">
           {DURATIONS.map((d) => (
-            <div key={d.min} className="card sc-duration">
+            <div key={d.min} className={`card sc-duration ${d.recommended ? 'sc-duration-featured' : ''}`}>
               <div className="sc-duration-top">
-                <IconTile icon={d.icon} tone="primary" size="lg" />
+                <IconTile icon={d.icon} tone={d.recommended ? 'primary' : 'neutral'} size="lg" />
                 <span className="pill pill-outline">
                   <Ticket aria-hidden />
                   {d.desc}
@@ -95,11 +101,15 @@ export function ShiftPage() {
                 <span className="stat-value">{d.min}</span>
                 <span className="sc-duration-unit">min</span>
               </div>
-              <div>
+              {d.recommended && <span className="sc-duration-badge">Recommended</span>}
+              <div className="sc-duration-text">
                 <div className="sc-duration-name">{d.label}</div>
                 <div className="sc-duration-desc">{d.detail}</div>
               </div>
-              <button className="btn btn-primary btn-block" onClick={() => dispatch({ type: 'startShift', durationMin: d.min })}>
+              <button
+                className={`btn btn-block ${d.recommended ? 'btn-primary' : ''}`}
+                onClick={() => dispatch({ type: 'startShift', durationMin: d.min })}
+              >
                 <LogIn size={16} aria-hidden />
                 Clock in
               </button>
@@ -166,9 +176,10 @@ export function ShiftPage() {
   const outstanding = waiting.length + shift.pending.length;
 
   const end = () => {
+    const handled: HandledRow[] = done.map((t) => ({ scenarioId: t.scenarioId, attemptId: t.attemptId, slaBreached: t.slaBreached }));
     const r = finishShift();
     setConfirmEnd(false);
-    if (r) setReport(r);
+    if (r) setReport({ report: r, handled });
   };
 
   return (
@@ -211,7 +222,7 @@ export function ShiftPage() {
         </div>
       )}
 
-      <div className="grid grid-4">
+      <div className="sc-stats">
         <StatTile
           label="Waiting"
           value={waiting.length}
@@ -233,11 +244,11 @@ export function ShiftPage() {
           icon={Hourglass}
           tone="neutral"
           sub={
-            shift.pending.length > 0 && remaining > 0
-              ? `Next in ${formatClock(Math.max(0, (shift.nextArrivalAt - now) / 1000))}`
-              : shift.pending.length === 0
-                ? 'All tickets delivered'
-                : undefined
+            shift.pending.length === 0
+              ? 'All tickets delivered'
+              : remaining > 0
+                ? `Next in ${formatClock(Math.max(0, (shift.nextArrivalAt - now) / 1000))}`
+                : 'Counted as missed'
           }
         />
       </div>
@@ -309,57 +320,7 @@ export function ShiftPage() {
             </h2>
             <span className="pill num">{done.length} handled</span>
           </div>
-          <div className="table-wrap">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Ticket</th>
-                  <th>Score</th>
-                  <th>SLA</th>
-                  <th>
-                    <span className="sc-sr-only">Review</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {done.map((t) => {
-                  const a = state.tickets.find((x) => x.id === t.attemptId);
-                  return (
-                    <tr key={t.scenarioId}>
-                      <td>
-                        <div className="sc-ticket-cell">
-                          <strong>{getScenario(t.scenarioId)?.title}</strong>
-                          <span className="ticket-id">{ticketNumber(t.scenarioId)}</span>
-                        </div>
-                      </td>
-                      <td>{a && <span className={`pill pill-${scoreTone(a.result.total)}`}>{a.result.total}</span>}</td>
-                      <td>
-                        {t.slaBreached ? (
-                          <span className="pill pill-danger">
-                            <CircleAlert aria-hidden />
-                            Breached
-                          </span>
-                        ) : (
-                          <span className="pill pill-success">
-                            <CircleCheck aria-hidden />
-                            Met
-                          </span>
-                        )}
-                      </td>
-                      <td>
-                        {a && (
-                          <Link className="sc-link" to={`/review/${a.id}`}>
-                            Review
-                            <ArrowRight size={14} aria-hidden />
-                          </Link>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <HandledTable rows={done} />
         </section>
       )}
 
@@ -369,7 +330,13 @@ export function ShiftPage() {
             {outstanding > 0 ? (
               <div className="callout warning">
                 <TriangleAlert size={18} aria-hidden />
-                <div className="callout-body">{outstanding} ticket(s) will be counted as missed.</div>
+                <div className="callout-body">
+                  <strong>{plural(outstanding, 'ticket')} will count as missed.</strong>{' '}
+                  {[waiting.length > 0 && `${waiting.length} waiting in the queue`, shift.pending.length > 0 && `${shift.pending.length} still to arrive`]
+                    .filter(Boolean)
+                    .join(', ')}
+                  .
+                </div>
               </div>
             ) : (
               <div className="callout success">
@@ -380,11 +347,8 @@ export function ShiftPage() {
             <p className="small muted">Clock out to file a shift report. Discarding ends the shift without a report.</p>
           </div>
           <div className="sc-modal-actions">
-            <button className="btn" onClick={() => setConfirmEnd(false)}>
-              Keep working
-            </button>
             <button
-              className="btn btn-danger"
+              className="btn btn-danger sc-modal-discard"
               onClick={() => {
                 dispatch({ type: 'abandonShift' });
                 setConfirmEnd(false);
@@ -393,13 +357,74 @@ export function ShiftPage() {
               <Trash2 size={16} aria-hidden />
               Discard shift
             </button>
-            <button className="btn btn-primary" onClick={end}>
+            <button className="btn sc-modal-keep" onClick={() => setConfirmEnd(false)}>
+              Keep working
+            </button>
+            <button className="btn btn-primary sc-modal-confirm" onClick={end}>
               <LogOut size={16} aria-hidden />
               Clock out &amp; see report
             </button>
           </div>
         </Modal>
       )}
+    </div>
+  );
+}
+
+/** Tickets worked this shift: score, SLA outcome and a link to the debrief. Stacks into rows on phones. */
+function HandledTable({ rows }: { rows: HandledRow[] }) {
+  const { state, getScenario } = useStore();
+  return (
+    <div className="table-wrap">
+      <table className="table sc-rtable">
+        <thead>
+          <tr>
+            <th>Ticket</th>
+            <th>Score</th>
+            <th>SLA</th>
+            <th>
+              <span className="sc-sr-only">Review</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((t) => {
+            const a = state.tickets.find((x) => x.id === t.attemptId);
+            return (
+              <tr key={t.scenarioId}>
+                <td className="sc-rtable-title">
+                  <div className="sc-ticket-cell">
+                    <strong>{getScenario(t.scenarioId)?.title ?? 'Ticket'}</strong>
+                    <span className="ticket-id">{ticketNumber(t.scenarioId)}</span>
+                  </div>
+                </td>
+                <td data-label="Score">{a ? <span className={`pill pill-${scoreTone(a.result.total)}`}>{a.result.total}</span> : <span className="faint">–</span>}</td>
+                <td data-label="SLA">
+                  {t.slaBreached ? (
+                    <span className="pill pill-danger">
+                      <CircleAlert aria-hidden />
+                      Breached
+                    </span>
+                  ) : (
+                    <span className="pill pill-success">
+                      <CircleCheck aria-hidden />
+                      Met
+                    </span>
+                  )}
+                </td>
+                <td className="sc-rtable-action">
+                  {a && (
+                    <Link className="sc-link" to={`/review/${a.id}`}>
+                      Review
+                      <ArrowRight size={14} aria-hidden />
+                    </Link>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -416,14 +441,22 @@ function Rule({ icon, title, children }: { icon: LucideIcon; title: string; chil
   );
 }
 
-function verdictFor(report: ShiftReport): { title: string; text: string; tone: 'success' | 'warning' | 'danger' } {
+function verdictFor(report: ShiftReport): { title: string; text: string; tone: 'success' | 'warning' | 'danger'; icon: LucideIcon } {
+  if (report.handled === 0)
+    return {
+      title: 'No tickets handled',
+      text: 'You clocked out before working a ticket, so everything in the queue counts as missed.',
+      tone: 'danger',
+      icon: CircleSlash,
+    };
   if (report.breaches === 0 && report.missed === 0 && report.avgScore >= 80)
-    return { title: 'Outstanding shift', text: 'Every ticket handled within SLA.', tone: 'success' };
-  if (report.breaches <= 1 && report.avgScore >= 70) return { title: 'Solid shift', text: 'A few things to tighten up.', tone: 'warning' };
-  return { title: 'Tough shift', text: 'Review the debriefs and try again.', tone: 'danger' };
+    return { title: 'Outstanding shift', text: 'Every ticket handled within SLA.', tone: 'success', icon: Trophy };
+  if (report.breaches <= 1 && report.avgScore >= 70)
+    return { title: 'Solid shift', text: 'A few things to tighten up.', tone: 'warning', icon: CircleCheck };
+  return { title: 'Tough shift', text: 'Review the debriefs below and try again.', tone: 'danger', icon: TriangleAlert };
 }
 
-function ReportView({ report, onClose }: { report: ShiftReport; onClose: () => void }) {
+function ReportView({ report, handled, onClose }: { report: ShiftReport; handled: HandledRow[]; onClose: () => void }) {
   const verdict = verdictFor(report);
   const xp = 50 + report.handled * 10;
   return (
@@ -432,11 +465,11 @@ function ReportView({ report, onClose }: { report: ShiftReport; onClose: () => v
         eyebrow={
           <>
             <ClipboardCheck size={14} aria-hidden />
-            Shift report · {report.durationMin} min
+            Shift report
           </>
         }
-        title={verdict.title}
-        description={verdict.text}
+        title="Shift complete"
+        description={`How your ${report.durationMin}-minute shift went.`}
         actions={
           <>
             <button className="btn print-btn no-print" onClick={() => window.print()}>
@@ -450,7 +483,22 @@ function ReportView({ report, onClose }: { report: ShiftReport; onClose: () => v
           </>
         }
       />
-      <div className="grid grid-4">
+
+      <section className={`card sc-verdict sc-verdict-${verdict.tone}`} aria-label="Verdict">
+        <IconTile icon={verdict.icon} tone={verdict.tone} size="lg" />
+        <div className="sc-verdict-body">
+          <h2>{verdict.title}</h2>
+          <p>{verdict.text}</p>
+        </div>
+        <div className="sc-verdict-xp">
+          <span className="sc-verdict-xp-value">
+            <Sparkles size={16} aria-hidden />+{xp} XP
+          </span>
+          <span className="sc-verdict-xp-note">50 base + 10 per ticket, plus each ticket's own XP</span>
+        </div>
+      </section>
+
+      <div className="sc-stats">
         <StatTile
           label="Tickets handled"
           value={report.handled}
@@ -480,12 +528,29 @@ function ReportView({ report, onClose }: { report: ShiftReport; onClose: () => v
           sub={report.breaches ? 'Tickets past their SLA window' : 'No tickets past SLA'}
         />
       </div>
-      <div className="callout info">
-        <Sparkles size={18} aria-hidden />
-        <div className="callout-body">
-          <strong>+{xp} XP</strong> for completing the shift (50 base + 10 per ticket), on top of each ticket's own XP.
+
+      <section className="card">
+        <div className="card-head">
+          <h2>
+            <ListChecks size={18} aria-hidden />
+            Tickets handled
+          </h2>
+          {handled.length > 0 && <span className="pill num">{handled.length} handled</span>}
         </div>
-      </div>
+        {handled.length === 0 ? (
+          <EmptyState icon={Inbox} title="Nothing worked this shift">
+            <div className="sc-empty-body">
+              <span>Next time, open the ticket at the top of the queue first: it is always the closest to breaching SLA.</span>
+              <button className="btn btn-sm no-print" onClick={onClose}>
+                <LogIn size={14} aria-hidden />
+                Start another shift
+              </button>
+            </div>
+          </EmptyState>
+        ) : (
+          <HandledTable rows={handled} />
+        )}
+      </section>
     </div>
   );
 }
@@ -506,7 +571,7 @@ function ShiftHistory({ reports }: { reports: ShiftReport[] }) {
         </EmptyState>
       ) : (
         <div className="table-wrap">
-          <table className="table">
+          <table className="table sc-rtable">
             <thead>
               <tr>
                 <th>When</th>
@@ -520,14 +585,25 @@ function ShiftHistory({ reports }: { reports: ShiftReport[] }) {
             <tbody>
               {[...reports].reverse().map((r) => (
                 <tr key={r.id}>
-                  <td>{timeAgo(r.completedAt)}</td>
-                  <td className="num">{r.durationMin} min</td>
-                  <td className="num">{r.handled}</td>
-                  <td>{r.handled ? <span className={`pill pill-${scoreTone(r.avgScore)}`}>{r.avgScore}</span> : <span className="faint">–</span>}</td>
-                  <td>
+                  <td className="sc-rtable-title">
+                    <span className="sc-when">
+                      <CalendarClock size={15} aria-hidden />
+                      {timeAgo(r.completedAt)}
+                    </span>
+                  </td>
+                  <td className="num" data-label="Length">
+                    {r.durationMin} min
+                  </td>
+                  <td className="num" data-label="Handled">
+                    {r.handled}
+                  </td>
+                  <td data-label="Avg score">
+                    {r.handled ? <span className={`pill pill-${scoreTone(r.avgScore)}`}>{r.avgScore}</span> : <span className="faint">–</span>}
+                  </td>
+                  <td data-label="Breaches">
                     <span className={`pill ${r.breaches ? 'pill-danger' : 'pill-success'}`}>{r.breaches}</span>
                   </td>
-                  <td>
+                  <td data-label="Missed">
                     <span className={`pill ${r.missed ? 'pill-warning' : 'pill-outline'}`}>{r.missed}</span>
                   </td>
                 </tr>

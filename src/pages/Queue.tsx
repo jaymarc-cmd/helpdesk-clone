@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { CircleCheck, CircleDashed, Clock, FilterX, LayoutGrid, RotateCcw, Search, SearchX, Shuffle } from 'lucide-react';
 import { bestByScenario } from '../engine/progress';
@@ -13,6 +13,31 @@ const PASS_MARK = 70;
 
 const CATEGORY_OPTIONS: (Category | 'All')[] = ['All', ...CATEGORIES];
 
+/** Tracks whether a horizontal scroller has hidden content on either side, so its edges can fade. */
+function useScrollEdges<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  const [edges, setEdges] = useState({ start: false, end: false });
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const update = () => {
+      const max = el.scrollWidth - el.clientWidth;
+      const start = el.scrollLeft > 1;
+      const end = el.scrollLeft < max - 1;
+      setEdges((prev) => (prev.start === start && prev.end === end ? prev : { start, end }));
+    };
+    update();
+    el.addEventListener('scroll', update, { passive: true });
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(update) : undefined;
+    ro?.observe(el);
+    return () => {
+      el.removeEventListener('scroll', update);
+      ro?.disconnect();
+    };
+  }, []);
+  return [ref, edges] as const;
+}
+
 export function Queue() {
   const { state, scenarios } = useStore();
   const navigate = useNavigate();
@@ -21,6 +46,7 @@ export function Queue() {
   const [diff, setDiff] = useState<0 | 1 | 2 | 3>(0);
   const [status, setStatus] = useState<'all' | 'new' | 'passed' | 'retry'>('all');
   const [q, setQ] = useState('');
+  const [catsRef, catEdges] = useScrollEdges<HTMLDivElement>();
 
   const list = useMemo(
     () =>
@@ -92,98 +118,122 @@ export function Queue() {
             </select>
           </div>
 
-          <div className="queue-filter-foot">
-            <div className="seg queue-cats" role="group" aria-label="Category">
-              {CATEGORY_OPTIONS.map((c) => (
-                <button key={c} type="button" className={cat === c ? 'active' : ''} aria-pressed={cat === c} onClick={() => setCat(c)}>
-                  {c === 'All' ? <LayoutGrid size={14} aria-hidden /> : <CategoryIcon category={c} size={14} />}
-                  {c}
-                  <span className="seg-count num">{categoryCounts[c] ?? 0}</span>
-                </button>
-              ))}
-            </div>
-            <div className="queue-results">
-              <span className="label num" aria-live="polite">
-                {list.length} of {scenarios.length} tickets
-              </span>
-              {filtersActive && (
-                <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
-                  <FilterX size={14} aria-hidden />
-                  Clear filters
-                </button>
-              )}
-            </div>
+          <div
+            ref={catsRef}
+            className={`seg queue-cats${catEdges.start ? ' fade-start' : ''}${catEdges.end ? ' fade-end' : ''}`}
+            role="group"
+            aria-label="Category"
+          >
+            {CATEGORY_OPTIONS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                className={cat === c ? 'active' : ''}
+                aria-pressed={cat === c}
+                onClick={(e) => {
+                  setCat(c);
+                  // Keep the chosen option clear of the faded edge when the row scrolls.
+                  e.currentTarget.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+                }}
+              >
+                {c === 'All' ? <LayoutGrid size={14} aria-hidden /> : <CategoryIcon category={c} size={14} />}
+                {c}
+                <span className="seg-count num">{categoryCounts[c] ?? 0}</span>
+              </button>
+            ))}
           </div>
         </section>
 
-        {list.length === 0 ? (
-          <div className="card">
-            <EmptyState icon={SearchX} title={filtersActive ? 'No tickets match these filters' : 'No tickets available'}>
+        <div className="queue-results-wrap">
+          <div className="queue-results">
+            <p className="queue-results-text" aria-live="polite">
               {filtersActive ? (
-                <div className="qr-empty-body">
-                  <span>Try another category, difficulty or status, or clear the search.</span>
-                  <button type="button" className="btn btn-sm" onClick={clearFilters}>
-                    <FilterX size={14} aria-hidden />
-                    Clear filters
-                  </button>
-                </div>
+                <>
+                  <strong className="num">{list.length}</strong> of <span className="num">{scenarios.length}</span> tickets match
+                </>
               ) : (
-                'Add a scenario in the Scenario Builder to see it here.'
+                <>
+                  <strong className="num">{scenarios.length}</strong> tickets
+                </>
               )}
-            </EmptyState>
+            </p>
+            {filtersActive && list.length > 0 && (
+              <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
+                <FilterX size={14} aria-hidden />
+                Clear filters
+              </button>
+            )}
           </div>
-        ) : (
-          <div className="grid grid-auto">
-            {list.map((s) => {
-              const b = best[s.id];
-              const passed = b !== undefined && b >= PASS_MARK;
-              return (
-                <Link key={s.id} to={`/ticket/${s.id}`} className="card ticket-card queue-card">
-                  <div className="queue-card-top">
-                    <div className="queue-card-tags">
+
+          {list.length === 0 ? (
+            <div className="card">
+              <EmptyState icon={SearchX} title={filtersActive ? 'No tickets match these filters' : 'No tickets available'}>
+                {filtersActive ? (
+                  <div className="qr-empty-body">
+                    <span>Try another category, difficulty or status, or clear the search.</span>
+                    <button type="button" className="btn btn-sm" onClick={clearFilters}>
+                      <FilterX size={14} aria-hidden />
+                      Clear filters
+                    </button>
+                  </div>
+                ) : (
+                  'Add a scenario in the Scenario Builder to see it here.'
+                )}
+              </EmptyState>
+            </div>
+          ) : (
+            <div className="grid grid-auto">
+              {list.map((s) => {
+                const b = best[s.id];
+                const passed = b !== undefined && b >= PASS_MARK;
+                return (
+                  <Link key={s.id} to={`/ticket/${s.id}`} className="card ticket-card queue-card">
+                    <div className="queue-card-top">
                       <span className="ticket-id">{ticketNumber(s.id)}</span>
-                      <PriorityPill p={s.priority} />
-                      <span className="pill">
-                        <CategoryIcon category={s.category} />
-                        {s.category}
-                      </span>
-                      {s.custom && <span className="pill pill-info">Custom</span>}
+                      <div className="queue-card-tags">
+                        <PriorityPill p={s.priority} />
+                        <span className="pill">
+                          <CategoryIcon category={s.category} />
+                          {s.category}
+                        </span>
+                        {s.custom && <span className="pill pill-info">Custom</span>}
+                      </div>
+                      {b !== undefined ? (
+                        <span className={`pill pill-${scoreTone(b)}`} title={passed ? `Best score ${b}, passed` : `Best score ${b}, needs retry`}>
+                          {passed ? <CircleCheck aria-hidden /> : <RotateCcw aria-hidden />}
+                          Best {b}
+                        </span>
+                      ) : (
+                        <span className="pill pill-outline queue-new" title="Not attempted yet">
+                          <CircleDashed aria-hidden />
+                          New
+                        </span>
+                      )}
                     </div>
-                    {b !== undefined ? (
-                      <span className={`pill pill-${scoreTone(b)}`} title={passed ? `Best score ${b}, passed` : `Best score ${b}, needs retry`}>
-                        {passed ? <CircleCheck aria-hidden /> : <RotateCcw aria-hidden />}
-                        Best {b}
-                      </span>
-                    ) : (
-                      <span className="pill pill-primary" title="Not attempted yet">
-                        <CircleDashed aria-hidden />
-                        New
-                      </span>
-                    )}
-                  </div>
 
-                  <div className="title">{s.title}</div>
-                  <p className="queue-card-desc">{s.description}</p>
+                    <div className="title">{s.title}</div>
+                    <p className="queue-card-desc">{s.description}</p>
 
-                  <div className="queue-card-foot">
-                    <span className="queue-card-req" title={`Received via ${CHANNEL_LABEL[s.channel]}`}>
-                      <ChannelIcon channel={s.channel} />
-                      <span className="qr-truncate">
-                        {s.requester.name} · {s.requester.department}
+                    <div className="queue-card-foot">
+                      <span className="queue-card-req" title={`Received via ${CHANNEL_LABEL[s.channel]}`}>
+                        <ChannelIcon channel={s.channel} />
+                        <span className="qr-truncate">
+                          {s.requester.name} · {s.requester.department}
+                        </span>
                       </span>
-                    </span>
-                    <span className="queue-card-meta">
-                      <span className="inline-icon num" title="Target handling time">
-                        <Clock size={13} aria-hidden />~{s.targetMinutes} min
+                      <span className="queue-card-meta">
+                        <span className="inline-icon num" title="Target handling time">
+                          <Clock size={13} aria-hidden />~{s.targetMinutes} min
+                        </span>
+                        <DifficultyDots d={s.difficulty} />
                       </span>
-                      <DifficultyDots d={s.difficulty} />
-                    </span>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        )}
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

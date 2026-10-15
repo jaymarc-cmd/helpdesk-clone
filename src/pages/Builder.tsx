@@ -33,6 +33,18 @@ import '../styles/progress-builder-settings.css';
 
 const pretty = (o: unknown) => JSON.stringify(o, null, 2);
 
+/** Validation messages start with the quoted field name; show it as code so the list scans quickly. */
+function FieldMessage({ text }: { text: string }) {
+  const m = /^"([^"]+)"([\s\S]*)$/.exec(text);
+  if (!m) return <>{text}</>;
+  return (
+    <>
+      <code>{m[1]}</code>
+      {m[2]}
+    </>
+  );
+}
+
 export function Builder() {
   const { state, dispatch } = useStore();
   const [json, setJson] = useState(pretty(SCENARIO_TEMPLATE));
@@ -106,7 +118,7 @@ export function Builder() {
   const count = state.customScenarios.length;
 
   return (
-    <div className="pbs-page">
+    <div className="pbs-page pbs-builder">
       <PageHeader
         eyebrow={
           <>
@@ -189,10 +201,12 @@ export function Builder() {
             <div className="callout danger small" role="alert">
               <CircleAlert size={16} aria-hidden />
               <div className="callout-body">
-                <strong>Fix these before saving</strong>
+                <strong>{errors.length === 1 ? 'Fix this before saving' : `Fix these ${errors.length} problems before saving`}</strong>
                 <ul className="pbs-msg-list">
                   {errors.map((e, i) => (
-                    <li key={i}>{e}</li>
+                    <li key={i}>
+                      <FieldMessage text={e} />
+                    </li>
                   ))}
                 </ul>
               </div>
@@ -205,7 +219,9 @@ export function Builder() {
                 <strong>{warnings.length === 1 ? 'Warning' : `${warnings.length} warnings`}</strong>
                 <ul className="pbs-msg-list">
                   {warnings.map((w, i) => (
-                    <li key={i}>{w}</li>
+                    <li key={i}>
+                      <FieldMessage text={w} />
+                    </li>
                   ))}
                 </ul>
               </div>
@@ -412,9 +428,16 @@ export function Builder() {
       {pendingDelete && (
         <Modal title="Delete scenario?" onClose={() => setPendingDelete(null)}>
           <div className="stack">
+            <div className="pbs-modal-subject">
+              <CategoryIcon category={pendingDelete.category} size={18} />
+              <div className="pbs-modal-subject-text">
+                <strong>{pendingDelete.title}</strong>
+                <span className="pbs-scn-id">{pendingDelete.id}</span>
+              </div>
+            </div>
             <p className="pbs-modal-text">
-              <strong>{pendingDelete.title}</strong> (<code>{pendingDelete.id}</code>) will be removed from this browser and will no longer
-              appear in the queue or in new shifts. Export it first if you want to keep a copy.
+              It will be removed from this browser and will no longer appear in the queue or in new shifts. Export it first if you want to
+              keep a copy.
             </p>
             <div className="pbs-modal-actions">
               <button type="button" className="btn" onClick={() => setPendingDelete(null)} autoFocus>

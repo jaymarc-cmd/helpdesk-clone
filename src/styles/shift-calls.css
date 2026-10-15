@@ -1,5 +1,5 @@
 /* Shift Mode + Voice Calls pages. Builds on the tokens and primitives in styles.css.
-   Note: styles.css is injected after page CSS, so overrides of base classes use a compound selector. */
+   Overrides of base classes still use a compound selector so they never depend on load order. */
 
 .sc-page {
   display: flex;
@@ -45,12 +45,35 @@
   color: var(--warning);
 }
 
+/* Modal footer: destructive action on the left, keep/confirm on the right; stacked on phones. */
 .sc-modal-actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
   flex-wrap: wrap;
-  margin-top: 16px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.sc-modal-actions .sc-modal-discard {
+  margin-right: auto;
+}
+@media (max-width: 560px) {
+  .sc-modal-actions {
+    flex-direction: column;
+  }
+  .sc-modal-actions .btn {
+    width: 100%;
+  }
+  .sc-modal-actions .sc-modal-confirm {
+    order: -2;
+  }
+  .sc-modal-actions .sc-modal-keep {
+    order: -1;
+  }
+  .sc-modal-actions .sc-modal-discard {
+    margin-right: 0;
+  }
 }
 .sc-modal-body {
   display: flex;
@@ -61,17 +84,131 @@
   margin: 0;
 }
 
+/* ---------- Stat tile rows (live board + report) ---------- */
+.sc-stats {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.sc-stats > * {
+  min-width: 0;
+}
+@media (max-width: 1000px) and (min-width: 901px), (max-width: 760px) {
+  .sc-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+}
+@media (max-width: 640px) {
+  .sc-stats > .card.stat {
+    padding: 14px;
+  }
+  .sc-stats .stat-value {
+    font-size: 1.5rem;
+  }
+}
+
+/* ---------- Responsive data tables: rows stack into labelled mini-grids on phones ---------- */
+.sc-rtable .sc-rtable-action {
+  text-align: right;
+}
+.sc-when {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.sc-when svg {
+  color: var(--text-faint);
+}
+@media (max-width: 640px) {
+  .sc-rtable thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .sc-rtable,
+  .sc-rtable tbody {
+    display: block;
+  }
+  .sc-rtable tbody tr {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .sc-rtable tbody tr:first-child {
+    padding-top: 0;
+  }
+  .sc-rtable tbody tr:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+  .sc-rtable tbody tr:hover td {
+    background: transparent;
+  }
+  .sc-rtable td {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 0;
+    border: 0;
+    min-width: 0;
+  }
+  .sc-rtable td[data-label]::before {
+    content: attr(data-label);
+    font-family: var(--mono);
+    font-size: 0.64rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .sc-rtable td.sc-rtable-title {
+    grid-column: 1 / -1;
+    font-weight: 600;
+  }
+  .sc-rtable td.sc-rtable-action {
+    align-self: end;
+    align-items: flex-end;
+  }
+  .sc-rtable td.sc-rtable-action:empty {
+    display: none;
+  }
+}
+
 /* ---------- Shift: choose a duration ---------- */
+.sc-durations {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
 .sc-duration {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  min-width: 0;
+}
+.sc-page .sc-duration-featured {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary), var(--shadow);
 }
 .sc-duration-top {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 10px;
+}
+.sc-duration-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 .sc-duration-figure {
   display: flex;
@@ -94,12 +231,71 @@
   font-weight: 700;
   font-size: 1.02rem;
 }
+.sc-page .sc-duration-featured {
+  position: relative;
+}
+/* Sits on the card's top border so it never shifts the card's content. */
+.sc-duration-badge {
+  position: absolute;
+  top: -10px;
+  left: 18px;
+  padding: 1px 9px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.6;
+}
 .sc-duration-desc {
   color: var(--text-muted);
   font-size: 0.86rem;
 }
 .sc-duration .btn {
   margin-top: auto;
+}
+/* Phones: a compact card (tile, minutes and ticket count on one line) so all three fit in roughly a screen. */
+@media (max-width: 640px) {
+  .sc-durations {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+  }
+  .sc-page .sc-duration {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'icon figure pill'
+      'text text text'
+      'btn btn btn';
+    align-items: center;
+    gap: 12px 12px;
+    padding: 16px;
+  }
+  .sc-duration-top {
+    display: contents;
+  }
+  .sc-duration-top > .icon-tile {
+    grid-area: icon;
+  }
+  .sc-duration-top > .pill {
+    grid-area: pill;
+  }
+  .sc-duration-figure {
+    grid-area: figure;
+  }
+  .sc-duration-figure .stat-value {
+    font-size: 2rem;
+  }
+  .sc-duration-text {
+    grid-area: text;
+  }
+  .sc-duration .btn {
+    grid-area: btn;
+    margin-top: 0;
+  }
 }
 
 /* ---------- Shift: rules ---------- */
@@ -241,6 +437,18 @@
   margin-left: auto;
   flex-wrap: wrap;
 }
+@media (max-width: 640px) {
+  .sc-qrow {
+    padding: 12px;
+  }
+  /* SLA clock left, action right, both aligned under the ticket title (36px tile + 12px gap). */
+  .sc-qrow-actions {
+    width: 100%;
+    margin-left: 0;
+    padding-left: 48px;
+    justify-content: space-between;
+  }
+}
 .sc-sla {
   display: inline-flex;
   align-items: center;
@@ -273,6 +481,85 @@
   gap: 4px;
   font-weight: 600;
   white-space: nowrap;
+}
+
+/* ---------- Shift: report ---------- */
+.sc-page .sc-verdict {
+  display: flex;
+  align-items: center;
+  gap: 16px 18px;
+  flex-wrap: wrap;
+  padding-left: 24px;
+}
+.sc-page .sc-verdict-success {
+  box-shadow: inset 4px 0 0 var(--success), var(--shadow-sm);
+}
+.sc-page .sc-verdict-warning {
+  box-shadow: inset 4px 0 0 var(--warning), var(--shadow-sm);
+}
+.sc-page .sc-verdict-danger {
+  box-shadow: inset 4px 0 0 var(--danger), var(--shadow-sm);
+}
+.sc-verdict-body {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+.sc-verdict-body h2 {
+  margin: 0 0 4px;
+}
+.sc-verdict-body p {
+  margin: 0;
+  color: var(--text-muted);
+}
+.sc-verdict-xp {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  padding-left: 18px;
+  border-left: 1px solid var(--border);
+  text-align: right;
+}
+.sc-verdict-xp-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+}
+.sc-verdict-xp-note {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  max-width: 24ch;
+}
+@media (max-width: 640px) {
+  .sc-page .sc-verdict {
+    align-items: flex-start;
+    padding: 16px 16px 16px 20px;
+  }
+  .sc-verdict-xp {
+    flex-basis: 100%;
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--border);
+    text-align: left;
+  }
+  .sc-verdict-xp-note {
+    text-align: right;
+  }
+}
+.sc-empty-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
 }
 
 /* ---------- Calls: list ---------- */
@@ -350,15 +637,33 @@ input[type='checkbox'].sc-switch:checked::after {
   gap: 12px;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
-.sc-call-card:hover {
+.sc-call-card:hover,
+.sc-call-card:focus-within {
   border-color: var(--border-strong);
   box-shadow: var(--shadow);
 }
+/* Six cards side by side: a calm secondary CTA that turns primary on the card being considered. */
+.sc-page .sc-call-cta > svg {
+  color: var(--primary);
+}
+.sc-page .sc-call-card:hover .sc-call-cta,
+.sc-page .sc-call-cta:focus-visible {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+}
+.sc-page .sc-call-card:hover .sc-call-cta > svg,
+.sc-page .sc-call-cta:focus-visible > svg {
+  color: currentColor;
+}
 .sc-call-head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   min-width: 0;
+}
+.sc-call-head > div:last-child {
+  padding-top: 2px;
 }
 .sc-call-head > div {
   min-width: 0;
@@ -405,11 +710,6 @@ input[type='checkbox'].sc-switch:checked::after {
   height: 88px;
   font-size: 1.6rem;
 }
-.sc-mood-cell {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
 
 /* ---------- Calls: session ---------- */
 .sc-back {
@@ -453,6 +753,14 @@ input[type='checkbox'].sc-switch:checked::after {
   text-align: left;
   max-width: 46ch;
 }
+/* Clear the avatar's pulsing ring. */
+.sc-ringing-pill {
+  margin-top: 8px;
+}
+.sc-page .timer.sc-timer-ended {
+  color: var(--text-muted);
+  background: var(--surface-2);
+}
 .sc-transcript {
   display: flex;
   flex-direction: column;
@@ -460,6 +768,8 @@ input[type='checkbox'].sc-switch:checked::after {
 }
 .sc-transcript .card-head {
   margin-bottom: 0;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
 }
 .sc-options {
   display: flex;
@@ -478,6 +788,25 @@ input[type='checkbox'].sc-switch:checked::after {
   min-width: 0;
   overflow-wrap: anywhere;
 }
+.sc-page .sc-outcome-card {
+  padding-left: 24px;
+  scroll-margin-top: 16px;
+}
+@media (max-width: 900px) {
+  /* Clear the sticky top navigation bar. */
+  .sc-page .sc-outcome-card {
+    scroll-margin-top: 72px;
+  }
+}
+.sc-page .sc-outcome-success {
+  box-shadow: inset 4px 0 0 var(--success), var(--shadow-sm);
+}
+.sc-page .sc-outcome-warning {
+  box-shadow: inset 4px 0 0 var(--warning), var(--shadow-sm);
+}
+.sc-page .sc-outcome-danger {
+  box-shadow: inset 4px 0 0 var(--danger), var(--shadow-sm);
+}
 .sc-outcome {
   display: flex;
   align-items: center;
@@ -494,6 +823,30 @@ input[type='checkbox'].sc-switch:checked::after {
 .sc-outcome-body h2,
 .sc-outcome-body p {
   margin: 0;
+}
+.sc-outcome-body .row {
+  margin-top: 4px;
+}
+.sc-outcome-success .sc-outcome-body h2 {
+  color: var(--success);
+}
+.sc-outcome-warning .sc-outcome-body h2 {
+  color: var(--warning);
+}
+.sc-outcome-danger .sc-outcome-body h2 {
+  color: var(--danger);
+}
+.sc-coaching-list li > svg {
+  margin-top: 2px;
+}
+.sc-coaching-list .sc-coach-success > svg {
+  color: var(--success);
+}
+.sc-coaching-list .sc-coach-warning > svg {
+  color: var(--warning);
+}
+.sc-coaching-list .sc-coach-danger > svg {
+  color: var(--danger);
 }
 .sc-coaching {
   margin-top: 20px;
@@ -513,6 +866,25 @@ input[type='checkbox'].sc-switch:checked::after {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+.sc-mood-inline {
+  display: none;
+}
+@media (max-width: 860px) {
+  .sc-mood-side-live {
+    display: none;
+  }
+  .sc-mood-inline {
+    display: block;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+  }
+}
+/* A furious caller reads as an empty red track, not an empty grey one. */
+.sc-mood .mood.low i:not(.on) {
+  background: var(--danger-soft);
 }
 .sc-mood-head {
   display: flex;

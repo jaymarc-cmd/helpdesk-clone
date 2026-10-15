@@ -127,8 +127,9 @@ export function Layout() {
             </div>
           </div>
           <ProgressBar value={rank.progress} />
-          <div className="xp">
-            {xp} XP{rank.next ? ` · ${rank.next.xp - xp} to ${rank.next.title}` : ' · Max rank'}
+          <div className="xp" title={rank.next ? `${rank.next.xp - xp} XP to ${rank.next.title}` : 'Top rank reached'}>
+            <span>{xp.toLocaleString('en-US')} XP</span>
+            <span>{rank.next ? `${(rank.next.xp - xp).toLocaleString('en-US')} to Level ${rank.level + 1}` : 'Max rank'}</span>
           </div>
         </div>
       </aside>
@@ -183,7 +184,7 @@ export function Layout() {
                 <span className="hint">Shown in the sidebar and on your dashboard. You can change it later in Settings.</span>
               </label>
               <button className="btn btn-primary btn-lg btn-block" type="submit">
-                Start my first shift
+                Start my first day
                 <ArrowRight size={18} aria-hidden />
               </button>
               <p className="onboard-note">

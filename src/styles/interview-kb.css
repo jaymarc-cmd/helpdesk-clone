@@ -1,5 +1,5 @@
-/* Mock interview + Knowledge base pages. Builds on the tokens and primitives in styles.css.
-   styles.css is injected after page CSS, so overrides of base classes use compound selectors. */
+/* Mock interview + Knowledge base pages. Builds on the tokens and primitives in styles.css,
+   which loads first, so page rules win ties at equal specificity. */
 
 .iv-sr,
 .kb-sr {
@@ -25,15 +25,13 @@
 .iv-page > .page-head {
   margin-bottom: 0;
 }
-.iv-page.iv-live {
-  max-width: 880px;
-}
 
 /* ---------- Setup ---------- */
 .card.iv-setup {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  container: iv-setup / inline-size;
 }
 .iv-setup > .card-head {
   margin-bottom: 0;
@@ -78,7 +76,7 @@
   padding: 10px 14px;
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 20px;
+  gap: 8px 22px;
   font-size: 0.84rem;
   color: var(--text-muted);
   background: var(--surface-2);
@@ -96,6 +94,26 @@
 }
 .iv-plan-wrap .iv-note {
   margin: 0;
+  text-wrap: pretty;
+}
+
+/* Narrow setup card: focus areas and the plan sit on an even two-column grid instead of ragged wrapped rows. */
+@container iv-setup (max-width: 620px) {
+  .iv-field > .seg.iv-focus-seg {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .iv-plan {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 14px;
+  }
+  .iv-plan li {
+    align-items: flex-start;
+  }
+  .iv-plan li svg {
+    margin-top: 3px;
+  }
 }
 
 .iv-start {
@@ -125,6 +143,18 @@
 }
 
 /* ---------- Live ---------- */
+/* Focus mode: one centred column so the question and answer box read as the whole screen. */
+.iv-page.iv-live {
+  width: 100%;
+  max-width: 880px;
+  margin-inline: auto;
+}
+.iv-live > .page-head {
+  flex-wrap: nowrap;
+}
+.iv-live .page-head-text {
+  flex: 1 1 auto;
+}
 .iv-of {
   color: var(--text-muted);
   font-weight: 600;
@@ -136,12 +166,32 @@
   gap: 12px;
   min-width: 0;
 }
-.iv-progress > .progress {
-  flex: 1 1 auto;
-  min-width: 0;
-}
 .iv-progress > span {
   white-space: nowrap;
+}
+.iv-steps {
+  flex: 1 1 auto;
+  min-width: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 4px;
+}
+.iv-steps li {
+  position: relative;
+  flex: 1 1 0;
+  height: 7px;
+  border-radius: 99px;
+  background: var(--surface-3);
+  transition: background 0.3s ease;
+}
+.iv-steps li.done {
+  background: var(--primary);
+}
+.iv-steps li.current {
+  background: var(--primary-soft);
+  box-shadow: inset 0 0 0 1.5px var(--primary);
 }
 
 .card.iv-qcard {
@@ -237,28 +287,30 @@
 
 /* ---------- Results ---------- */
 .card.iv-overview {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    'ring title'
+    'ring figures'
+    'ring note';
   align-items: center;
-  gap: 24px;
+  gap: 12px 28px;
 }
-.iv-overview-body {
-  flex: 1 1 280px;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+.iv-overview-ring {
+  grid-area: ring;
 }
 .iv-overview-title {
+  grid-area: title;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 6px 10px;
 }
 .iv-figures {
+  grid-area: figures;
   margin: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 .iv-figures > div {
@@ -282,7 +334,8 @@
   font-size: 0.95rem;
   font-weight: 600;
 }
-.iv-overview-body .iv-overview-note {
+.card.iv-overview .iv-overview-note {
+  grid-area: note;
   margin: 0;
 }
 
@@ -346,8 +399,24 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+/* Answers read as quotations: yours in neutral, the model answer in the accent. */
+.iv-yours .iv-answer-text,
+.iv-sample .iv-answer-text {
+  padding: 2px 0 2px 12px;
+  border-left: 3px solid var(--border-strong);
+}
+.iv-sample .iv-answer-text {
+  border-left-color: var(--primary);
+}
+.iv-yours .iv-answer-empty {
+  padding-left: 0;
+  border-left: 0;
+}
 .check-list .iv-missed {
   color: var(--text-muted);
+}
+.check-list li {
+  position: relative;
 }
 .callout.iv-tip > svg {
   color: var(--warning);
@@ -357,7 +426,24 @@
   .iv-start .btn {
     width: 100%;
   }
+
+  .avatar.iv-avatar {
+    width: 40px;
+    height: 40px;
+    font-size: 0.85rem;
+  }
+  /* Avatar sits beside the meta line; the question gets the full card width. */
+  .iv-asker {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+  }
+  .iv-asker-body {
+    display: contents;
+  }
   .iv-asker-body .iv-question {
+    grid-column: 1 / -1;
     font-size: 1.12rem;
   }
   .iv-nav {
@@ -366,6 +452,50 @@
   .iv-nav .btn {
     flex: 1 1 0;
   }
+
+  .card.iv-overview {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      'ring title'
+      'figures figures'
+      'note note';
+    gap: 16px;
+  }
+  .iv-overview-title {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  /* Figures become one compact list: label left, value right. */
+  .iv-figures {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+  }
+  .iv-figures > div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 12px;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+  }
+  .iv-figures > div + div {
+    border-top: 1px solid var(--border);
+  }
+  .iv-figures dt {
+    margin: 0;
+  }
+  .iv-figures dd {
+    font-size: 1.1rem;
+  }
+  .iv-figures dd .faint {
+    font-size: 0.85rem;
+  }
+
   .iv-result-head {
     grid-template-columns: minmax(0, 1fr) auto;
   }
@@ -413,7 +543,7 @@
   font-weight: 600;
 }
 
-/* Left panel */
+/* ---------- Left panel ---------- */
 .card.kb-side {
   display: flex;
   flex-direction: column;
@@ -430,6 +560,22 @@
     flex: 1 1 auto;
     min-height: 0;
   }
+}
+
+/* Search with a themed clear button in place of the browser's native one. */
+.search.kb-search input {
+  padding-right: 38px;
+}
+.search.kb-search input::-webkit-search-cancel-button,
+.search.kb-search input::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+.icon-btn.kb-search-clear {
+  position: absolute;
+  right: 4px;
+  width: 30px;
+  height: 30px;
 }
 
 .seg.kb-seg {
@@ -451,14 +597,19 @@
 }
 
 .kb-list {
+  position: relative; /* contains the visually hidden labels so they cannot escape the scroll area */
   list-style: none;
-  margin: 0 -6px;
-  padding: 0 6px;
+  margin: -8px -6px 0;
+  padding: 8px 6px 18px;
   display: flex;
   flex-direction: column;
   gap: 2px;
   overflow-y: auto;
   max-height: 360px;
+  overscroll-behavior: contain;
+  /* Soft fade where the list is cut off, instead of a hard clip through a row. The padding keeps it off the rows at rest. */
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 10px, black calc(100% - 26px), transparent);
+  mask-image: linear-gradient(to bottom, transparent, black 10px, black calc(100% - 26px), transparent);
 }
 @media (min-width: 901px) {
   .kb-side .kb-list {
@@ -482,6 +633,9 @@
 .kb-row.active {
   background: var(--primary-soft);
   box-shadow: inset 3px 0 0 var(--primary);
+}
+.kb-row:focus-visible {
+  outline-offset: -2px;
 }
 .kb-row-icon {
   color: var(--text-faint);
@@ -513,6 +667,7 @@
   color: var(--text-faint);
 }
 .kb-row-read {
+  position: relative;
   display: inline-grid;
   place-items: center;
   width: 20px;
@@ -523,28 +678,23 @@
   flex-shrink: 0;
 }
 
-/* Article panel */
+/* ---------- Article panel ---------- */
 .card.kb-article {
   min-height: 320px;
   padding: 24px 28px 28px;
   scroll-margin-top: 76px;
 }
-.kb-article > .empty {
-  min-height: 272px;
-  justify-content: center;
-}
 .kb-article-head {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 10px;
   padding-bottom: 16px;
   margin-bottom: 18px;
   border-bottom: 1px solid var(--border);
 }
-.kb-tags {
+.kb-eyebrow {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
 }
 .kb-article .kb-title {
   margin: 0;
@@ -555,12 +705,165 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 12px;
+  gap: 6px 18px;
   font-size: 0.8rem;
   color: var(--text-muted);
 }
+.kb-tagline {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.kb-tag-list {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0 4px;
+  font-family: var(--mono);
+  font-size: 0.74rem;
+}
+.kb-tag:not(:last-child)::after {
+  content: ',';
+}
+.kb-article .md code {
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+.kb-read-flag {
+  color: var(--success);
+  font-weight: 600;
+}
+
+/* No article selected: a library overview instead of a blank panel. */
+.kb-home {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.kb-home-intro {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+.kb-home-text {
+  min-width: 0;
+}
+.kb-home-text h2 {
+  margin: 0 0 4px;
+}
+.kb-home-text p {
+  margin: 0;
+}
+.kb-home-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.kb-cats {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.kb-cats li + li {
+  border-top: 1px solid var(--border);
+}
+.kb-cat {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(48px, 140px) 76px;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.kb-cat:hover {
+  background: var(--surface-2);
+}
+.kb-cat:focus-visible {
+  outline-offset: -2px;
+}
+.kb-cat.active {
+  background: var(--primary-soft);
+}
+.kb-cat-name {
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+.kb-cat-count {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: right;
+  white-space: nowrap;
+}
+.kb-cat-count .faint {
+  font-weight: 500;
+}
+
+.kb-next {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  transition: border-color 0.12s;
+}
+.kb-next:hover {
+  border-color: var(--primary);
+  text-decoration: none;
+}
+.kb-next > svg {
+  color: var(--primary);
+}
+.kb-next-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.kb-next-title {
+  font-weight: 600;
+  font-size: 0.92rem;
+  overflow-wrap: break-word;
+}
+
+@media (max-width: 860px) {
+  /* Single column: with nothing open the list is the page, so show it in full and drop the placeholder panel. */
+  .kb-split.no-article > .kb-article {
+    display: none;
+  }
+  .kb-split.no-article .kb-list {
+    max-height: none;
+    overflow: visible;
+    margin-top: 0;
+    padding-block: 0;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+}
 
 @media (max-width: 640px) {
+  .kb-page .page-actions {
+    flex: 1 1 100%;
+  }
+  .kb-progress {
+    width: 100%;
+  }
   .card.kb-article {
     padding: 18px 16px 20px;
   }

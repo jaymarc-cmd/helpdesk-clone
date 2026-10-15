@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
-  Check,
   CircleHelp,
   GraduationCap,
   MessageSquare,
@@ -17,7 +16,6 @@ import {
   ThumbsDown,
   ThumbsUp,
   VolumeX,
-  X,
 } from 'lucide-react';
 import { CALL_BY_ID } from '../data/calls';
 import { callScore, clampMood } from '../engine/calls';
@@ -77,10 +75,21 @@ function MoodMeter({ mood }: { mood: number }) {
   );
 }
 
+/** One scale for live feedback and the coaching recap: 6+ points is good, below 0 is poor, anything else could be better. */
+function feedbackKind(points: number) {
+  if (points >= 6) return { kind: 'success', Icon: ThumbsUp, verdict: 'Good response' } as const;
+  if (points < 0) return { kind: 'danger', Icon: ThumbsDown, verdict: 'Poor response' } as const;
+  return { kind: 'warning', Icon: CircleHelp, verdict: 'Could be better' } as const;
+}
+
+function callVerdict(score: number): { title: string; tone: 'success' | 'warning' | 'danger' } {
+  if (score >= 80) return { title: 'Great call', tone: 'success' };
+  if (score >= 60) return { title: 'Decent call', tone: 'warning' };
+  return { title: 'This call needs work', tone: 'danger' };
+}
+
 function FeedbackCallout({ text, points }: { text: string; points: number }) {
-  const kind = points >= 6 ? 'success' : points < 0 ? 'danger' : 'warning';
-  const Icon = points >= 6 ? ThumbsUp : points < 0 ? ThumbsDown : CircleHelp;
-  const verdict = points >= 6 ? 'Good response' : points < 0 ? 'Poor response' : 'Could be better';
+  const { kind, Icon, verdict } = feedbackKind(points);
   return (
     <div className={`callout small ${kind}`} role="status">
       <Icon size={16} aria-hidden />
@@ -102,12 +111,28 @@ function Session({ call }: { call: CallScenario }) {
   const [transcript, setTranscript] = useState<Line[]>([]);
   const [lastFeedback, setLastFeedback] = useState<{ text: string; points: number } | null>(null);
   const [startedAt, setStartedAt] = useState(0);
+  const [endedAt, setEndedAt] = useState(0);
   const saved = useRef(false);
-  const endRef = useRef<HTMLDivElement>(null);
+  const chatRef = useRef<HTMLDivElement>(null);
+  const outcomeRef = useRef<HTMLElement>(null);
   const now = useNow();
   const node = nodes.get(nodeId)!;
 
-  useEffect(() => endRef.current?.scrollIntoView({ block: 'nearest' }), [transcript.length]);
+  // Keep the newest line visible by scrolling the transcript itself, so the page never jumps away from the options.
+  useEffect(() => {
+    const el = chatRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [transcript.length]);
+  // When the call ends, bring the result (rendered above the transcript) into view.
+  useEffect(() => {
+    if (phase !== 'ended') return;
+    const el = outcomeRef.current;
+    if (!el) return;
+    // Align its top below any sticky bar (scroll-margin-top) unless it already sits comfortably in view.
+    const margin = parseFloat(getComputedStyle(el).scrollMarginTop) || 0;
+    const top = el.getBoundingClientRect().top;
+    if (top < margin || top > window.innerHeight * 0.5) el.scrollIntoView({ block: 'start' });
+  }, [phase]);
   useEffect(() => () => stop(), [stop]);
 
   const say = (text: string) => speak(text, call.voice);
@@ -134,6 +159,7 @@ function Session({ call }: { call: CallScenario }) {
     if (next.caller) say(next.caller);
     if (!next.options?.length) {
       setPhase('ended');
+      setEndedAt(Date.now());
       if (!saved.current) {
         saved.current = true;
         dispatch({
@@ -154,6 +180,8 @@ function Session({ call }: { call: CallScenario }) {
 
   const score = callScore(points, call);
   const coaching = transcript.filter((l) => l.speaker === 'agent');
+  const verdict = callVerdict(score);
+  const duration = formatClock(((phase === 'ended' ? endedAt : now) - startedAt) / 1000);
 
   const eyebrow =
     phase === 'ringing' ? (
@@ -182,12 +210,12 @@ function Session({ call }: { call: CallScenario }) {
       <PageHeader
         eyebrow={eyebrow}
         title={call.title}
-        description={`${call.caller}, ${call.role}`}
+        description={call.summary}
         actions={
-          phase === 'live' && (
-            <span className="timer" role="timer" aria-label="Call duration">
-              <Phone size={16} aria-hidden />
-              {formatClock((now - startedAt) / 1000)}
+          phase !== 'ringing' && (
+            <span className={`timer ${phase === 'ended' ? 'sc-timer-ended' : ''}`} role="timer" aria-label={phase === 'ended' ? 'Call length' : 'Call duration'}>
+              {phase === 'ended' ? <PhoneOff size={16} aria-hidden /> : <Phone size={16} aria-hidden />}
+              {duration}
             </span>
           )
         }
@@ -201,9 +229,9 @@ function Session({ call }: { call: CallScenario }) {
                 <div className="avatar speaking sc-avatar-xl" aria-hidden>
                   {initials(call.caller)}
                 </div>
-                <span className="pill pill-info">
+                <span className="pill pill-info sc-ringing-pill">
                   <PhoneIncoming aria-hidden />
-                  Incoming call
+                  Ringing
                 </span>
                 <div className="sc-ringing-who">
                   <h2>{call.caller}</h2>
@@ -223,58 +251,12 @@ function Session({ call }: { call: CallScenario }) {
             </div>
           ) : (
             <>
-              <section className="card sc-transcript">
-                <div className="card-head">
-                  <h2>
-                    <MessageSquare size={18} aria-hidden />
-                    Transcript
-                  </h2>
-                  {phase === 'live' ? (
-                    <span className="pill pill-success">
-                      <Phone aria-hidden />
-                      Connected
-                    </span>
-                  ) : (
-                    <span className="pill">
-                      <PhoneOff aria-hidden />
-                      Disconnected
-                    </span>
-                  )}
-                </div>
-
-                <div className="chat" aria-live="polite">
-                  {transcript.map((l, i) => (
-                    <div key={i} className={`msg ${l.speaker === 'agent' ? 'agent' : 'requester'}`}>
-                      <span className="who">{l.speaker === 'agent' ? 'You' : call.caller}</span>
-                      {l.text}
-                    </div>
-                  ))}
-                  <div ref={endRef} />
-                </div>
-
-                {lastFeedback && phase === 'live' && <FeedbackCallout text={lastFeedback.text} points={lastFeedback.points} />}
-
-                {phase === 'live' && node.options && (
-                  <div className="sc-options" role="group" aria-label="Your response">
-                    <span className="label">Your response</span>
-                    {node.options.map((o, i) => (
-                      <button key={i} className="option-btn" onClick={() => choose(o)}>
-                        <span className="option-key" aria-hidden>
-                          {OPTION_KEYS[i] ?? i + 1}
-                        </span>
-                        <span className="sc-option-text">{o.text}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </section>
-
               {phase === 'ended' && (
-                <section className="card" aria-label="Call result">
+                <section ref={outcomeRef} className={`card sc-outcome-card sc-outcome-${verdict.tone}`} aria-label="Call result">
                   <div className="sc-outcome">
                     <ScoreRing score={score} label="Call score" />
                     <div className="sc-outcome-body">
-                      <h2>Call ended</h2>
+                      <h2>{verdict.title}</h2>
                       <p>{node.ending}</p>
                       <div className="row">
                         <Link className="btn btn-primary" to="/calls">
@@ -295,16 +277,12 @@ function Session({ call }: { call: CallScenario }) {
                         Coaching
                       </h3>
                     </div>
-                    <ul className="check-list">
+                    <ul className="check-list sc-coaching-list">
                       {coaching.map((l, i) => {
-                        const good = (l.points ?? 0) >= 6;
+                        const { kind, Icon, verdict: label } = feedbackKind(l.points ?? 0);
                         return (
-                          <li key={i}>
-                            {good ? (
-                              <Check size={16} className="ok" role="img" aria-label="Good" />
-                            ) : (
-                              <X size={16} className="no" role="img" aria-label="Needs work" />
-                            )}
+                          <li key={i} className={`sc-coach-${kind}`}>
+                            <Icon size={16} role="img" aria-label={label} />
                             <span>{l.feedback}</span>
                           </li>
                         );
@@ -313,22 +291,79 @@ function Session({ call }: { call: CallScenario }) {
                   </div>
                 </section>
               )}
+
+              <section className="card sc-transcript">
+                <div className="card-head">
+                  <h2>
+                    <MessageSquare size={18} aria-hidden />
+                    Transcript
+                  </h2>
+                  {phase === 'live' ? (
+                    <span className="pill pill-success">
+                      <Phone aria-hidden />
+                      Connected
+                    </span>
+                  ) : (
+                    <span className="pill">
+                      <PhoneOff aria-hidden />
+                      Disconnected
+                    </span>
+                  )}
+                </div>
+
+                <div className="chat" aria-live="polite" ref={chatRef}>
+                  {transcript.map((l, i) => (
+                    <div key={i} className={`msg ${l.speaker === 'agent' ? 'agent' : 'requester'}`}>
+                      <span className="who">{l.speaker === 'agent' ? 'You' : call.caller}</span>
+                      {l.text}
+                    </div>
+                  ))}
+                </div>
+
+                {phase === 'live' && (
+                  // Phones stack the caller card below the transcript; repeat the mood here so each choice's effect stays visible.
+                  <div className="sc-mood-inline">
+                    <MoodMeter mood={mood} />
+                  </div>
+                )}
+
+                {lastFeedback && phase === 'live' && <FeedbackCallout text={lastFeedback.text} points={lastFeedback.points} />}
+
+                {phase === 'live' && node.options && (
+                  <div className="sc-options" role="group" aria-label="Your response">
+                    <span className="label">Your response</span>
+                    {node.options.map((o, i) => (
+                      <button key={i} className="option-btn" onClick={() => choose(o)}>
+                        <span className="option-key" aria-hidden>
+                          {OPTION_KEYS[i] ?? i + 1}
+                        </span>
+                        <span className="sc-option-text">{o.text}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </section>
+
             </>
           )}
         </div>
 
         <aside className="sc-col">
           <div className="card sc-side-card">
-            <div className="sc-caller">
-              <div className={`avatar ${speaking ? 'speaking' : ''}`} aria-hidden>
-                {initials(call.caller)}
+            {phase !== 'ringing' && (
+              <div className="sc-caller">
+                <div className={`avatar ${speaking ? 'speaking' : ''}`} aria-hidden>
+                  {initials(call.caller)}
+                </div>
+                <div>
+                  <strong>{call.caller}</strong>
+                  <div className="tiny muted">{call.role}</div>
+                </div>
               </div>
-              <div>
-                <strong>{call.caller}</strong>
-                <div className="tiny muted">{call.role}</div>
-              </div>
+            )}
+            <div className={phase === 'live' ? 'sc-mood-side-live' : undefined}>
+              <MoodMeter mood={mood} />
             </div>
-            <MoodMeter mood={mood} />
             {phase !== 'ringing' && supported && state.settings.voice && (
               <button className="btn btn-sm" onClick={() => (speaking ? stop() : say(node.caller))}>
                 {speaking ? <Square size={14} aria-hidden /> : <Repeat size={14} aria-hidden />}
@@ -350,7 +385,6 @@ function Session({ call }: { call: CallScenario }) {
                 </span>
               ))}
             </div>
-            <p className="small muted">{call.summary}</p>
           </div>
         </aside>
       </div>

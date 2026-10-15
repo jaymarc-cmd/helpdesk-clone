@@ -78,6 +78,11 @@ export function ProgressPage() {
 
   const csatTone = stats.avgCsat >= 4 ? 'success' : stats.avgCsat >= 3 ? 'warning' : 'danger';
   const badgeCount = state.badges.length;
+  const ranksReached = RANKS.filter((r) => xp >= r.xp).length;
+  const catTotals = CATEGORIES.reduce(
+    (acc, c) => ({ passed: acc.passed + cats[c].completed, total: acc.total + cats[c].total }),
+    { passed: 0, total: 0 },
+  );
 
   return (
     <div className="pbs-page">
@@ -89,7 +94,7 @@ export function ProgressPage() {
           </>
         }
         title="Your progress"
-        description={`Level ${rank.level} · ${rank.current.title} · ${xp} XP`}
+        description={`Level ${rank.level} · ${rank.current.title}`}
         actions={
           <button type="button" className="btn no-print print-btn" onClick={() => window.print()}>
             <Printer size={16} aria-hidden />
@@ -136,10 +141,10 @@ export function ProgressPage() {
             Career ladder
           </h2>
           <div className="pbs-head-meta">
-            <span className="pill pill-primary">Level {rank.level}</span>
             <span className="tiny muted">
-              {rank.next ? `${(rank.next.xp - xp).toLocaleString()} XP to ${rank.next.title}` : 'Top rank reached'}
+              {ranksReached} of {RANKS.length} ranks reached
             </span>
+            <span className="pill pill-primary">Level {rank.level}</span>
           </div>
         </div>
         <ol className="pbs-ladder">
@@ -174,7 +179,7 @@ export function ProgressPage() {
       </section>
 
       <div className="grid grid-2">
-        <section className="card" aria-labelledby="pbs-skills-h">
+        <section className="card pbs-card-col" aria-labelledby="pbs-skills-h">
           <div className="card-head">
             <h2 id="pbs-skills-h">
               <Activity size={18} aria-hidden />
@@ -219,7 +224,7 @@ export function ProgressPage() {
           )}
         </section>
 
-        <section className="card" aria-labelledby="pbs-cats-h">
+        <section className="card pbs-card-col" aria-labelledby="pbs-cats-h">
           <div className="card-head">
             <h2 id="pbs-cats-h">
               <LayoutGrid size={18} aria-hidden />
@@ -227,8 +232,8 @@ export function ProgressPage() {
             </h2>
             <span className="tiny muted">Passed means a best score of 70 or more</span>
           </div>
-          <div className="table-wrap">
-            <table className="table">
+          <div className="table-wrap pbs-bleed">
+            <table className="table pbs-cat-table">
               <thead>
                 <tr>
                   <th>Category</th>
@@ -264,6 +269,16 @@ export function ProgressPage() {
                 })}
               </tbody>
             </table>
+          </div>
+          <div className="pbs-cats-foot">
+            <div className="pbs-cats-foot-top">
+              <span className="small muted">Built-in tickets passed</span>
+              <span className="num pbs-cats-foot-value">
+                {catTotals.passed}
+                <span className="faint">/{catTotals.total}</span>
+              </span>
+            </div>
+            <ProgressBar value={catTotals.total ? catTotals.passed / catTotals.total : 0} />
           </div>
         </section>
       </div>
@@ -317,11 +332,15 @@ export function ProgressPage() {
         </div>
         {!hasTickets ? (
           <EmptyState icon={Inbox} title="No tickets yet">
-            Closed tickets appear here with their score and customer rating. <Link to="/tickets">Open the ticket queue</Link>
+            <p className="pbs-empty-text">Closed tickets appear here with their score and customer rating.</p>
+            <Link to="/tickets" className="btn btn-sm btn-primary">
+              <Inbox size={14} aria-hidden />
+              Open the ticket queue
+            </Link>
           </EmptyState>
         ) : (
-          <div className="table-wrap">
-            <table className="table">
+          <div className="table-wrap pbs-bleed">
+            <table className="table pbs-history">
               <thead>
                 <tr>
                   <th>Ticket</th>
@@ -336,19 +355,19 @@ export function ProgressPage() {
               <tbody>
                 {[...state.tickets].reverse().map((t) => (
                   <tr key={t.id}>
-                    <td>
+                    <td className="pbs-h-ticket">
                       <div className="pbs-ticket">
                         <Link to={`/review/${t.id}`}>{t.title}</Link>
                         <span className="ticket-id">{ticketNumber(t.scenarioId)}</span>
                       </div>
                     </td>
-                    <td>
+                    <td className="pbs-h-cat">
                       <span className="pbs-cat">
                         <CategoryIcon category={t.category} size={14} />
                         {t.category}
                       </span>
                     </td>
-                    <td>
+                    <td className="pbs-h-mode">
                       {t.mode === 'shift' ? (
                         <span className="pill pill-info">
                           <Timer aria-hidden />
@@ -358,16 +377,21 @@ export function ProgressPage() {
                         <span className="pill pill-outline">Practice</span>
                       )}
                     </td>
-                    <td className="mono small">{formatClock(t.durationSec)}</td>
-                    <td>
+                    <td className="mono small pbs-h-time">
+                      <span className="pbs-h-time-inner">
+                        <Clock size={13} className="pbs-h-icon" aria-hidden />
+                        {formatClock(t.durationSec)}
+                      </span>
+                    </td>
+                    <td className="pbs-h-csat">
                       <Stars value={t.result.csat} size={14} />
                     </td>
-                    <td>
+                    <td className="pbs-h-score">
                       <span className={`pill pill-${scoreTone(t.result.total)}`}>
                         {t.result.total} · {t.result.grade}
                       </span>
                     </td>
-                    <td className="small muted pbs-nowrap" title={new Date(t.completedAt).toLocaleString()}>
+                    <td className="small muted pbs-nowrap pbs-h-when" title={new Date(t.completedAt).toLocaleString()}>
                       {timeAgo(t.completedAt)}
                     </td>
                   </tr>

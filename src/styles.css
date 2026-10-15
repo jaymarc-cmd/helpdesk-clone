@@ -10,7 +10,7 @@
   --border-strong: #c2cdcb;
   --text: #13221f;
   --text-muted: #566a67;
-  --text-faint: #879896;
+  --text-faint: #647572;
 
   /* Accent */
   --primary: #0b7a6e;
@@ -37,6 +37,9 @@
   --rail-active: #1d3633;
   --rail-accent: #52d3c1;
   --rail-line: #1f302e;
+  --rail-live: #ff8f86;
+  --rail-accent-hover: #7ee3d5;
+  --seg-active: #ffffff;
 
   --terminal-bg: #0c1715;
   --terminal-text: #d2e2de;
@@ -49,6 +52,7 @@
 
   --radius: 10px;
   --radius-sm: 7px;
+  --page-gap: 20px;
   --font-display: 'Archivo', 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
@@ -65,7 +69,7 @@
     --border-strong: #2e4441;
     --text: #e2ebe9;
     --text-muted: #93a6a2;
-    --text-faint: #687d79;
+    --text-faint: #7a8f8b;
     --primary: #3fc6b3;
     --primary-strong: #6cdbcb;
     --primary-soft: #102f2b;
@@ -83,6 +87,7 @@
     --rail-hover: #111c1a;
     --rail-active: #13302c;
     --rail-line: #142220;
+    --seg-active: #2a3f3c;
     --terminal-bg: #050a09;
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.25);
@@ -101,7 +106,7 @@
   --border-strong: #2e4441;
   --text: #e2ebe9;
   --text-muted: #93a6a2;
-  --text-faint: #687d79;
+  --text-faint: #7a8f8b;
   --primary: #3fc6b3;
   --primary-strong: #6cdbcb;
   --primary-soft: #102f2b;
@@ -119,6 +124,7 @@
   --rail-hover: #111c1a;
   --rail-active: #13302c;
   --rail-line: #142220;
+  --seg-active: #2a3f3c;
   --terminal-bg: #050a09;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.25);
@@ -318,15 +324,19 @@ svg {
   font-size: 0.62rem;
   font-weight: 600;
   letter-spacing: 0.08em;
-  color: #ff8f86;
+  color: var(--danger);
 }
 .live-dot::before {
   content: '';
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #ff6b60;
+  background: currentColor;
   animation: blink 1.4s ease-in-out infinite;
+}
+.sidebar .live-dot,
+.hero .live-dot {
+  color: var(--rail-live);
 }
 @keyframes blink {
   50% {
@@ -384,6 +394,8 @@ svg {
 @media (max-width: 900px) {
   .app {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+    align-content: start;
   }
   .sidebar {
     position: sticky;
@@ -403,7 +415,6 @@ svg {
   }
   .brand {
     border-bottom: 0;
-    padding: 0 6px 0 0;
   }
   .brand-text,
   .nav-section,
@@ -414,9 +425,6 @@ svg {
   .nav {
     flex-direction: row;
     gap: 2px;
-  }
-  .nav a {
-    padding: 9px;
   }
   .main {
     padding-block: 20px 48px;
@@ -432,7 +440,49 @@ svg {
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
-  margin-bottom: 22px;
+  margin-bottom: var(--page-gap);
+}
+/* Root wrapper for pages that stack sections: one vertical rhythm everywhere. */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--page-gap);
+  min-width: 0;
+}
+.page > .page-head {
+  margin-bottom: 0;
+}
+/* Narrow single-column pages (settings, focused sessions): left-aligned, capped width. */
+.page-narrow {
+  max-width: 880px;
+}
+/* Back link above a detail page header. */
+.page-head-text > .back-link {
+  display: flex;
+  width: fit-content;
+}
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.86rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+.back-link:hover {
+  color: var(--primary);
+  text-decoration: none;
+}
+/* Meta chips row under a detail page title. */
+.meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  color: var(--text-muted);
+  font-size: 0.82rem;
 }
 .page-head-text {
   min-width: 0;
@@ -492,6 +542,13 @@ svg {
   gap: 10px;
   margin-bottom: 14px;
   flex-wrap: wrap;
+  min-height: 32px;
+}
+/* One-line description directly under a card heading (place right after .card-head). */
+.card-sub {
+  font-size: 0.86rem;
+  color: var(--text-muted);
+  margin: -10px 0 14px;
 }
 .card-head h2,
 .card-head h3 {
@@ -534,9 +591,19 @@ svg {
 }
 @media (max-width: 640px) {
   .grid-2,
-  .grid-3,
-  .grid-4 {
+  .grid-3 {
     grid-template-columns: minmax(0, 1fr);
+  }
+  /* grid-4 only holds stat / quick tiles: keep a compact 2x2 on phones. */
+  .grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .grid-4 > .stat {
+    padding: 14px;
+  }
+  .grid-4 .stat-value {
+    font-size: 1.4rem;
   }
   .grid-auto {
     grid-template-columns: minmax(0, 1fr);
@@ -690,7 +757,8 @@ svg {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 2px 9px;
+  padding: 1px 8px;
+  border: 1px solid transparent;
   border-radius: 999px;
   font-size: 0.74rem;
   font-weight: 600;
@@ -726,7 +794,7 @@ svg {
 }
 .pill-outline {
   background: transparent;
-  border: 1px solid var(--border-strong);
+  border-color: var(--border-strong);
 }
 .prio-dot {
   width: 7px;
@@ -861,6 +929,7 @@ textarea {
   color: var(--text);
   font: inherit;
   font-size: 0.92rem;
+  font-weight: 400;
 }
 input::placeholder,
 textarea::placeholder {
@@ -919,6 +988,19 @@ label.field > span.hint,
 .search input {
   padding-left: 34px;
 }
+.search input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  background-color: var(--text-faint);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M18 6 6 18M6 6l12 12'/%3E%3C/svg%3E") center / 14px no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M18 6 6 18M6 6l12 12'/%3E%3C/svg%3E") center / 14px no-repeat;
+}
+.search input::-webkit-search-cancel-button:hover {
+  background-color: var(--text);
+}
 
 /* Segmented control */
 .seg {
@@ -947,7 +1029,7 @@ label.field > span.hint,
   color: var(--text);
 }
 .seg button.active {
-  background: var(--surface);
+  background: var(--seg-active);
   color: var(--text);
   box-shadow: var(--shadow-sm);
 }
@@ -1108,6 +1190,19 @@ label.field > span.hint,
 .table-wrap {
   overflow-x: auto;
 }
+/* Tables placed directly in a card run edge to edge; first/last cells align with the card padding. */
+.card > .table-wrap {
+  margin-inline: -20px;
+}
+.card > .table-wrap .table :is(th, td):first-child {
+  padding-left: 20px;
+}
+.card > .table-wrap .table :is(th, td):last-child {
+  padding-right: 20px;
+}
+.card > .table-wrap:last-child {
+  margin-bottom: -8px;
+}
 
 /* Callouts */
 .callout {
@@ -1188,6 +1283,13 @@ label.field > span.hint,
 .modal-head h2 {
   margin: 0;
 }
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -1243,9 +1345,11 @@ label.field > span.hint,
   gap: 24px;
   flex-wrap: wrap;
   align-items: center;
-  background-image: linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+  border: 1px solid var(--rail-line);
+  background-image: radial-gradient(120% 140% at 100% 0%, color-mix(in srgb, var(--rail-accent) 11%, transparent), transparent 60%),
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
-  background-size: 28px 28px;
+  background-size: auto, 28px 28px, 28px 28px;
 }
 .hero h1 {
   color: #fff;
@@ -1277,8 +1381,8 @@ label.field > span.hint,
   color: var(--rail-bg);
 }
 .hero .btn-primary:hover {
-  background: #7ee3d5;
-  border-color: #7ee3d5;
+  background: var(--rail-accent-hover);
+  border-color: var(--rail-accent-hover);
 }
 
 .quick {
@@ -1323,38 +1427,7 @@ label.field > span.hint,
   font-variant-numeric: tabular-nums;
 }
 
-/* ---------- Workspace ---------- */
-.workspace {
-  display: grid;
-  grid-template-columns: 290px minmax(0, 1fr) 350px;
-  gap: 16px;
-  align-items: start;
-}
-@media (max-width: 1320px) {
-  .workspace {
-    grid-template-columns: minmax(0, 1fr) 330px;
-  }
-  .workspace .ws-left {
-    grid-column: 1 / -1;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 16px;
-  }
-}
-@media (max-width: 860px) {
-  .workspace {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-.ws-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-bottom: 16px;
-}
+/* ---------- Workspace primitives (layout lives in src/styles/workspace.css) ---------- */
 .timer {
   display: inline-flex;
   align-items: center;

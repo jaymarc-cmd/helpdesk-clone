@@ -1,6 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Star, StarHalf, X, type LucideIcon } from 'lucide-react';
-import type { Difficulty, Priority } from '../types';
+import { createPortal } from 'react-dom';
+import { Link } from 'react-router-dom';
+import { ArrowLeft, BookOpen, CircleCheck, CircleDashed, RotateCcw, Star, StarHalf, Target, Timer, X, type LucideIcon } from 'lucide-react';
+import { CATEGORY_ICON } from './icons';
+import type { Category, Difficulty, Priority } from '../types';
 
 export function ProgressBar({ value, tone }: { value: number; tone?: 'success' | 'warning' | 'danger' }) {
   const pct = Math.max(0, Math.min(100, value * 100));
@@ -71,7 +74,11 @@ export function ScoreRing({ score, label, size = 120 }: { score: number; label?:
   return (
     <div
       className="score-ring"
-      style={{ width: size, height: size, background: `conic-gradient(${color} ${score * 3.6}deg, var(--surface-3) 0)` }}
+      style={{
+        width: size,
+        height: size,
+        background: `conic-gradient(${color} ${score * 3.6}deg, ${score < 60 ? 'var(--danger-soft)' : 'var(--surface-3)'} 0)`,
+      }}
     >
       <span>
         <div className="center">
@@ -83,17 +90,40 @@ export function ScoreRing({ score, label, size = 120 }: { score: number; label?:
   );
 }
 
-export function Modal({ children, onClose, title }: { children: ReactNode; onClose?: () => void; title?: string }) {
+/**
+ * Dialog rendered into document.body (so ancestors with transforms/containment can't trap it).
+ * Name it with `title` (renders a visible heading) or `labelledBy` (id of a heading inside children).
+ * Put confirm/cancel buttons in a <div className="modal-actions">.
+ */
+export function Modal({
+  children,
+  onClose,
+  title,
+  labelledBy,
+}: {
+  children: ReactNode;
+  onClose?: () => void;
+  title?: string;
+  labelledBy?: string;
+}) {
   useEffect(() => {
     if (!onClose) return;
     const h = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
   }, [onClose]);
-  return (
+  const showHead = !!title || (!!onClose && !labelledBy);
+  return createPortal(
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
-        {(title || onClose) && (
+      <div
+        className="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label={labelledBy ? undefined : title}
+        aria-labelledby={labelledBy}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {showHead && (
           <div className="modal-head">
             {title ? <h2>{title}</h2> : <span />}
             {onClose && (
@@ -105,31 +135,93 @@ export function Modal({ children, onClose, title }: { children: ReactNode; onClo
         )}
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
-/** Consistent page title block: eyebrow, title, one-line description and actions. */
+/**
+ * Consistent page title block. List pages: eyebrow, title, description, actions.
+ * Detail pages (ticket, review, call) also pass `back` (link above the header) and `meta` (chips row under the title).
+ */
 export function PageHeader({
   eyebrow,
   title,
   description,
   actions,
+  back,
+  meta,
 }: {
   eyebrow?: ReactNode;
   title: ReactNode;
   description?: ReactNode;
   actions?: ReactNode;
+  back?: { to: string; label: string };
+  meta?: ReactNode;
 }) {
   return (
     <header className="page-head">
       <div className="page-head-text">
+        {back && (
+          <Link to={back.to} className="back-link">
+            <ArrowLeft size={16} aria-hidden />
+            {back.label}
+          </Link>
+        )}
         {eyebrow && <div className="eyebrow">{eyebrow}</div>}
         <h1>{title}</h1>
         {description && <p>{description}</p>}
+        {meta && <div className="meta-row">{meta}</div>}
       </div>
       {actions && <div className="page-actions">{actions}</div>}
     </header>
+  );
+}
+
+/** Ticket category chip. Same look on every page. Accepts 'General' for KB articles. */
+export function CategoryPill({ category }: { category: Category | 'General' }) {
+  const Icon = category === 'General' ? BookOpen : CATEGORY_ICON[category];
+  return (
+    <span className="pill">
+      <Icon aria-hidden />
+      {category}
+    </span>
+  );
+}
+
+/** Practice vs shift tag for a completed ticket. */
+export function ModePill({ mode }: { mode: 'practice' | 'shift' }) {
+  return mode === 'shift' ? (
+    <span className="pill pill-info">
+      <Timer aria-hidden />
+      Shift
+    </span>
+  ) : (
+    <span className="pill pill-outline">
+      <Target aria-hidden />
+      Practice
+    </span>
+  );
+}
+
+/** Best score on a ticket or call: pass (70+) shows a check, below shows retry. */
+export function BestScorePill({ score }: { score: number }) {
+  const pass = score >= 70;
+  return (
+    <span className={`pill pill-${scoreTone(score)}`} title={pass ? 'Passed' : 'Below the pass mark of 70'}>
+      {pass ? <CircleCheck aria-hidden /> : <RotateCcw aria-hidden />}
+      Best {score}
+    </span>
+  );
+}
+
+/** Not attempted yet. */
+export function NewPill() {
+  return (
+    <span className="pill pill-outline">
+      <CircleDashed aria-hidden />
+      New
+    </span>
   );
 }
 
@@ -190,12 +282,23 @@ export function useNow(intervalMs = 1000): number {
   return now;
 }
 
+/** Calendar date in one app-wide format, e.g. "Oct 14, 2026". */
+export function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+/** Date and time, e.g. "Oct 14, 2026, 3:05 PM". */
+export function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
+/** Relative time under 24 hours, otherwise formatDate. */
 export function timeAgo(iso: string): string {
   const diff = (Date.now() - new Date(iso).getTime()) / 1000;
   if (diff < 60) return 'just now';
   if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)} h ago`;
-  return new Date(iso).toLocaleDateString();
+  return formatDate(iso);
 }
 
 export function initials(name: string): string {
