@@ -6,6 +6,8 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   base: './',
   plugins: [react()],
+  // Shipped as a single bundle on purpose so the build can be inlined into one file for the hosted demo.
+  build: { chunkSizeWarningLimit: 800 },
   test: {
     environment: 'node',
   },

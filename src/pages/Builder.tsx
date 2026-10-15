@@ -1,5 +1,25 @@
 import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import {
+  ChevronRight,
+  CircleAlert,
+  CircleCheck,
+  Download,
+  FileJson,
+  FilePlus2,
+  FolderOpen,
+  ListChecks,
+  Pencil,
+  Play,
+  RotateCcw,
+  Save,
+  Scale,
+  Trash2,
+  TriangleAlert,
+  Upload,
+  Users,
+  Wrench,
+} from 'lucide-react';
 import { ACTIONS } from '../data/actions';
 import { KB_ARTICLES } from '../data/kb';
 import { BUILTIN_SCENARIOS } from '../data/scenarios';
@@ -7,6 +27,9 @@ import { SCENARIO_TEMPLATE, validateScenario } from '../engine/validate';
 import { useStore } from '../state/store';
 import { downloadJson } from '../state/storage';
 import { TEAMS, type Scenario } from '../types';
+import { CategoryIcon } from '../components/icons';
+import { EmptyState, Modal, PageHeader, PriorityPill } from '../components/ui';
+import '../styles/progress-builder-settings.css';
 
 const pretty = (o: unknown) => JSON.stringify(o, null, 2);
 
@@ -17,6 +40,7 @@ export function Builder() {
   const [errors, setErrors] = useState<string[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [saved, setSaved] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Scenario | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const takenIds = (selfId?: string | null) =>
@@ -72,32 +96,70 @@ export function Builder() {
     }
   };
 
+  const confirmDelete = () => {
+    if (pendingDelete) dispatch({ type: 'deleteScenario', id: pendingDelete.id });
+    setPendingDelete(null);
+  };
+
+  const savedIsScenario = saved !== null && state.customScenarios.some((s) => s.id === saved);
+  const savedIsImport = saved !== null && saved.endsWith(' imported');
+  const count = state.customScenarios.length;
+
   return (
-    <div className="stack" style={{ gap: 18 }}>
-      <div className="page-head">
-        <div>
-          <h1>Scenario Builder</h1>
-          <p>Write your own tickets, or share packs with your class or team as JSON. Custom tickets appear in the queue and in shifts.</p>
-        </div>
-        <div className="row">
-          <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={(e) => e.target.files?.[0] && importFile(e.target.files[0])} />
-          <button className="btn" onClick={() => fileRef.current?.click()}>
-            ⬆ Import JSON
-          </button>
-          <button className="btn" disabled={!state.customScenarios.length} onClick={() => downloadJson('tierone-scenarios.json', state.customScenarios)}>
-            ⬇ Export all
-          </button>
-        </div>
-      </div>
+    <div className="pbs-page">
+      <PageHeader
+        eyebrow={
+          <>
+            <Wrench size={14} aria-hidden />
+            <span>Authoring</span>
+          </>
+        }
+        title="Scenario Builder"
+        description="Write your own tickets, or share packs with your class or team as JSON. Custom tickets appear in the queue and in shifts."
+        actions={
+          <>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="application/json,.json"
+              hidden
+              onChange={(e) => e.target.files?.[0] && importFile(e.target.files[0])}
+            />
+            <button type="button" className="btn" onClick={() => fileRef.current?.click()}>
+              <Upload size={16} aria-hidden />
+              Import JSON
+            </button>
+            <button
+              type="button"
+              className="btn download-btn"
+              disabled={!count}
+              onClick={() => downloadJson('tierone-scenarios.json', state.customScenarios)}
+            >
+              <Download size={16} aria-hidden />
+              Export all
+            </button>
+          </>
+        }
+      />
 
       <div className="split-main">
-        <div className="card stack">
-          <div className="spread">
-            <strong>{editing ? `Editing: ${editing}` : 'New scenario'}</strong>
-            <div className="row">
+        <section className="card stack" aria-labelledby="pbs-editor-h">
+          <div className="card-head pbs-flush">
+            <div className="pbs-head-title">
+              <h2 id="pbs-editor-h">
+                <FileJson size={18} aria-hidden />
+                {editing ? 'Editing scenario' : 'New scenario'}
+              </h2>
+              {editing && (
+                <span className="pill pill-primary pbs-idpill" title={editing}>
+                  {editing}
+                </span>
+              )}
+            </div>
+            <label className="pbs-startfrom">
+              <span className="label">Start from</span>
               <select
                 aria-label="Start from"
-                style={{ width: 'min(260px, 70vw)' }}
                 value=""
                 onChange={(e) => {
                   const v = e.target.value;
@@ -108,7 +170,7 @@ export function Builder() {
                   }
                 }}
               >
-                <option value="">Start from…</option>
+                <option value="">Choose a starting point…</option>
                 <option value="__template">Blank template</option>
                 <optgroup label="Copy a built-in ticket">
                   {BUILTIN_SCENARIOS.map((s) => (
@@ -118,134 +180,254 @@ export function Builder() {
                   ))}
                 </optgroup>
               </select>
-            </div>
+            </label>
           </div>
+
           <textarea className="json-editor" value={json} onChange={(e) => setJson(e.target.value)} spellCheck={false} aria-label="Scenario JSON" />
+
           {errors.length > 0 && (
-            <div className="callout danger small">
-              <strong>Fix these before saving:</strong>
-              <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
-                {errors.map((e, i) => (
-                  <li key={i}>{e}</li>
-                ))}
-              </ul>
+            <div className="callout danger small" role="alert">
+              <CircleAlert size={16} aria-hidden />
+              <div className="callout-body">
+                <strong>Fix these before saving</strong>
+                <ul className="pbs-msg-list">
+                  {errors.map((e, i) => (
+                    <li key={i}>{e}</li>
+                  ))}
+                </ul>
+              </div>
             </div>
           )}
           {warnings.length > 0 && (
             <div className="callout warning small">
-              {warnings.map((w, i) => (
-                <div key={i}>⚠ {w}</div>
-              ))}
+              <TriangleAlert size={16} aria-hidden />
+              <div className="callout-body">
+                <strong>{warnings.length === 1 ? 'Warning' : `${warnings.length} warnings`}</strong>
+                <ul className="pbs-msg-list">
+                  {warnings.map((w, i) => (
+                    <li key={i}>{w}</li>
+                  ))}
+                </ul>
+              </div>
             </div>
           )}
           {saved && (
-            <div className="callout success small spread">
-              <span>✓ Saved {saved}.</span>
-              {state.customScenarios.some((s) => s.id === saved) && (
-                <Link to={`/ticket/${saved}`} className="btn btn-sm btn-primary">
-                  Play it now
-                </Link>
-              )}
+            <div className="callout success small pbs-callout-center" role="status">
+              <CircleCheck size={16} aria-hidden />
+              <div className="callout-body pbs-saved">
+                <span>
+                  {savedIsImport ? (
+                    `${saved}.`
+                  ) : (
+                    <>
+                      Saved <code>{saved}</code>.
+                    </>
+                  )}
+                </span>
+                {savedIsScenario && (
+                  <Link to={`/ticket/${saved}`} className="btn btn-sm btn-primary">
+                    <Play size={14} aria-hidden />
+                    Play it now
+                  </Link>
+                )}
+              </div>
             </div>
           )}
-          <div className="row">
-            <button className="btn btn-primary" onClick={save}>
-              Validate &amp; save
-            </button>
-            <button className="btn" onClick={() => load(SCENARIO_TEMPLATE, null)}>
-              Reset
-            </button>
-          </div>
-        </div>
 
-        <div className="stack">
-          <div className="card">
-            <h3>Your scenarios ({state.customScenarios.length})</h3>
-            {state.customScenarios.length === 0 ? (
-              <p className="small muted" style={{ margin: 0 }}>
-                None yet. Edit the template and save.
-              </p>
-            ) : (
-              <div className="stack" style={{ gap: 6 }}>
-                {state.customScenarios.map((s) => (
-                  <div key={s.id} className="card card-tight">
-                    <div className="small" style={{ fontWeight: 700 }}>
-                      {s.title}
-                    </div>
-                    <div className="tiny muted mono">{s.id}</div>
-                    <div className="row" style={{ marginTop: 6, gap: 6 }}>
-                      <Link className="btn btn-sm" to={`/ticket/${s.id}`}>
-                        Play
-                      </Link>
-                      <button className="btn btn-sm" onClick={() => load(s, s.id)}>
-                        Edit
-                      </button>
-                      <button className="btn btn-sm" onClick={() => downloadJson(`${s.id}.json`, s)}>
-                        Export
-                      </button>
-                      <button
-                        className="btn btn-sm btn-danger"
-                        onClick={() => {
-                          if (confirm(`Delete "${s.title}"?`)) dispatch({ type: 'deleteScenario', id: s.id });
-                        }}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+          <div className="pbs-editor-foot">
+            <div className="pbs-btn-row">
+              <button type="button" className="btn btn-primary" onClick={save}>
+                <Save size={16} aria-hidden />
+                Validate &amp; save
+              </button>
+              <button type="button" className="btn" onClick={() => load(SCENARIO_TEMPLATE, null)}>
+                <RotateCcw size={16} aria-hidden />
+                Reset
+              </button>
+            </div>
+            <span className="tiny muted">Saving checks every field against the grading rules.</span>
           </div>
-          <details className="card">
-            <summary style={{ cursor: 'pointer', fontWeight: 700 }}>Reference: action ids</summary>
-            <ul className="tiny mono" style={{ paddingLeft: 16, marginBottom: 0 }}>
-              {ACTIONS.map((a) => (
-                <li key={a.id} title={a.label}>
-                  {a.id} <span className="muted">({a.tool})</span>
-                </li>
-              ))}
-            </ul>
-          </details>
-          <details className="card">
-            <summary style={{ cursor: 'pointer', fontWeight: 700 }}>Reference: teams &amp; KB ids</summary>
-            <div className="tiny mt">
-              <strong>escalateTo</strong>
-              <ul className="mono" style={{ paddingLeft: 16 }}>
-                {TEAMS.map((t) => (
-                  <li key={t}>{t}</li>
-                ))}
+        </section>
+
+        <div className="pbs-side">
+          <section className="card" aria-labelledby="pbs-yours-h">
+            <div className="card-head">
+              <h2 id="pbs-yours-h">
+                <FolderOpen size={18} aria-hidden />
+                Your scenarios
+              </h2>
+              <span className={`pill ${count ? 'pill-primary' : ''} num`}>{count}</span>
+            </div>
+            {count === 0 ? (
+              <EmptyState icon={FilePlus2} title="No custom scenarios yet">
+                Edit the template and save it to add your first ticket.
+              </EmptyState>
+            ) : (
+              <ul className="pbs-scn-list">
+                {state.customScenarios.map((s) => {
+                  const isEditing = editing === s.id;
+                  return (
+                    <li key={s.id} className={`pbs-scn ${isEditing ? 'editing' : ''}`}>
+                      <div className="pbs-scn-main">
+                        <div className="pbs-scn-title">{s.title}</div>
+                        <div className="pbs-scn-id">{s.id}</div>
+                        <div className="pbs-scn-meta">
+                          <span className="inline-icon">
+                            <CategoryIcon category={s.category} size={13} />
+                            {s.category}
+                          </span>
+                          {s.priority && <PriorityPill p={s.priority} />}
+                          {isEditing && <span className="pill pill-primary">In editor</span>}
+                        </div>
+                      </div>
+                      <div className="pbs-scn-actions">
+                        <Link className="btn btn-sm" to={`/ticket/${s.id}`}>
+                          <Play size={14} aria-hidden />
+                          Play
+                        </Link>
+                        <div className="pbs-scn-icons">
+                          <button type="button" className="icon-btn" title="Edit" aria-label={`Edit ${s.title}`} onClick={() => load(s, s.id)}>
+                            <Pencil size={16} aria-hidden />
+                          </button>
+                          <button
+                            type="button"
+                            className="icon-btn download-btn"
+                            title="Export as JSON"
+                            aria-label={`Export ${s.title} as JSON`}
+                            onClick={() => downloadJson(`${s.id}.json`, s)}
+                          >
+                            <Download size={16} aria-hidden />
+                          </button>
+                          <button
+                            type="button"
+                            className="icon-btn pbs-icon-danger"
+                            title="Delete"
+                            aria-label={`Delete ${s.title}`}
+                            onClick={() => setPendingDelete(s)}
+                          >
+                            <Trash2 size={16} aria-hidden />
+                          </button>
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
-              <strong>kb</strong>
-              <ul className="mono" style={{ paddingLeft: 16, marginBottom: 0 }}>
-                {KB_ARTICLES.map((a) => (
-                  <li key={a.id}>{a.id}</li>
+            )}
+          </section>
+
+          <details className="card pbs-ref">
+            <summary>
+              <ChevronRight className="chev" size={16} aria-hidden />
+              <ListChecks className="pbs-ref-icon" size={16} aria-hidden />
+              Reference: action ids
+              <span className="pill num pbs-ref-count">{ACTIONS.length}</span>
+            </summary>
+            <div className="pbs-ref-body">
+              <ul className="pbs-ref-list">
+                {ACTIONS.map((a) => (
+                  <li key={a.id} title={a.label}>
+                    <span>{a.id}</span>
+                    <span>{a.tool}</span>
+                  </li>
                 ))}
               </ul>
             </div>
           </details>
-          <details className="card">
-            <summary style={{ cursor: 'pointer', fontWeight: 700 }}>How grading uses your fields</summary>
-            <ul className="small" style={{ paddingLeft: 16, marginBottom: 0 }}>
-              <li>
-                <strong>keyFacts</strong>: investigation score. Reveal them via questions, terminal output, tool panels or action results.
-              </li>
-              <li>
-                <strong>requiredActions</strong>: resolution score. Use <code>"a|b"</code> when either action works.
-              </li>
-              <li>
-                <strong>harmfulActions</strong>: −10 each. Other unlisted actions count as unnecessary.
-              </li>
-              <li>
-                <strong>noteKeywords / replyKeywords</strong>: documentation and communication checks.
-              </li>
-              <li>
-                Questions with <code>"quality": "bad"</code> cost communication points.
-              </li>
-            </ul>
+
+          <details className="card pbs-ref">
+            <summary>
+              <ChevronRight className="chev" size={16} aria-hidden />
+              <Users className="pbs-ref-icon" size={16} aria-hidden />
+              Reference: teams &amp; KB ids
+            </summary>
+            <div className="pbs-ref-body">
+              <div className="pbs-ref-group">
+                <div className="pbs-ref-sub">
+                  <code>escalateTo</code>
+                  <span className="tiny muted">team names</span>
+                </div>
+                <ul className="pbs-ref-list">
+                  {TEAMS.map((t) => (
+                    <li key={t}>
+                      <span>{t}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="pbs-ref-group">
+                <div className="pbs-ref-sub">
+                  <code>kb</code>
+                  <span className="tiny muted">article ids</span>
+                </div>
+                <ul className="pbs-ref-list">
+                  {KB_ARTICLES.map((a) => (
+                    <li key={a.id} title={a.title}>
+                      <span>{a.id}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </details>
+
+          <details className="card pbs-ref">
+            <summary>
+              <ChevronRight className="chev" size={16} aria-hidden />
+              <Scale className="pbs-ref-icon" size={16} aria-hidden />
+              How grading uses your fields
+            </summary>
+            <div className="pbs-ref-body">
+              <ul className="pbs-grading">
+                <li>
+                  <code>keyFacts</code>
+                  <span>Investigation score. Reveal them via questions, terminal output, tool panels or action results.</span>
+                </li>
+                <li>
+                  <code>requiredActions</code>
+                  <span>
+                    Resolution score. Use <code>"a|b"</code> when either action works.
+                  </span>
+                </li>
+                <li>
+                  <code>harmfulActions</code>
+                  <span>−10 each. Other unlisted actions count as unnecessary.</span>
+                </li>
+                <li>
+                  <code>noteKeywords / replyKeywords</code>
+                  <span>Documentation and communication checks.</span>
+                </li>
+                <li>
+                  <code>questions</code>
+                  <span>
+                    Questions with <code>"quality": "bad"</code> cost communication points.
+                  </span>
+                </li>
+              </ul>
+            </div>
           </details>
         </div>
       </div>
+
+      {pendingDelete && (
+        <Modal title="Delete scenario?" onClose={() => setPendingDelete(null)}>
+          <div className="stack">
+            <p className="pbs-modal-text">
+              <strong>{pendingDelete.title}</strong> (<code>{pendingDelete.id}</code>) will be removed from this browser and will no longer
+              appear in the queue or in new shifts. Export it first if you want to keep a copy.
+            </p>
+            <div className="pbs-modal-actions">
+              <button type="button" className="btn" onClick={() => setPendingDelete(null)} autoFocus>
+                Cancel
+              </button>
+              <button type="button" className="btn btn-danger" onClick={confirmDelete}>
+                <Trash2 size={16} aria-hidden />
+                Delete scenario
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

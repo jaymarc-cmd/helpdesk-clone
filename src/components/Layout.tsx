@@ -1,93 +1,177 @@
 import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
+import {
+  ArrowRight,
+  Award,
+  ChartNoAxesColumn,
+  ClipboardCheck,
+  GraduationCap,
+  HardDrive,
+  Headset,
+  Inbox,
+  LayoutDashboard,
+  LibraryBig,
+  PhoneCall,
+  ScanSearch,
+  Settings,
+  Timer,
+  Wrench,
+  X,
+  type LucideIcon,
+} from 'lucide-react';
 import { APP_NAME, APP_TAGLINE } from '../config';
 import { rankFor, totalXp } from '../engine/progress';
 import { useStore } from '../state/store';
-import { Modal, ProgressBar } from './ui';
+import { BadgeGlyph } from './icons';
+import { IconTile, Modal, ProgressBar, initials } from './ui';
+import '../styles/shell-dashboard.css';
 
-const NAV = [
+type NavItem = { section: string } | { to: string; icon: LucideIcon; label: string; end?: boolean };
+
+const NAV: NavItem[] = [
   { section: 'Practice' },
-  { to: '/', icon: '🏠', label: 'Dashboard', end: true },
-  { to: '/tickets', icon: '🎫', label: 'Ticket Queue' },
-  { to: '/shift', icon: '⏱️', label: 'Shift Mode' },
-  { to: '/calls', icon: '📞', label: 'Voice Calls' },
-  { to: '/interview', icon: '💼', label: 'Mock Interview' },
+  { to: '/', icon: LayoutDashboard, label: 'Dashboard', end: true },
+  { to: '/tickets', icon: Inbox, label: 'Ticket Queue' },
+  { to: '/shift', icon: Timer, label: 'Shift Mode' },
+  { to: '/calls', icon: PhoneCall, label: 'Voice Calls' },
+  { to: '/interview', icon: GraduationCap, label: 'Mock Interview' },
   { section: 'Resources' },
-  { to: '/kb', icon: '📖', label: 'Knowledge Base' },
-  { to: '/progress', icon: '📈', label: 'Progress' },
-  { to: '/builder', icon: '🛠️', label: 'Scenario Builder' },
-  { to: '/settings', icon: '⚙️', label: 'Settings' },
-] as const;
+  { to: '/kb', icon: LibraryBig, label: 'Knowledge Base' },
+  { to: '/progress', icon: ChartNoAxesColumn, label: 'Progress' },
+  { to: '/builder', icon: Wrench, label: 'Scenario Builder' },
+  { to: '/settings', icon: Settings, label: 'Settings' },
+];
+
+const WELCOME_POINTS: { icon: LucideIcon; title: string; text: string }[] = [
+  {
+    icon: ScanSearch,
+    title: 'Investigate like a Tier 1 analyst',
+    text: 'Work each ticket with chat, directory, endpoint and terminal tools.',
+  },
+  {
+    icon: ClipboardCheck,
+    title: 'Get graded on every ticket',
+    text: 'Diagnosis, process, security, communication and notes are scored separately.',
+  },
+  {
+    icon: Award,
+    title: 'Build your rank',
+    text: 'Earn XP, ranks and badges as you close tickets, calls and shifts.',
+  },
+];
+
+const BADGE_PREFIX = 'Badge earned:';
 
 export function Layout() {
   const { state, dispatch, toast, dismissToast } = useStore();
   const xp = totalXp(state);
   const rank = rankFor(xp);
   const [name, setName] = useState('');
+  const displayName = state.profile?.name ?? 'Analyst';
+  const shiftLive = !!state.activeShift;
+
+  const toastIsBadge = !!toast && toast.text.startsWith(BADGE_PREFIX);
+  const toastTitle = toast ? (toastIsBadge ? toast.text.slice(BADGE_PREFIX.length).trim() : toast.text) : '';
 
   return (
     <div className="app">
       <aside className="sidebar">
         <div className="brand">
-          <div className="brand-mark">1</div>
-          <div>
-            {APP_NAME}
+          <div className="brand-mark">
+            <Headset size={18} aria-hidden />
+          </div>
+          <div className="brand-text">
+            <div className="brand-name">{APP_NAME}</div>
             <small>{APP_TAGLINE}</small>
           </div>
         </div>
+
         <nav className="nav" aria-label="Main">
-          {NAV.map((item, i) =>
-            'section' in item ? (
-              <div className="nav-section" key={i}>
-                {item.section}
-              </div>
-            ) : (
-              <NavLink key={item.to} to={item.to} end={'end' in item} className={({ isActive }) => (isActive ? 'active' : '')}>
-                <span className="nav-icon" aria-hidden>
-                  {item.icon}
-                </span>
+          {NAV.map((item, i) => {
+            if ('section' in item) {
+              return (
+                <div className="nav-section" key={i}>
+                  {item.section}
+                </div>
+              );
+            }
+            const Icon = item.icon;
+            const live = item.to === '/shift' && shiftLive;
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={!!item.end}
+                title={item.label}
+                aria-label={live ? `${item.label}, shift in progress` : item.label}
+                className={({ isActive }) => [isActive ? 'active' : '', live ? 'nav-live' : ''].filter(Boolean).join(' ')}
+              >
+                <Icon size={18} aria-hidden />
                 <span className="nav-label">{item.label}</span>
-                {item.to === '/shift' && state.activeShift && <span className="pill pill-danger nav-label">LIVE</span>}
+                {live && <span className="nav-badge live-dot nav-label">LIVE</span>}
               </NavLink>
-            ),
-          )}
+            );
+          })}
         </nav>
+
         <div className="sidebar-footer">
-          <div className="small" style={{ fontWeight: 700 }}>
-            {state.profile?.name ?? 'Analyst'}
-          </div>
-          <div className="tiny muted mb" style={{ marginBottom: 8 }}>
-            Lv {rank.level} · {rank.current.title}
+          <div className="who">
+            <span className="who-avatar" aria-hidden>
+              {initials(displayName)}
+            </span>
+            <div className="who-text">
+              <div className="name">{displayName}</div>
+              <div className="rank">
+                Level {rank.level} · {rank.current.title}
+              </div>
+            </div>
           </div>
           <ProgressBar value={rank.progress} />
-          <div className="tiny muted" style={{ marginTop: 4 }}>
+          <div className="xp">
             {xp} XP{rank.next ? ` · ${rank.next.xp - xp} to ${rank.next.title}` : ' · Max rank'}
           </div>
         </div>
       </aside>
 
       <main className="main">
-        <Outlet />
+        <div className="main-inner">
+          <Outlet />
+        </div>
       </main>
 
       {!state.profile && (
         <Modal>
-          <div className="stack">
-            <div className="brand" style={{ padding: 0 }}>
-              <div className="brand-mark">1</div>
-              <div>Welcome to {APP_NAME}</div>
+          <div className="onboard">
+            <div className="hero onboard-hero">
+              <div className="onboard-brand">
+                <div className="brand-mark">
+                  <Headset size={22} aria-hidden />
+                </div>
+                <div className="onboard-brand-text">
+                  <div className="eyebrow">{APP_TAGLINE}</div>
+                  <h2>Welcome to {APP_NAME}</h2>
+                </div>
+              </div>
+              <p>
+                You've just joined the service desk at <strong>Harbor &amp; Pine Logistics</strong>. Work real-world tickets, take
+                voice calls, run full shifts and practice interviews, all free and all in your browser.
+              </p>
             </div>
-            <p>
-              You've just joined the service desk at <strong>Harbor &amp; Pine Logistics</strong>. Work real-world tickets, take
-              voice calls, run full shifts and practice interviews, all free and all in your browser.
-            </p>
-            <ul className="small muted" style={{ margin: 0, paddingLeft: 18 }}>
-              <li>Investigate with chat, directory, endpoint and terminal tools</li>
-              <li>Get graded on diagnosis, process, security, communication and notes</li>
-              <li>Earn XP, ranks and badges as you go</li>
+
+            <ul className="onboard-points">
+              {WELCOME_POINTS.map((p) => (
+                <li key={p.title}>
+                  <IconTile icon={p.icon} tone="primary" />
+                  <div className="onboard-point-text">
+                    <strong>{p.title}</strong>
+                    <span>{p.text}</span>
+                  </div>
+                </li>
+              ))}
             </ul>
+
             <form
-              className="stack"
+              className="onboard-form"
               onSubmit={(e) => {
                 e.preventDefault();
                 dispatch({ type: 'setProfile', name });
@@ -96,10 +180,16 @@ export function Layout() {
               <label className="field">
                 What should we call you?
                 <input type="text" autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" maxLength={40} />
+                <span className="hint">Shown in the sidebar and on your dashboard. You can change it later in Settings.</span>
               </label>
-              <button className="btn btn-primary btn-lg" type="submit">
-                Start my first shift →
+              <button className="btn btn-primary btn-lg btn-block" type="submit">
+                Start my first shift
+                <ArrowRight size={18} aria-hidden />
               </button>
+              <p className="onboard-note">
+                <HardDrive size={14} aria-hidden />
+                Progress is stored in this browser only.
+              </p>
             </form>
           </div>
         </Modal>
@@ -107,8 +197,16 @@ export function Layout() {
 
       {toast && (
         <div className="toast" role="status" onClick={dismissToast}>
-          <span style={{ fontSize: '1.4rem' }}>{toast.icon}</span>
-          {toast.text}
+          <span className="icon-tile tone-primary size-md" aria-hidden>
+            <BadgeGlyph icon={toast.icon} size={18} />
+          </span>
+          <div className="toast-text">
+            {toastTitle}
+            {toastIsBadge && <span className="toast-sub">Badge earned</span>}
+          </div>
+          <button type="button" className="icon-btn toast-close" aria-label="Dismiss notification" onClick={dismissToast}>
+            <X size={16} aria-hidden />
+          </button>
         </div>
       )}
     </div>

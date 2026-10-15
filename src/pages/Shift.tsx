@@ -1,15 +1,61 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import {
+  ArrowRight,
+  ArrowUpWideNarrow,
+  CalendarClock,
+  CircleAlert,
+  CircleCheck,
+  CircleSlash,
+  ClipboardCheck,
+  ClipboardList,
+  Clock,
+  Gauge,
+  History,
+  Hourglass,
+  Inbox,
+  Info,
+  ListChecks,
+  LogIn,
+  LogOut,
+  Printer,
+  ShieldAlert,
+  Smile,
+  Sparkles,
+  Ticket,
+  Timer,
+  Trash2,
+  TriangleAlert,
+  type LucideIcon,
+} from 'lucide-react';
 import { SHIFT_SLA_MIN, shiftEndsAt, slaDeadline } from '../engine/shift';
 import { useStore } from '../state/store';
-import type { ShiftReport } from '../types';
-import { DifficultyDots, Modal, PriorityPill, Stars, formatClock, scoreTone, timeAgo, useNow } from '../components/ui';
+import type { Priority, ShiftReport } from '../types';
+import {
+  DifficultyDots,
+  EmptyState,
+  IconTile,
+  Modal,
+  PageHeader,
+  PriorityPill,
+  StatTile,
+  Stars,
+  formatClock,
+  scoreTone,
+  ticketNumber,
+  timeAgo,
+  useNow,
+} from '../components/ui';
+import { CategoryIcon } from '../components/icons';
+import '../styles/shift-calls.css';
 
-const DURATIONS = [
-  { min: 15, label: 'Quick shift', desc: '~4 tickets' },
-  { min: 25, label: 'Standard shift', desc: '~7 tickets' },
-  { min: 40, label: 'Full shift', desc: '~11 tickets' },
+const DURATIONS: { min: number; label: string; desc: string; detail: string; icon: LucideIcon }[] = [
+  { min: 15, label: 'Quick shift', desc: '~4 tickets', detail: 'A short run to practise triage under a clock.', icon: Timer },
+  { min: 25, label: 'Standard shift', desc: '~7 tickets', detail: 'A realistic mix of priorities arriving over time.', icon: Clock },
+  { min: 40, label: 'Full shift', desc: '~11 tickets', detail: 'Sustained load with overlapping SLA windows.', icon: CalendarClock },
 ];
+
+const PRIORITIES = Object.keys(SHIFT_SLA_MIN) as Priority[];
 
 export function ShiftPage() {
   const { state, dispatch, getScenario, finishShift } = useStore();
@@ -23,40 +69,81 @@ export function ShiftPage() {
 
   if (!shift) {
     return (
-      <div className="stack" style={{ gap: 18 }}>
-        <div className="page-head">
-          <div>
-            <h1>Shift Mode</h1>
-            <p>Tickets arrive over time with SLA clocks running. Prioritise, work fast, and don't let anything breach.</p>
-          </div>
-        </div>
-        <div className="grid grid-3">
+      <div className="sc-page">
+        <PageHeader
+          eyebrow={
+            <>
+              <Timer size={14} aria-hidden />
+              Shift mode
+            </>
+          }
+          title="Start a shift"
+          description="Tickets arrive over time with SLA clocks running. Prioritise, work fast, and keep every ticket inside its SLA."
+        />
+
+        <section className="grid grid-3" aria-label="Choose a shift length">
           {DURATIONS.map((d) => (
-            <div key={d.min} className="card stack">
-              <div className="stat">
-                <span className="value">{d.min} min</span>
-                <span className="label">
-                  {d.label} · {d.desc}
+            <div key={d.min} className="card sc-duration">
+              <div className="sc-duration-top">
+                <IconTile icon={d.icon} tone="primary" size="lg" />
+                <span className="pill pill-outline">
+                  <Ticket aria-hidden />
+                  {d.desc}
                 </span>
               </div>
-              <button className="btn btn-primary" onClick={() => dispatch({ type: 'startShift', durationMin: d.min })}>
+              <div className="sc-duration-figure">
+                <span className="stat-value">{d.min}</span>
+                <span className="sc-duration-unit">min</span>
+              </div>
+              <div>
+                <div className="sc-duration-name">{d.label}</div>
+                <div className="sc-duration-desc">{d.detail}</div>
+              </div>
+              <button className="btn btn-primary btn-block" onClick={() => dispatch({ type: 'startShift', durationMin: d.min })}>
+                <LogIn size={16} aria-hidden />
                 Clock in
               </button>
             </div>
           ))}
-        </div>
-        <div className="card">
-          <h3>How shifts work</h3>
-          <ul className="small" style={{ margin: 0, paddingLeft: 18 }}>
-            <li>Two tickets are waiting when you clock in; more arrive throughout the shift.</li>
-            <li>
-              SLA windows by priority: {Object.entries(SHIFT_SLA_MIN).map(([p, m]) => `${p} ${m} min`).join(' · ')}. The clock starts when a ticket arrives.
-            </li>
-            <li>Work P1s first. A breached SLA hurts your shift report even if the fix is perfect.</li>
-            <li>Unworked tickets at the end of the shift count as missed.</li>
-          </ul>
-        </div>
-        {state.shifts.length > 0 && <ShiftHistory reports={state.shifts} />}
+        </section>
+
+        <section className="card">
+          <div className="card-head">
+            <h2>
+              <Info size={18} aria-hidden />
+              How shifts work
+            </h2>
+          </div>
+          <div className="sc-rules-grid">
+            <ul className="sc-rules">
+              <Rule icon={Inbox} title="Tickets keep arriving">
+                Two tickets are waiting when you clock in; more arrive throughout the shift.
+              </Rule>
+              <Rule icon={Clock} title="SLA clocks start on arrival">
+                Each ticket has an SLA window set by its priority. The clock starts when the ticket arrives.
+              </Rule>
+              <Rule icon={ArrowUpWideNarrow} title="Work P1s first">
+                A breached SLA hurts your shift report even if the fix is perfect.
+              </Rule>
+              <Rule icon={CircleSlash} title="Unworked means missed">
+                Tickets still unworked at the end of the shift count as missed.
+              </Rule>
+            </ul>
+            <div className="sc-sla-windows">
+              <span className="label">SLA windows</span>
+              <ul className="sc-sla-list">
+                {PRIORITIES.map((p) => (
+                  <li key={p}>
+                    <PriorityPill p={p} long />
+                    <span className="sc-sla-min">{SHIFT_SLA_MIN[p]} min</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <ShiftHistory reports={state.shifts} />
       </div>
     );
   }
@@ -70,6 +157,13 @@ export function ShiftPage() {
     .sort((a, b) => slaDeadline(a.t.arrivedAt, a.sc.priority) - slaDeadline(b.t.arrivedAt, b.sc.priority));
   const done = shift.tickets.filter((t) => t.status === 'done');
   const breached = done.filter((t) => t.slaBreached).length + waiting.filter((x) => now > slaDeadline(x.t.arrivedAt, x.sc.priority)).length;
+  const totalTickets = shift.tickets.length + shift.pending.length;
+  const atRisk = waiting.filter((x) => {
+    const deadline = slaDeadline(x.t.arrivedAt, x.sc.priority);
+    const left = deadline - now;
+    return left > 0 && left / (deadline - x.t.arrivedAt) < 0.35;
+  }).length;
+  const outstanding = waiting.length + shift.pending.length;
 
   const end = () => {
     const r = finishShift();
@@ -78,63 +172,90 @@ export function ShiftPage() {
   };
 
   return (
-    <div className="stack" style={{ gap: 18 }}>
-      <div className="page-head">
-        <div>
-          <h1>
-            Shift board <span className="pill pill-danger">LIVE</span>
-          </h1>
-          <p>Sorted by SLA deadline. The most urgent ticket is on top.</p>
-        </div>
-        <div className="row">
-          <span className={`timer ${remaining < 120 ? 'over' : ''}`}>⏱ {remaining > 0 ? formatClock(remaining) : '00:00'} left</span>
-          <button className="btn btn-danger" onClick={() => setConfirmEnd(true)}>
-            Clock out
-          </button>
-        </div>
-      </div>
+    <div className="sc-page">
+      <PageHeader
+        eyebrow={
+          <>
+            <span className="live-dot">LIVE</span>
+            Shift mode · {shift.durationMin} min
+          </>
+        }
+        title="Shift board"
+        description="Sorted by SLA deadline. The most urgent ticket is on top."
+        actions={
+          <>
+            <span className={`timer ${remaining < 120 ? 'over' : ''}`} role="timer" aria-label="Time left in shift">
+              <Timer size={16} aria-hidden />
+              {remaining > 0 ? formatClock(remaining) : '00:00'} left
+            </span>
+            <button className="btn btn-danger" onClick={() => setConfirmEnd(true)}>
+              <LogOut size={16} aria-hidden />
+              Clock out
+            </button>
+          </>
+        }
+      />
 
       {remaining <= 0 && (
-        <div className="callout success spread">
-          <span>
-            <strong>Shift over!</strong> Time to hand over and see how you did.
-          </span>
-          <button className="btn btn-primary" onClick={end}>
-            View shift report
-          </button>
+        <div className="callout success" role="status">
+          <CircleCheck size={18} aria-hidden />
+          <div className="callout-body spread">
+            <span>
+              <strong>Shift over.</strong> Time to hand over and see how you did.
+            </span>
+            <button className="btn btn-primary btn-sm" onClick={end}>
+              <ClipboardList size={14} aria-hidden />
+              View shift report
+            </button>
+          </div>
         </div>
       )}
 
       <div className="grid grid-4">
-        <div className="card stat">
-          <span className="value">{waiting.length}</span>
-          <span className="label">Waiting</span>
-        </div>
-        <div className="card stat">
-          <span className="value">{done.length}</span>
-          <span className="label">Handled</span>
-        </div>
-        <div className="card stat">
-          <span className="value" style={{ color: breached ? 'var(--danger)' : undefined }}>
-            {breached}
-          </span>
-          <span className="label">SLA breaches</span>
-        </div>
-        <div className="card stat">
-          <span className="value">{shift.pending.length}</span>
-          <span className="label">
-            Incoming
-            {shift.pending.length > 0 && remaining > 0 && ` · next in ${formatClock(Math.max(0, (shift.nextArrivalAt - now) / 1000))}`}
-          </span>
-        </div>
+        <StatTile
+          label="Waiting"
+          value={waiting.length}
+          icon={Inbox}
+          tone={atRisk > 0 ? 'warning' : 'info'}
+          sub={waiting.length === 0 ? 'Queue clear' : atRisk > 0 ? <span className="sc-text-warning">{atRisk} close to breach</span> : 'None close to breach'}
+        />
+        <StatTile label="Handled" value={done.length} icon={CircleCheck} tone="success" sub={`of ${totalTickets} this shift`} />
+        <StatTile
+          label="SLA breaches"
+          value={breached > 0 ? <span className="sc-text-danger">{breached}</span> : breached}
+          icon={ShieldAlert}
+          tone={breached > 0 ? 'danger' : 'neutral'}
+          sub={breached > 0 ? 'Includes waiting tickets past SLA' : 'All within SLA so far'}
+        />
+        <StatTile
+          label="Incoming"
+          value={shift.pending.length}
+          icon={Hourglass}
+          tone="neutral"
+          sub={
+            shift.pending.length > 0 && remaining > 0
+              ? `Next in ${formatClock(Math.max(0, (shift.nextArrivalAt - now) / 1000))}`
+              : shift.pending.length === 0
+                ? 'All tickets delivered'
+                : undefined
+          }
+        />
       </div>
 
-      <div className="card">
-        <h2>Queue</h2>
+      <section className="card">
+        <div className="card-head">
+          <h2>
+            <Inbox size={18} aria-hidden />
+            Queue
+          </h2>
+          <span className="pill num">{waiting.length} waiting</span>
+        </div>
         {waiting.length === 0 ? (
-          <div className="empty">{shift.pending.length ? 'Queue clear! New tickets are on their way…' : 'Queue clear. Nothing else is expected this shift.'}</div>
+          <EmptyState icon={CircleCheck} title="Queue clear">
+            {shift.pending.length ? 'New tickets are on their way.' : 'Nothing else is expected this shift.'}
+          </EmptyState>
         ) : (
-          <div className="stack" style={{ gap: 10 }}>
+          <ul className="sc-queue">
             {waiting.map(({ t, sc }) => {
               const deadline = slaDeadline(t.arrivedAt, sc.priority);
               const total = deadline - t.arrivedAt;
@@ -142,36 +263,52 @@ export function ShiftPage() {
               const frac = Math.max(0, left / total);
               const tone = left <= 0 ? 'bad' : frac < 0.35 ? 'warn' : '';
               return (
-                <div key={t.scenarioId} className="card card-tight">
-                  <div className="spread">
-                    <div className="row">
-                      <PriorityPill p={sc.priority} />
-                      <span className="pill">{sc.category}</span>
-                      <strong>{sc.title}</strong>
-                      <DifficultyDots d={sc.difficulty} />
+                <li key={t.scenarioId} className={`sc-qrow ${tone}`}>
+                  <div className="sc-qrow-main">
+                    <div className="sc-qrow-info">
+                      <span className="icon-tile tone-neutral size-md" aria-hidden>
+                        <CategoryIcon category={sc.category} size={18} />
+                      </span>
+                      <div className="sc-qrow-text">
+                        <span className="sc-qrow-title">{sc.title}</span>
+                        <div className="sc-qrow-meta">
+                          <PriorityPill p={sc.priority} />
+                          <span className="ticket-id">{ticketNumber(sc.id)}</span>
+                          <span>{sc.category}</span>
+                          <DifficultyDots d={sc.difficulty} />
+                        </div>
+                      </div>
                     </div>
-                    <div className="row">
-                      <span className={`small ${left <= 0 ? '' : 'muted'}`} style={{ color: left <= 0 ? 'var(--danger)' : undefined, fontWeight: left <= 0 ? 700 : 400 }}>
-                        {left > 0 ? `SLA ${formatClock(left / 1000)}` : 'SLA BREACHED'}
+                    <div className="sc-qrow-actions">
+                      <span className={`sc-sla ${tone}`} aria-label={left > 0 ? `SLA time left ${formatClock(left / 1000)}` : 'SLA breached'}>
+                        {left > 0 ? <Clock size={15} aria-hidden /> : <CircleAlert size={15} aria-hidden />}
+                        {left > 0 ? formatClock(left / 1000) : 'Breached'}
                       </span>
                       <button className="btn btn-primary btn-sm" onClick={() => navigate(`/ticket/${sc.id}?mode=shift`)}>
                         Work ticket
+                        <ArrowRight size={14} aria-hidden />
                       </button>
                     </div>
                   </div>
-                  <div className={`sla-bar ${tone}`} style={{ marginTop: 8 }}>
+                  <div className={`sla-bar ${tone}`} aria-hidden>
                     <div style={{ width: `${frac * 100}%` }} />
                   </div>
-                </div>
+                </li>
               );
             })}
-          </div>
+          </ul>
         )}
-      </div>
+      </section>
 
       {done.length > 0 && (
-        <div className="card">
-          <h2>Handled this shift</h2>
+        <section className="card">
+          <div className="card-head">
+            <h2>
+              <ListChecks size={18} aria-hidden />
+              Handled this shift
+            </h2>
+            <span className="pill num">{done.length} handled</span>
+          </div>
           <div className="table-wrap">
             <table className="table">
               <thead>
@@ -179,7 +316,9 @@ export function ShiftPage() {
                   <th>Ticket</th>
                   <th>Score</th>
                   <th>SLA</th>
-                  <th />
+                  <th>
+                    <span className="sc-sr-only">Review</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -187,35 +326,75 @@ export function ShiftPage() {
                   const a = state.tickets.find((x) => x.id === t.attemptId);
                   return (
                     <tr key={t.scenarioId}>
-                      <td>{getScenario(t.scenarioId)?.title}</td>
+                      <td>
+                        <div className="sc-ticket-cell">
+                          <strong>{getScenario(t.scenarioId)?.title}</strong>
+                          <span className="ticket-id">{ticketNumber(t.scenarioId)}</span>
+                        </div>
+                      </td>
                       <td>{a && <span className={`pill pill-${scoreTone(a.result.total)}`}>{a.result.total}</span>}</td>
-                      <td>{t.slaBreached ? <span className="pill pill-danger">Breached</span> : <span className="pill pill-success">Met</span>}</td>
-                      <td>{a && <Link to={`/review/${a.id}`}>Review</Link>}</td>
+                      <td>
+                        {t.slaBreached ? (
+                          <span className="pill pill-danger">
+                            <CircleAlert aria-hidden />
+                            Breached
+                          </span>
+                        ) : (
+                          <span className="pill pill-success">
+                            <CircleCheck aria-hidden />
+                            Met
+                          </span>
+                        )}
+                      </td>
+                      <td>
+                        {a && (
+                          <Link className="sc-link" to={`/review/${a.id}`}>
+                            Review
+                            <ArrowRight size={14} aria-hidden />
+                          </Link>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
-        </div>
+        </section>
       )}
 
       {confirmEnd && (
-        <Modal onClose={() => setConfirmEnd(false)}>
-          <h2>Clock out now?</h2>
-          <p>
-            {waiting.length + shift.pending.length > 0
-              ? `${waiting.length + shift.pending.length} ticket(s) will be counted as missed.`
-              : 'All tickets handled. Nice work!'}
-          </p>
-          <div className="row" style={{ justifyContent: 'flex-end' }}>
+        <Modal title="Clock out now?" onClose={() => setConfirmEnd(false)}>
+          <div className="sc-modal-body">
+            {outstanding > 0 ? (
+              <div className="callout warning">
+                <TriangleAlert size={18} aria-hidden />
+                <div className="callout-body">{outstanding} ticket(s) will be counted as missed.</div>
+              </div>
+            ) : (
+              <div className="callout success">
+                <CircleCheck size={18} aria-hidden />
+                <div className="callout-body">All tickets are handled.</div>
+              </div>
+            )}
+            <p className="small muted">Clock out to file a shift report. Discarding ends the shift without a report.</p>
+          </div>
+          <div className="sc-modal-actions">
             <button className="btn" onClick={() => setConfirmEnd(false)}>
               Keep working
             </button>
-            <button className="btn btn-danger" onClick={() => { dispatch({ type: 'abandonShift' }); setConfirmEnd(false); }}>
+            <button
+              className="btn btn-danger"
+              onClick={() => {
+                dispatch({ type: 'abandonShift' });
+                setConfirmEnd(false);
+              }}
+            >
+              <Trash2 size={16} aria-hidden />
               Discard shift
             </button>
             <button className="btn btn-primary" onClick={end}>
+              <LogOut size={16} aria-hidden />
               Clock out &amp; see report
             </button>
           </div>
@@ -225,51 +404,87 @@ export function ShiftPage() {
   );
 }
 
-function ReportView({ report, onClose }: { report: ShiftReport; onClose: () => void }) {
-  const verdict =
-    report.breaches === 0 && report.missed === 0 && report.avgScore >= 80
-      ? 'Outstanding shift: every ticket handled within SLA.'
-      : report.breaches <= 1 && report.avgScore >= 70
-        ? 'Solid shift. A few things to tighten up.'
-        : 'Tough shift. Review the debriefs and try again.';
+function Rule({ icon, title, children }: { icon: LucideIcon; title: string; children: ReactNode }) {
   return (
-    <div className="stack" style={{ gap: 18 }}>
-      <div className="page-head">
-        <div>
-          <h1>Shift report</h1>
-          <p>{verdict}</p>
-        </div>
-        <div className="row">
-          <button className="btn" onClick={() => window.print()}>
-            🖨 Print
-          </button>
-          <button className="btn btn-primary" onClick={onClose}>
-            Done
-          </button>
-        </div>
+    <li>
+      <IconTile icon={icon} tone="neutral" size="sm" />
+      <div>
+        <span className="sc-rule-title">{title}</span>
+        <span className="sc-rule-text">{children}</span>
       </div>
+    </li>
+  );
+}
+
+function verdictFor(report: ShiftReport): { title: string; text: string; tone: 'success' | 'warning' | 'danger' } {
+  if (report.breaches === 0 && report.missed === 0 && report.avgScore >= 80)
+    return { title: 'Outstanding shift', text: 'Every ticket handled within SLA.', tone: 'success' };
+  if (report.breaches <= 1 && report.avgScore >= 70) return { title: 'Solid shift', text: 'A few things to tighten up.', tone: 'warning' };
+  return { title: 'Tough shift', text: 'Review the debriefs and try again.', tone: 'danger' };
+}
+
+function ReportView({ report, onClose }: { report: ShiftReport; onClose: () => void }) {
+  const verdict = verdictFor(report);
+  const xp = 50 + report.handled * 10;
+  return (
+    <div className="sc-page">
+      <PageHeader
+        eyebrow={
+          <>
+            <ClipboardCheck size={14} aria-hidden />
+            Shift report · {report.durationMin} min
+          </>
+        }
+        title={verdict.title}
+        description={verdict.text}
+        actions={
+          <>
+            <button className="btn print-btn no-print" onClick={() => window.print()}>
+              <Printer size={16} aria-hidden />
+              Print
+            </button>
+            <button className="btn btn-primary no-print" onClick={onClose}>
+              <CircleCheck size={16} aria-hidden />
+              Done
+            </button>
+          </>
+        }
+      />
       <div className="grid grid-4">
-        <div className="card stat">
-          <span className="value">{report.handled}</span>
-          <span className="label">Tickets handled</span>
-        </div>
-        <div className="card stat">
-          <span className="value">{report.handled ? report.avgScore : '–'}</span>
-          <span className="label">Average score</span>
-        </div>
-        <div className="card stat">
-          <span className="value">{report.handled ? <Stars value={report.avgCsat} /> : '–'}</span>
-          <span className="label">Avg. CSAT</span>
-        </div>
-        <div className="card stat">
-          <span className="value" style={{ color: report.breaches ? 'var(--danger)' : 'var(--success)' }}>
-            {report.breaches}
-          </span>
-          <span className="label">SLA breaches · {report.missed} missed</span>
-        </div>
+        <StatTile
+          label="Tickets handled"
+          value={report.handled}
+          icon={Ticket}
+          tone="primary"
+          sub={report.missed > 0 ? <span className="sc-text-warning">{report.missed} missed</span> : 'None missed'}
+        />
+        <StatTile
+          label="Average score"
+          value={report.handled ? report.avgScore : '–'}
+          icon={Gauge}
+          tone={report.handled ? scoreTone(report.avgScore) : 'neutral'}
+          sub="Across handled tickets"
+        />
+        <StatTile
+          label="Avg. CSAT"
+          value={report.handled ? <Stars value={report.avgCsat} size={20} /> : '–'}
+          icon={Smile}
+          tone="info"
+          sub={report.handled ? `${report.avgCsat} / 5` : 'No tickets handled'}
+        />
+        <StatTile
+          label="SLA breaches"
+          value={<span className={report.breaches ? 'sc-text-danger' : 'sc-text-success'}>{report.breaches}</span>}
+          icon={ShieldAlert}
+          tone={report.breaches ? 'danger' : 'success'}
+          sub={report.breaches ? 'Tickets past their SLA window' : 'No tickets past SLA'}
+        />
       </div>
-      <div className="callout">
-        +{50 + report.handled * 10} XP for completing the shift (50 base + 10 per ticket), on top of each ticket's own XP.
+      <div className="callout info">
+        <Sparkles size={18} aria-hidden />
+        <div className="callout-body">
+          <strong>+{xp} XP</strong> for completing the shift (50 base + 10 per ticket), on top of each ticket's own XP.
+        </div>
       </div>
     </div>
   );
@@ -277,34 +492,50 @@ function ReportView({ report, onClose }: { report: ShiftReport; onClose: () => v
 
 function ShiftHistory({ reports }: { reports: ShiftReport[] }) {
   return (
-    <div className="card">
-      <h3>Previous shifts</h3>
-      <div className="table-wrap">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>When</th>
-              <th>Length</th>
-              <th>Handled</th>
-              <th>Avg score</th>
-              <th>Breaches</th>
-              <th>Missed</th>
-            </tr>
-          </thead>
-          <tbody>
-            {[...reports].reverse().map((r) => (
-              <tr key={r.id}>
-                <td>{timeAgo(r.completedAt)}</td>
-                <td>{r.durationMin} min</td>
-                <td>{r.handled}</td>
-                <td>{r.handled ? r.avgScore : '–'}</td>
-                <td>{r.breaches}</td>
-                <td>{r.missed}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <section className="card">
+      <div className="card-head">
+        <h2>
+          <History size={18} aria-hidden />
+          Previous shifts
+        </h2>
+        {reports.length > 0 && <span className="pill num">{reports.length}</span>}
       </div>
-    </div>
+      {reports.length === 0 ? (
+        <EmptyState icon={History} title="No shifts yet">
+          Clock in above. Your shift reports will be listed here.
+        </EmptyState>
+      ) : (
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>Length</th>
+                <th>Handled</th>
+                <th>Avg score</th>
+                <th>Breaches</th>
+                <th>Missed</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...reports].reverse().map((r) => (
+                <tr key={r.id}>
+                  <td>{timeAgo(r.completedAt)}</td>
+                  <td className="num">{r.durationMin} min</td>
+                  <td className="num">{r.handled}</td>
+                  <td>{r.handled ? <span className={`pill pill-${scoreTone(r.avgScore)}`}>{r.avgScore}</span> : <span className="faint">–</span>}</td>
+                  <td>
+                    <span className={`pill ${r.breaches ? 'pill-danger' : 'pill-success'}`}>{r.breaches}</span>
+                  </td>
+                  <td>
+                    <span className={`pill ${r.missed ? 'pill-warning' : 'pill-outline'}`}>{r.missed}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }

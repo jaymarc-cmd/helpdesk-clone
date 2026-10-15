@@ -1,0 +1,539 @@
+/* App shell (sidebar, toast, first-run screen) and the dashboard.
+   This file is imported from Layout.tsx, which is evaluated before styles.css, so any rule that
+   overrides a global class uses at least two classes to win regardless of load order. */
+
+/* ---------- Sidebar ---------- */
+.sidebar .brand-text {
+  min-width: 0;
+}
+.sidebar .nav a > .nav-label:not(.nav-badge) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sidebar-footer .who-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  background: var(--rail-active);
+  color: var(--rail-accent);
+  border: 1px solid var(--rail-line);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.76rem;
+  letter-spacing: 0.02em;
+}
+.sidebar-footer .who-text {
+  flex: 1;
+  min-width: 0;
+}
+.sidebar-footer .who-text .name,
+.sidebar-footer .who-text .rank {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* In the compact top bar the LIVE label is hidden with the other labels; keep a dot on the icon. */
+@media (max-width: 900px) {
+  .sidebar .nav a.nav-live {
+    position: relative;
+  }
+  .sidebar .nav a.nav-live::after {
+    content: '';
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--danger);
+    box-shadow: 0 0 0 2px var(--rail-bg);
+  }
+}
+
+/* ---------- Toast ---------- */
+.toast .toast-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.35;
+}
+.toast .toast-close {
+  width: 28px;
+  height: 28px;
+  margin-left: 4px;
+}
+
+/* ---------- First-run screen ---------- */
+.onboard {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.onboard .onboard-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+  gap: 14px;
+  margin: -24px -24px 0;
+  padding: 24px;
+  border-radius: 13px 13px 0 0;
+}
+.onboard .onboard-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.onboard .brand-mark {
+  width: 44px;
+  height: 44px;
+  border-radius: 11px;
+}
+.onboard .onboard-brand-text {
+  min-width: 0;
+}
+.onboard .onboard-hero .eyebrow {
+  margin-bottom: 2px;
+}
+.onboard .onboard-hero h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: rgba(255, 255, 255, 0.97);
+}
+.onboard .onboard-hero p {
+  font-size: 0.94rem;
+  line-height: 1.6;
+}
+.onboard .onboard-hero strong {
+  color: rgba(255, 255, 255, 0.97);
+}
+.onboard .onboard-points {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.onboard .onboard-points li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.onboard .onboard-point-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.onboard .onboard-point-text strong {
+  font-size: 0.92rem;
+}
+.onboard .onboard-point-text span {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.onboard .onboard-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+.onboard .onboard-note {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+
+/* ---------- Dashboard ---------- */
+.dash {
+  container: dash / inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Console band */
+.dash .dash-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 360px);
+  align-items: end;
+  gap: 28px;
+  padding: 28px 30px;
+}
+.dash .dash-hero-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.dash .dash-hero .eyebrow {
+  margin-bottom: 0;
+}
+.dash .dash-hero h1 {
+  margin: 0;
+  font-size: 1.9rem;
+  overflow-wrap: anywhere;
+}
+.dash .dash-lead {
+  max-width: 60ch;
+}
+.dash .dash-rank {
+  margin-top: 8px;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dash .dash-rank-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  min-width: 0;
+}
+.dash .dash-rank-level {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--rail-accent);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.dash .dash-rank-title {
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: rgba(255, 255, 255, 0.94);
+}
+.dash .dash-rank-xp {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  color: var(--rail-muted);
+  font-variant-numeric: tabular-nums;
+}
+.dash .dash-rank-next {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--rail-muted);
+  font-variant-numeric: tabular-nums;
+}
+.dash .dash-hero-side {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.dash .dash-next {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.dash .dash-next-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--rail-accent);
+}
+.dash .dash-next-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  line-height: 1.3;
+  color: rgba(255, 255, 255, 0.96);
+  overflow-wrap: anywhere;
+}
+.dash .dash-next-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  font-size: 0.78rem;
+  color: var(--rail-muted);
+}
+.dash .dash-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.dash .dash-hero-actions .btn {
+  flex: 1 1 auto;
+}
+
+/* Figures */
+.dash .dash-stats .stat {
+  gap: 6px;
+}
+.dash .dash-value {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+}
+.dash .dash-value-of {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--text-faint);
+}
+.dash .dash-csat {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+.dash .dash-stats .stat-sub {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Quick start */
+.dash .dash-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.dash .dash-section > .label {
+  margin: 0;
+}
+.dash-quick .quick {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'icon arrow'
+    'text text';
+  align-items: start;
+  gap: 14px;
+  padding: 18px;
+}
+.dash-quick .quick > .icon-tile {
+  grid-area: icon;
+}
+.dash-quick .quick-text {
+  grid-area: text;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.dash-quick .quick-meta {
+  margin-top: 6px;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.dash-quick .quick-arrow {
+  grid-area: arrow;
+  color: var(--text-faint);
+  transition: transform 0.15s, color 0.15s;
+}
+.dash-quick .quick:hover .quick-arrow,
+.dash-quick .quick:focus-visible .quick-arrow {
+  color: var(--primary);
+  transform: translateX(2px);
+}
+
+/* Panels */
+.dash .dash-head-text {
+  flex: 1 1 200px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.dash .dash-head-text p {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--text-muted);
+}
+.dash .dash-head-link {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.dash .mastery {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.dash .mastery > li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.dash .mastery-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dash .mastery-top {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  min-width: 0;
+}
+.dash .mastery-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.dash .mastery-count {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.dash .activity {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.dash .activity-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 10px;
+  margin-inline: -10px;
+  border-radius: var(--radius-sm);
+  color: inherit;
+  transition: background 0.12s;
+}
+.dash .activity-item:hover {
+  background: var(--surface-2);
+  text-decoration: none;
+}
+.dash .activity-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.dash .activity-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.dash .activity-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 6px;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+.dash .activity-score {
+  flex-shrink: 0;
+}
+
+.dash .dash-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.dash .dash-empty .empty {
+  padding: 12px 12px 4px;
+}
+.dash .dash-rec {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dash .dash-rec-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+.dash .dash-rec-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+/* Narrow main column (container-based, so the sidebar width does not matter) */
+@container dash (max-width: 760px) {
+  .dash .dash-hero {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 22px;
+    padding: 22px 20px;
+  }
+}
+@container dash (max-width: 640px) {
+  .dash-quick .quick {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: 'icon text arrow';
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+  }
+  .dash-quick .quick-meta {
+    margin-top: 2px;
+  }
+}
+@container dash (max-width: 520px) {
+  .dash .dash-hero h1 {
+    font-size: 1.5rem;
+  }
+  .dash .dash-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .dash .dash-stats .stat {
+    padding: 14px;
+  }
+  .dash .dash-stats .stat-value {
+    font-size: 1.4rem;
+  }
+}

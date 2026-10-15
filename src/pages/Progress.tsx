@@ -1,8 +1,60 @@
 import { Link } from 'react-router-dom';
+import {
+  Activity,
+  Award,
+  ChartNoAxesColumn,
+  CircleCheck,
+  Clock,
+  FileText,
+  Gauge,
+  History,
+  Inbox,
+  LayoutGrid,
+  Lock,
+  Medal,
+  MessagesSquare,
+  Printer,
+  ScanSearch,
+  ShieldCheck,
+  Smile,
+  Stethoscope,
+  Target,
+  TicketCheck,
+  Timer,
+  TrendingUp,
+  Wrench,
+  type LucideIcon,
+} from 'lucide-react';
 import { BADGES, RANKS, categoryStats, overallStats, rankFor, totalXp } from '../engine/progress';
 import { useStore } from '../state/store';
 import { CATEGORIES } from '../types';
-import { ProgressBar, Stars, formatClock, scoreTone, timeAgo } from '../components/ui';
+import { BadgeGlyph, CategoryIcon } from '../components/icons';
+import { EmptyState, PageHeader, ProgressBar, StatTile, Stars, formatClock, scoreTone, ticketNumber, timeAgo } from '../components/ui';
+import '../styles/progress-builder-settings.css';
+
+const SECTIONS = [
+  { key: 'diagnosis', label: 'Diagnosis', icon: Stethoscope },
+  { key: 'investigation', label: 'Investigation', icon: ScanSearch },
+  { key: 'resolution', label: 'Resolution', icon: Wrench },
+  { key: 'process', label: 'Process & Security', icon: ShieldCheck },
+  { key: 'communication', label: 'Communication', icon: MessagesSquare },
+  { key: 'documentation', label: 'Documentation', icon: FileText },
+  { key: 'time', label: 'Handling Time', icon: Clock },
+] as const satisfies readonly { key: string; label: string; icon: LucideIcon }[];
+
+type SectionKey = (typeof SECTIONS)[number]['key'];
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+const FOCUS_TIP: Record<SectionKey, string> = {
+  communication: 'Greet by name, show empathy, explain plainly, and close with next steps.',
+  documentation: 'Write notes in this order: symptom, findings, cause, actions, result.',
+  process: 'Verify identity before sensitive changes and avoid shotgun troubleshooting.',
+  investigation: 'Ask more questions and use the tools before deciding on a fix.',
+  diagnosis: 'Gather evidence until one root cause clearly fits all the facts.',
+  resolution: 'Check whether a ticket belongs with another team, and complete every fix step.',
+  time: 'Use Shift Mode to practise working efficiently under SLA pressure.',
+};
 
 export function ProgressPage() {
   const { state } = useStore();
@@ -11,6 +63,7 @@ export function ProgressPage() {
   const stats = overallStats(state);
   const cats = categoryStats(state);
   const earned = new Map(state.badges.map((b) => [b.id, b.earnedAt]));
+  const hasTickets = state.tickets.length > 0;
 
   // Section averages across all attempts reveal skill gaps.
   const sectionAvg = (key: string) => {
@@ -20,91 +73,160 @@ export function ProgressPage() {
     });
     return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0;
   };
-  const sectionKeys = [
-    ['diagnosis', 'Diagnosis'],
-    ['investigation', 'Investigation'],
-    ['resolution', 'Resolution'],
-    ['process', 'Process & Security'],
-    ['communication', 'Communication'],
-    ['documentation', 'Documentation'],
-    ['time', 'Handling Time'],
-  ] as const;
-  const weakest = state.tickets.length ? [...sectionKeys].sort((a, b) => sectionAvg(a[0]) - sectionAvg(b[0]))[0] : null;
+  const avgs = Object.fromEntries(SECTIONS.map((s) => [s.key, sectionAvg(s.key)])) as Record<SectionKey, number>;
+  const weakest = hasTickets ? [...SECTIONS].sort((a, b) => avgs[a.key] - avgs[b.key])[0] : null;
+
+  const csatTone = stats.avgCsat >= 4 ? 'success' : stats.avgCsat >= 3 ? 'warning' : 'danger';
+  const badgeCount = state.badges.length;
 
   return (
-    <div className="stack" style={{ gap: 18 }}>
-      <div className="page-head">
-        <div>
-          <h1>Your progress</h1>
-          <p>
-            Level {rank.level} · {rank.current.title} · {xp} XP
-          </p>
-        </div>
-        <button className="btn no-print" onClick={() => window.print()}>
-          🖨 Print training record
-        </button>
-      </div>
+    <div className="pbs-page">
+      <PageHeader
+        eyebrow={
+          <>
+            <ChartNoAxesColumn size={14} aria-hidden />
+            <span>Training record{state.profile?.name ? ` · ${state.profile.name}` : ''}</span>
+          </>
+        }
+        title="Your progress"
+        description={`Level ${rank.level} · ${rank.current.title} · ${xp} XP`}
+        actions={
+          <button type="button" className="btn no-print print-btn" onClick={() => window.print()}>
+            <Printer size={16} aria-hidden />
+            Print training record
+          </button>
+        }
+      />
 
-      <div className="card">
-        <h2>Career ladder</h2>
-        <div className="stack" style={{ gap: 8 }}>
+      <section className="grid grid-4" aria-label="Summary">
+        <StatTile
+          label="Total XP"
+          icon={Award}
+          tone="primary"
+          value={xp.toLocaleString()}
+          sub={rank.next ? `${(rank.next.xp - xp).toLocaleString()} XP to ${rank.next.title}` : 'Top rank reached'}
+        />
+        <StatTile
+          label="Tickets closed"
+          icon={TicketCheck}
+          tone={hasTickets ? 'primary' : 'neutral'}
+          value={stats.tickets}
+          sub={`${plural(stats.calls, 'call')} · ${plural(stats.interviews, 'interview')} · ${plural(stats.shifts, 'shift')}`}
+        />
+        <StatTile
+          label="Average score"
+          icon={Gauge}
+          tone={hasTickets ? scoreTone(stats.avgScore) : 'neutral'}
+          value={stats.avgScore || '–'}
+          sub={hasTickets ? `Across ${plural(stats.tickets, 'ticket')}` : 'No scored tickets yet'}
+        />
+        <StatTile
+          label="Customer satisfaction"
+          icon={Smile}
+          tone={hasTickets ? csatTone : 'neutral'}
+          value={hasTickets ? stats.avgCsat.toFixed(1) : '–'}
+          sub={hasTickets ? <Stars value={stats.avgCsat} size={14} /> : 'No CSAT yet'}
+        />
+      </section>
+
+      <section className="card" aria-labelledby="pbs-ladder-h">
+        <div className="card-head">
+          <h2 id="pbs-ladder-h">
+            <TrendingUp size={18} aria-hidden />
+            Career ladder
+          </h2>
+          <div className="pbs-head-meta">
+            <span className="pill pill-primary">Level {rank.level}</span>
+            <span className="tiny muted">
+              {rank.next ? `${(rank.next.xp - xp).toLocaleString()} XP to ${rank.next.title}` : 'Top rank reached'}
+            </span>
+          </div>
+        </div>
+        <ol className="pbs-ladder">
           {RANKS.map((r, i) => {
             const next = RANKS[i + 1];
             const reached = xp >= r.xp;
+            const current = r.title === rank.current.title;
             const frac = reached ? (next ? Math.min(1, (xp - r.xp) / (next.xp - r.xp)) : 1) : 0;
             return (
-              <div key={r.title} className="row" style={{ flexWrap: 'nowrap' }}>
-                <span style={{ width: 24 }}>{reached ? '✅' : '🔒'}</span>
-                <span style={{ width: 200, fontWeight: reached ? 700 : 400 }} className="small">
+              <li
+                key={r.title}
+                className={`pbs-rung ${reached ? 'reached' : 'locked'} ${current ? 'current' : ''}`}
+                aria-current={current ? 'step' : undefined}
+              >
+                <span className="pbs-rung-status">
+                  {reached ? (
+                    <CircleCheck size={18} role="img" aria-label="Reached" />
+                  ) : (
+                    <Lock size={16} role="img" aria-label="Locked" />
+                  )}
+                </span>
+                <span className="pbs-rung-title">
                   {r.title}
+                  {current && <span className="pill pill-primary">Current</span>}
                 </span>
-                <div style={{ flex: 1 }}>
-                  <ProgressBar value={frac} />
-                </div>
-                <span className="tiny muted" style={{ width: 70, textAlign: 'right' }}>
-                  {r.xp} XP
-                </span>
-              </div>
+                <ProgressBar value={frac} tone={reached && !current ? 'success' : undefined} />
+                <span className="pbs-rung-xp">{r.xp.toLocaleString()} XP</span>
+              </li>
             );
           })}
-        </div>
-      </div>
+        </ol>
+      </section>
 
       <div className="grid grid-2">
-        <div className="card">
-          <h2>Skill breakdown</h2>
-          {state.tickets.length === 0 ? (
-            <p className="muted">Complete a ticket to see your skill breakdown.</p>
+        <section className="card" aria-labelledby="pbs-skills-h">
+          <div className="card-head">
+            <h2 id="pbs-skills-h">
+              <Activity size={18} aria-hidden />
+              Skill breakdown
+            </h2>
+            {hasTickets && <span className="tiny muted">Average across all tickets</span>}
+          </div>
+          {!hasTickets ? (
+            <EmptyState icon={Activity} title="No skill data yet">
+              Complete a ticket to see your skill breakdown.
+            </EmptyState>
           ) : (
-            <>
-              <div className="stack" style={{ gap: 10 }}>
-                {sectionKeys.map(([k, label]) => (
-                  <div key={k}>
-                    <div className="spread small">
-                      <span>{label}</span>
-                      <span className="muted">{Math.round(sectionAvg(k) * 100)}%</span>
-                    </div>
-                    <ProgressBar value={sectionAvg(k)} tone={scoreTone(sectionAvg(k) * 100)} />
-                  </div>
-                ))}
-              </div>
+            <div className="pbs-body">
+              <ul className="pbs-skills">
+                {SECTIONS.map(({ key, label, icon: Icon }) => {
+                  const v = avgs[key];
+                  const tone = scoreTone(v * 100);
+                  return (
+                    <li key={key} className="pbs-skill">
+                      <div className="pbs-skill-top">
+                        <Icon size={16} aria-hidden />
+                        <span className="pbs-skill-name">
+                          {label}
+                          {weakest?.key === key && <span className="pill pill-warning">Focus</span>}
+                        </span>
+                        <span className={`pbs-skill-pct pbs-tone-${tone}`}>{Math.round(v * 100)}%</span>
+                      </div>
+                      <ProgressBar value={v} tone={tone} />
+                    </li>
+                  );
+                })}
+              </ul>
               {weakest && (
-                <div className="callout warning small mt">
-                  Focus area: <strong>{weakest[1]}</strong>.{' '}
-                  {weakest[0] === 'communication' && 'Greet by name, show empathy, explain plainly, and close with next steps.'}
-                  {weakest[0] === 'documentation' && 'Write notes as symptom → findings → cause → actions → result.'}
-                  {weakest[0] === 'process' && 'Verify identity before sensitive changes and avoid shotgun troubleshooting.'}
-                  {weakest[0] === 'investigation' && 'Ask more questions and use the tools before deciding on a fix.'}
-                  {weakest[0] === 'diagnosis' && 'Gather evidence until one root cause clearly fits all the facts.'}
-                  {weakest[0] === 'resolution' && 'Check whether a ticket belongs with another team, and complete every fix step.'}
-                  {weakest[0] === 'time' && 'Use Shift Mode to practise working efficiently under SLA pressure.'}
+                <div className="callout warning small">
+                  <Target size={16} aria-hidden />
+                  <div className="callout-body">
+                    Focus area: <strong>{weakest.label}</strong>. {FOCUS_TIP[weakest.key]}
+                  </div>
                 </div>
               )}
-            </>
+            </div>
           )}
-        </div>
-        <div className="card">
-          <h2>Categories</h2>
+        </section>
+
+        <section className="card" aria-labelledby="pbs-cats-h">
+          <div className="card-head">
+            <h2 id="pbs-cats-h">
+              <LayoutGrid size={18} aria-hidden />
+              Categories
+            </h2>
+            <span className="tiny muted">Passed means a best score of 70 or more</span>
+          </div>
           <div className="table-wrap">
             <table className="table">
               <thead>
@@ -116,48 +238,87 @@ export function ProgressPage() {
                 </tr>
               </thead>
               <tbody>
-                {CATEGORIES.map((c) => (
-                  <tr key={c}>
-                    <td>{c}</td>
-                    <td>
-                      {cats[c].completed}/{cats[c].total}
-                    </td>
-                    <td>{cats[c].attempts}</td>
-                    <td>{cats[c].attempts ? <span className={`pill pill-${scoreTone(cats[c].avg)}`}>{cats[c].avg}</span> : '–'}</td>
-                  </tr>
-                ))}
+                {CATEGORIES.map((c) => {
+                  const cs = cats[c];
+                  const done = cs.total > 0 && cs.completed === cs.total;
+                  return (
+                    <tr key={c}>
+                      <td>
+                        <span className="pbs-cat">
+                          <CategoryIcon category={c} />
+                          {c}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="pbs-passed">
+                          <span className="num">
+                            {cs.completed}/{cs.total}
+                          </span>
+                          <ProgressBar value={cs.total ? cs.completed / cs.total : 0} tone={done ? 'success' : undefined} />
+                        </span>
+                      </td>
+                      <td className="num">{cs.attempts}</td>
+                      <td>{cs.attempts ? <span className={`pill pill-${scoreTone(cs.avg)}`}>{cs.avg}</span> : <span className="faint">–</span>}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
-          <div className="row mt small muted">
-            <span>{stats.tickets} tickets</span>·<span>avg {stats.avgScore || '–'}</span>·
-            <span>{stats.tickets ? <Stars value={stats.avgCsat} /> : 'no CSAT yet'}</span>
-          </div>
-        </div>
+        </section>
       </div>
 
-      <div className="card">
-        <h2>
-          Badges ({state.badges.length}/{BADGES.length})
-        </h2>
-        <div className="grid grid-3">
-          {BADGES.map((b) => (
-            <div key={b.id} className={`badge-tile ${earned.has(b.id) ? '' : 'locked'}`}>
-              <div className="icon">{b.icon}</div>
-              <div>
-                <div style={{ fontWeight: 700 }}>{b.name}</div>
-                <div className="tiny muted">{b.description}</div>
-                {earned.has(b.id) && <div className="tiny" style={{ color: 'var(--success)' }}>Earned {timeAgo(earned.get(b.id)!)}</div>}
-              </div>
-            </div>
-          ))}
+      <section className="card" aria-labelledby="pbs-badges-h">
+        <div className="card-head">
+          <h2 id="pbs-badges-h">
+            <Medal size={18} aria-hidden />
+            Badges
+          </h2>
+          <span className={`pill ${badgeCount ? 'pill-primary' : ''} num`}>
+            {badgeCount}/{BADGES.length} earned
+          </span>
         </div>
-      </div>
+        <ul className="grid grid-3 pbs-badge-grid">
+          {BADGES.map((b) => {
+            const at = earned.get(b.id);
+            return (
+              <li key={b.id} className={`badge-tile pbs-badge ${at ? 'earned' : 'locked'}`}>
+                <div className="icon">
+                  <BadgeGlyph icon={b.icon} />
+                </div>
+                <div className="pbs-badge-text">
+                  <div className="badge-name">{b.name}</div>
+                  <div className="pbs-badge-desc">{b.description}</div>
+                  {at ? (
+                    <span className="pbs-badge-status earned">
+                      <CircleCheck size={13} aria-hidden />
+                      Earned {timeAgo(at)}
+                    </span>
+                  ) : (
+                    <span className="pbs-badge-status">
+                      <Lock size={12} aria-hidden />
+                      Locked
+                    </span>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
 
-      <div className="card">
-        <h2>Ticket history</h2>
-        {state.tickets.length === 0 ? (
-          <p className="muted">No tickets yet.</p>
+      <section className="card" aria-labelledby="pbs-history-h">
+        <div className="card-head">
+          <h2 id="pbs-history-h">
+            <History size={18} aria-hidden />
+            Ticket history
+          </h2>
+          {hasTickets && <span className="pill num">{state.tickets.length}</span>}
+        </div>
+        {!hasTickets ? (
+          <EmptyState icon={Inbox} title="No tickets yet">
+            Closed tickets appear here with their score and customer rating. <Link to="/tickets">Open the ticket queue</Link>
+          </EmptyState>
         ) : (
           <div className="table-wrap">
             <table className="table">
@@ -176,27 +337,46 @@ export function ProgressPage() {
                 {[...state.tickets].reverse().map((t) => (
                   <tr key={t.id}>
                     <td>
-                      <Link to={`/review/${t.id}`}>{t.title}</Link>
+                      <div className="pbs-ticket">
+                        <Link to={`/review/${t.id}`}>{t.title}</Link>
+                        <span className="ticket-id">{ticketNumber(t.scenarioId)}</span>
+                      </div>
                     </td>
-                    <td>{t.category}</td>
-                    <td style={{ textTransform: 'capitalize' }}>{t.mode}</td>
-                    <td>{formatClock(t.durationSec)}</td>
                     <td>
-                      <Stars value={t.result.csat} />
+                      <span className="pbs-cat">
+                        <CategoryIcon category={t.category} size={14} />
+                        {t.category}
+                      </span>
+                    </td>
+                    <td>
+                      {t.mode === 'shift' ? (
+                        <span className="pill pill-info">
+                          <Timer aria-hidden />
+                          Shift
+                        </span>
+                      ) : (
+                        <span className="pill pill-outline">Practice</span>
+                      )}
+                    </td>
+                    <td className="mono small">{formatClock(t.durationSec)}</td>
+                    <td>
+                      <Stars value={t.result.csat} size={14} />
                     </td>
                     <td>
                       <span className={`pill pill-${scoreTone(t.result.total)}`}>
-                        {t.result.total} {t.result.grade}
+                        {t.result.total} · {t.result.grade}
                       </span>
                     </td>
-                    <td className="small muted">{timeAgo(t.completedAt)}</td>
+                    <td className="small muted pbs-nowrap" title={new Date(t.completedAt).toLocaleString()}>
+                      {timeAgo(t.completedAt)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
-      </div>
+      </section>
     </div>
   );
 }

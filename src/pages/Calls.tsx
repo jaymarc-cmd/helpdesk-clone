@@ -1,65 +1,102 @@
 import { Link } from 'react-router-dom';
+import { Headset, History, PhoneCall, Trophy, Volume2, VolumeX } from 'lucide-react';
 import { CALLS } from '../data/calls';
 import { useStore } from '../state/store';
-import { DifficultyDots, initials, scoreTone, timeAgo } from '../components/ui';
+import { DifficultyDots, PageHeader, initials, scoreTone, timeAgo } from '../components/ui';
+import '../styles/shift-calls.css';
+
+function moodTone(mood: number): 'danger' | 'warning' | 'success' {
+  return mood <= 3 ? 'danger' : mood <= 6 ? 'warning' : 'success';
+}
 
 export function CallsPage() {
   const { state, dispatch } = useStore();
   const best: Record<string, number> = {};
   for (const c of state.calls) best[c.callId] = Math.max(best[c.callId] ?? 0, c.score);
   const speechOk = typeof window !== 'undefined' && 'speechSynthesis' in window;
+  const voiceOn = state.settings.voice;
 
   return (
-    <div className="stack" style={{ gap: 18 }}>
-      <div className="page-head">
-        <div>
-          <h1>Voice Calls</h1>
-          <p>Live phone simulations with spoken callers. Every choice changes the caller's mood and the outcome.</p>
-        </div>
-        <label className="row small" style={{ cursor: 'pointer' }}>
-          <input type="checkbox" checked={state.settings.voice} onChange={(e) => dispatch({ type: 'settings', patch: { voice: e.target.checked } })} />
-          🔊 Caller voice {speechOk ? '' : '(not supported in this browser)'}
-        </label>
-      </div>
+    <div className="sc-page">
+      <PageHeader
+        eyebrow={
+          <>
+            <Headset size={14} aria-hidden />
+            Practice
+          </>
+        }
+        title="Voice calls"
+        description="Live phone simulations with spoken callers. Every choice changes the caller's mood and the outcome."
+        actions={
+          <label className={`sc-voice ${voiceOn ? 'on' : ''}`}>
+            {voiceOn ? <Volume2 size={18} aria-hidden /> : <VolumeX size={18} aria-hidden />}
+            <span className="sc-voice-text">
+              <span>Caller voice</span>
+              {!speechOk && <span className="sc-voice-hint">Not supported in this browser</span>}
+            </span>
+            <input
+              type="checkbox"
+              role="switch"
+              className="sc-switch"
+              checked={voiceOn}
+              onChange={(e) => dispatch({ type: 'settings', patch: { voice: e.target.checked } })}
+            />
+          </label>
+        }
+      />
 
-      <div className="grid grid-auto">
+      <section className="grid grid-auto" aria-label="Available calls">
         {CALLS.map((c) => (
-          <div key={c.id} className="card stack">
-            <div className="row">
-              <div className="avatar" style={{ width: 48, height: 48, fontSize: '1rem' }}>
+          <article key={c.id} className="card sc-call-card">
+            <div className="sc-call-head">
+              <div className="avatar sc-avatar-sm" aria-hidden>
                 {initials(c.caller)}
               </div>
               <div>
-                <strong>{c.title}</strong>
-                <div className="tiny muted">
+                <h2 className="sc-call-title">{c.title}</h2>
+                <div className="sc-call-who">
                   {c.caller} · {c.role}
                 </div>
               </div>
             </div>
-            <p className="small muted" style={{ margin: 0 }}>
-              {c.summary}
-            </p>
-            <div className="row">
+            <p className="sc-call-summary">{c.summary}</p>
+            <div className="sc-skills" aria-label="Skills practised">
               {c.skills.map((s) => (
-                <span key={s} className="pill">
+                <span key={s} className="pill pill-outline">
                   {s}
                 </span>
               ))}
             </div>
-            <div className="spread">
-              <DifficultyDots d={c.difficulty} />
-              {best[c.id] !== undefined && <span className={`pill pill-${scoreTone(best[c.id])}`}>Best {best[c.id]}</span>}
+            <div className="sc-call-foot">
+              <div className="spread">
+                <DifficultyDots d={c.difficulty} showLabel />
+                {best[c.id] !== undefined ? (
+                  <span className={`pill pill-${scoreTone(best[c.id])}`}>
+                    <Trophy aria-hidden />
+                    Best {best[c.id]}
+                  </span>
+                ) : (
+                  <span className="pill pill-outline">Not attempted</span>
+                )}
+              </div>
+              <Link className="btn btn-primary btn-block" to={`/call/${c.id}`}>
+                <PhoneCall size={16} aria-hidden />
+                Take call
+              </Link>
             </div>
-            <Link className="btn btn-primary" to={`/call/${c.id}`}>
-              📞 Take call
-            </Link>
-          </div>
+          </article>
         ))}
-      </div>
+      </section>
 
       {state.calls.length > 0 && (
-        <div className="card">
-          <h3>Recent calls</h3>
+        <section className="card">
+          <div className="card-head">
+            <h2>
+              <History size={18} aria-hidden />
+              Recent calls
+            </h2>
+            <span className="pill num">{state.calls.length} completed</span>
+          </div>
           <div className="table-wrap">
             <table className="table">
               <thead>
@@ -71,20 +108,25 @@ export function CallsPage() {
                 </tr>
               </thead>
               <tbody>
-                {[...state.calls].reverse().slice(0, 10).map((c) => (
-                  <tr key={c.id}>
-                    <td>{c.title}</td>
-                    <td>
-                      <span className={`pill pill-${scoreTone(c.score)}`}>{c.score}</span>
-                    </td>
-                    <td>{c.finalMood}/10</td>
-                    <td>{timeAgo(c.completedAt)}</td>
-                  </tr>
-                ))}
+                {[...state.calls]
+                  .reverse()
+                  .slice(0, 10)
+                  .map((c) => (
+                    <tr key={c.id}>
+                      <td>{c.title}</td>
+                      <td>
+                        <span className={`pill pill-${scoreTone(c.score)}`}>{c.score}</span>
+                      </td>
+                      <td>
+                        <span className={`pill pill-${moodTone(c.finalMood)}`}>{c.finalMood}/10</span>
+                      </td>
+                      <td className="muted">{timeAgo(c.completedAt)}</td>
+                    </tr>
+                  ))}
               </tbody>
             </table>
           </div>
-        </div>
+        </section>
       )}
     </div>
   );

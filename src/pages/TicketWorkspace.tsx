@@ -1,16 +1,89 @@
-import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useReducer, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import {
+  ArrowLeft,
+  ArrowUpRight,
+  Ban,
+  BookOpen,
+  Check,
+  CheckCheck,
+  ChevronRight,
+  CircleAlert,
+  CircleCheck,
+  CircleDot,
+  ClipboardCheck,
+  Clock,
+  Compass,
+  CornerDownRight,
+  Crown,
+  FileText,
+  Fingerprint,
+  History,
+  Hourglass,
+  IdCard,
+  Info,
+  Laptop,
+  Lightbulb,
+  ListChecks,
+  Lock,
+  Mail,
+  MessageSquare,
+  MessagesSquare,
+  Radio,
+  ScanSearch,
+  Search,
+  SearchX,
+  Send,
+  ShieldCheck,
+  ShieldQuestion,
+  ShieldX,
+  SquareTerminal,
+  TriangleAlert,
+  UserRound,
+  Users,
+  Wrench,
+  X,
+  type LucideIcon,
+} from 'lucide-react';
 import { ACTION_BY_ID, TOOL_LABELS, actionsForTool } from '../data/actions';
 import { KB_ARTICLES, KB_BY_ID } from '../data/kb';
 import { HINT_PENALTY, gradeTicket } from '../engine/scoring';
-import { VERIFY_QUESTION_ID, initSession, nextHint, sessionReducer, type SessionState } from '../engine/session';
+import { VERIFY_QUESTION_ID, initSession, nextHint, sessionReducer, type ChatMessage, type SessionState } from '../engine/session';
 import { TERMINAL_HELP } from '../engine/terminal';
 import { useStore } from '../state/store';
 import { uid } from '../state/storage';
-import { TEAMS, type Outcome, type Scenario, type Team, type TicketAttempt, type ToolId } from '../types';
-import { DifficultyDots, Markdown, Modal, PriorityPill, formatClock, initials, useNow } from '../components/ui';
+import { TEAMS, type Outcome, type Scenario, type Team, type TicketAttempt, type ToolId, type WorkLogEntry } from '../types';
+import { DifficultyDots, EmptyState, Markdown, Modal, PriorityPill, formatClock, initials, ticketNumber, useNow } from '../components/ui';
+import { CHANNEL_LABEL, CategoryIcon, ChannelIcon } from '../components/icons';
+import '../styles/workspace.css';
 
 type Tab = 'conversation' | 'directory' | 'endpoint' | 'terminal' | 'kb';
+
+const TABS: { id: Tab; label: string; icon: LucideIcon }[] = [
+  { id: 'conversation', label: 'Conversation', icon: MessageSquare },
+  { id: 'directory', label: 'Directory', icon: IdCard },
+  { id: 'endpoint', label: 'Endpoint', icon: Laptop },
+  { id: 'terminal', label: 'Terminal', icon: SquareTerminal },
+  { id: 'kb', label: 'KB', icon: BookOpen },
+];
+
+const LOG_ICON: Record<WorkLogEntry['kind'], LucideIcon> = {
+  question: MessageSquare,
+  action: Wrench,
+  terminal: SquareTerminal,
+  kb: BookOpen,
+  hint: Lightbulb,
+  system: Info,
+};
+
+const OUTCOMES: { id: Outcome; label: string; desc: string; icon: LucideIcon }[] = [
+  { id: 'resolve', label: 'Resolve', desc: 'Resolved at tier 1', icon: CircleCheck },
+  { id: 'escalate', label: 'Escalate', desc: 'Escalate to another team', icon: ArrowUpRight },
+  { id: 'pending', label: 'Pending', desc: 'Pending (waiting on user)', icon: Hourglass },
+];
+
+/** Prefix the session engine puts on agent messages sent by a guided step. */
+const GUIDED_PREFIX = '[Guided step] ';
 
 export function TicketWorkspace() {
   const { id = '' } = useParams();
@@ -18,11 +91,18 @@ export function TicketWorkspace() {
   const scenario = getScenario(id);
   if (!scenario) {
     return (
-      <div className="card empty">
-        <p>Ticket not found.</p>
-        <Link to="/tickets" className="btn">
-          Back to queue
-        </Link>
+      <div className="ws-root">
+        <div className="card">
+          <EmptyState icon={SearchX} title="Ticket not found">
+            <span className="ws-notfound">
+              The ticket may have been removed, or the link is out of date.
+              <Link to="/tickets" className="btn">
+                <ArrowLeft size={16} aria-hidden />
+                Back to queue
+              </Link>
+            </span>
+          </EmptyState>
+        </div>
       </div>
     );
   }
@@ -88,117 +168,164 @@ function Workspace({ scenario }: { scenario: Scenario }) {
     navigate(`/review/${attempt.id}`, { replace: true });
   };
 
+  const kbArticle = kbOpen ? KB_BY_ID[kbOpen] : undefined;
+
   return (
-    <div>
-      <div className="ws-header">
-        <div>
-          <div className="row small mb" style={{ marginBottom: 6 }}>
-            <Link to={inShift ? '/shift' : '/tickets'}>← {inShift ? 'Shift board' : 'Queue'}</Link>
-            <span className="muted">INC-{(Math.abs(hashCode(scenario.id)) % 90000) + 10000}</span>
-            <PriorityPill p={scenario.priority} />
-            <span className="pill">{scenario.category}</span>
-            <DifficultyDots d={scenario.difficulty} />
-            {inShift && <span className="pill pill-danger">Shift</span>}
+    <div className="ws-root">
+      <header className="ws-header">
+        <div className="ws-heading">
+          <div className="ws-meta">
+            <Link to={inShift ? '/shift' : '/tickets'} className="ws-back">
+              <ArrowLeft size={15} aria-hidden />
+              {inShift ? 'Shift board' : 'Queue'}
+            </Link>
+            <span className="ws-sep" aria-hidden />
+            <span className="ticket-id">{ticketNumber(scenario.id)}</span>
+            <PriorityPill p={scenario.priority} long />
+            <span className="pill pill-outline">
+              <CategoryIcon category={scenario.category} size={12} />
+              {scenario.category}
+            </span>
+            <DifficultyDots d={scenario.difficulty} showLabel />
+            {inShift && (
+              <span className="pill pill-danger">
+                <Radio size={12} aria-hidden />
+                Shift
+              </span>
+            )}
           </div>
-          <h1 style={{ margin: 0 }}>{scenario.title}</h1>
+          <h1 className="ws-title">{scenario.title}</h1>
         </div>
-        <div className="row">
+        <div className="ws-controls">
           {state.settings.hints && (
             <button className="btn btn-sm" onClick={showHint} title={`Costs ${HINT_PENALTY} points`}>
-              💡 Hint (−{HINT_PENALTY})
+              <Lightbulb size={15} aria-hidden />
+              Hint (−{HINT_PENALTY})
             </button>
           )}
-          <span className={`timer ${over ? 'over' : ''}`} title={`Target: ${scenario.targetMinutes} min`}>
-            ⏱ {formatClock(elapsed)} <span className="muted small">/ {scenario.targetMinutes}:00</span>
+          <span className={`timer ${over ? 'over' : ''}`} title={`Target: ${scenario.targetMinutes} min`} role="timer">
+            <Clock size={16} aria-hidden />
+            {formatClock(elapsed)}
+            <span className="ws-timer-target">
+              {over ? 'over' : '/'} {scenario.targetMinutes}:00
+            </span>
           </span>
         </div>
-      </div>
+      </header>
 
       {hint && (
-        <div className="callout warning mb spread">
-          <span>
-            💡 <strong>Hint:</strong> {hint}
-          </span>
-          <button className="btn btn-ghost btn-sm" onClick={() => setHint(null)} aria-label="Dismiss hint">
-            ✕
+        <div className="callout warning ws-hint" role="status">
+          <Lightbulb size={18} aria-hidden />
+          <div className="callout-body">
+            <strong>Hint.</strong> {hint}
+          </div>
+          <button className="icon-btn" onClick={() => setHint(null)} aria-label="Dismiss hint">
+            <X size={16} aria-hidden />
           </button>
         </div>
       )}
 
       <div className="workspace">
-        <div className="ws-left stack">
+        <aside className="ws-left stack" aria-label="Ticket details">
           <TicketInfo scenario={scenario} s={s} onKb={openKb} />
-        </div>
+        </aside>
 
-        <div className="card" style={{ padding: 0 }}>
-          <div className="tabs" style={{ padding: '0 8px' }}>
-            {(
-              [
-                ['conversation', '💬 Conversation'],
-                ['directory', '👤 Directory'],
-                ['endpoint', '💻 Endpoint'],
-                ['terminal', '⌨️ Terminal'],
-                ['kb', '📖 KB'],
-              ] as [Tab, string][]
-            ).map(([t, label]) => (
-              <button key={t} className={`tab ${tab === t ? 'active' : ''}`} onClick={() => openTab(t)}>
+        <section className="card ws-center" aria-label="Investigation">
+          <div className="tabs ws-tabs" role="tablist">
+            {TABS.map(({ id: t, label, icon: Icon }) => (
+              <button key={t} role="tab" aria-selected={tab === t} className={`tab ${tab === t ? 'active' : ''}`} onClick={() => openTab(t)}>
+                <Icon size={16} aria-hidden />
                 {label}
               </button>
             ))}
           </div>
-          <div style={{ padding: 16 }}>
+          <div className="ws-panel" role="tabpanel">
             {tab === 'conversation' && <Conversation scenario={scenario} s={s} dispatch={dispatch} at={at} />}
             {tab === 'directory' && <DirectoryTool scenario={scenario} s={s} dispatch={dispatch} at={at} />}
             {tab === 'endpoint' && <EndpointTool s={s} dispatch={dispatch} at={at} />}
             {tab === 'terminal' && <Terminal s={s} dispatch={dispatch} at={at} />}
             {tab === 'kb' && <KbBrowser related={scenario.kb} onOpen={openKb} />}
           </div>
-        </div>
+        </section>
 
         <ResolutionPanel scenario={scenario} onSubmit={submit} />
       </div>
 
-      {kbOpen && KB_BY_ID[kbOpen] && (
-        <Modal onClose={() => setKbOpen(null)}>
-          <div className="spread mb">
-            <span className="pill">{KB_BY_ID[kbOpen].category}</span>
-            <button className="btn btn-ghost btn-sm" onClick={() => setKbOpen(null)}>
-              ✕ Close
-            </button>
+      {kbOpen && kbArticle && (
+        <Modal title={kbArticle.title} onClose={() => setKbOpen(null)}>
+          <div className="stack">
+            <div className="row">
+              <span className="pill pill-outline">
+                <BookOpen size={12} aria-hidden />
+                {kbArticle.category}
+              </span>
+              {scenario.kb.includes(kbOpen) && <span className="pill pill-primary">Related</span>}
+            </div>
+            <Markdown text={kbArticle.body} />
           </div>
-          <h2>{KB_BY_ID[kbOpen].title}</h2>
-          <Markdown text={KB_BY_ID[kbOpen].body} />
         </Modal>
       )}
     </div>
   );
 }
 
-function hashCode(s: string): number {
-  let h = 0;
-  for (const c of s) h = (h * 31 + c.charCodeAt(0)) | 0;
-  return h;
-}
-
 type Dispatch = (e: Parameters<ReturnType<typeof sessionReducer>>[1]) => void;
+
+function IdentityPill({ s }: { s: SessionState }) {
+  if (s.verified)
+    return (
+      <span className="pill pill-success">
+        <ShieldCheck size={12} aria-hidden />
+        Verified
+      </span>
+    );
+  if (s.verifyAttempted)
+    return (
+      <span className="pill pill-danger">
+        <ShieldX size={12} aria-hidden />
+        Failed
+      </span>
+    );
+  return (
+    <span className="pill pill-outline">
+      <ShieldQuestion size={12} aria-hidden />
+      Not verified
+    </span>
+  );
+}
 
 // ---------------- Left: ticket info ----------------
 
 function TicketInfo({ scenario, s, onKb }: { scenario: Scenario; s: SessionState; onKb: (id: string) => void }) {
   const r = scenario.requester;
   const found = scenario.facts.filter((f) => s.revealed.includes(f.id));
+  const related = scenario.kb.filter((k) => KB_BY_ID[k]);
+  const logRef = useRef<HTMLDivElement>(null);
+
+  // Keep the newest log entry in view.
+  useEffect(() => {
+    const el = logRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [s.log.length]);
+
   return (
     <>
-      <div className="card">
-        <div className="row mb" style={{ marginBottom: 12 }}>
-          <div className="avatar" style={{ width: 44, height: 44, fontSize: '1rem' }}>
+      <section className="card" aria-label="Requester">
+        <div className="ws-requester-head">
+          <div className="avatar" aria-hidden>
             {initials(r.name)}
           </div>
-          <div>
-            <div style={{ fontWeight: 700 }}>
-              {r.name} {r.vip && <span className="pill pill-warning">VIP</span>}
+          <div className="ws-requester-text">
+            <div className="ws-requester-name">
+              {r.name}
+              {r.vip && (
+                <span className="pill pill-warning">
+                  <Crown size={12} aria-hidden />
+                  VIP
+                </span>
+              )}
             </div>
-            <div className="tiny muted">{r.title}</div>
+            <div className="ws-requester-title">{r.title}</div>
           </div>
         </div>
         <dl className="kv">
@@ -209,63 +336,125 @@ function TicketInfo({ scenario, s, onKb }: { scenario: Scenario; s: SessionState
           <dt>Email</dt>
           <dd className="small">{r.email}</dd>
           <dt>Phone</dt>
-          <dd>{r.phone}</dd>
+          <dd className="num">{r.phone}</dd>
           <dt>Channel</dt>
-          <dd style={{ textTransform: 'capitalize' }}>{scenario.channel}</dd>
+          <dd>
+            <span className="ws-channel">
+              <ChannelIcon channel={scenario.channel} />
+              {CHANNEL_LABEL[scenario.channel]}
+            </span>
+          </dd>
           <dt>Identity</dt>
           <dd>
-            {s.verified ? (
-              <span className="pill pill-success">Verified</span>
-            ) : s.verifyAttempted ? (
-              <span className="pill pill-danger">Failed</span>
-            ) : (
-              <span className="pill">Not verified</span>
-            )}
+            <IdentityPill s={s} />
           </dd>
         </dl>
-      </div>
+      </section>
 
-      <div className="card">
-        <h3>Findings ({found.length})</h3>
+      <section className="card">
+        <div className="card-head">
+          <h3>
+            <ScanSearch size={16} aria-hidden />
+            Findings
+          </h3>
+          <span className={`pill ${found.length ? 'pill-primary' : ''}`} aria-label={`${found.length} findings`}>
+            {found.length}
+          </span>
+        </div>
         {found.length === 0 ? (
-          <p className="small muted" style={{ margin: 0 }}>
-            Evidence you uncover appears here. Ask questions, check tools, run commands.
-          </p>
+          <p className="ws-empty-hint">Evidence you uncover appears here. Ask questions, check tools, run commands.</p>
         ) : (
           <ul className="facts">
             {found.map((f) => (
-              <li key={f.id}>{f.label}</li>
+              <li key={f.id}>
+                <CircleDot size={14} aria-hidden />
+                <span>{f.label}</span>
+              </li>
             ))}
           </ul>
         )}
-      </div>
+      </section>
 
-      <div className="card">
-        <h3>Related articles</h3>
-        <div className="stack" style={{ gap: 4 }}>
-          {scenario.kb.filter((k) => KB_BY_ID[k]).map((k) => (
-            <button key={k} className="btn btn-ghost btn-sm" style={{ justifyContent: 'flex-start', textAlign: 'left' }} onClick={() => onKb(k)}>
-              📄 {KB_BY_ID[k].title}
-            </button>
-          ))}
+      <section className="card">
+        <div className="card-head">
+          <h3>
+            <BookOpen size={16} aria-hidden />
+            Related articles
+          </h3>
         </div>
-      </div>
+        {related.length === 0 ? (
+          <p className="ws-empty-hint">No articles are linked to this ticket. Use the KB tab to search.</p>
+        ) : (
+          <div className="ws-link-list">
+            {related.map((k) => (
+              <button key={k} className="btn btn-ghost btn-sm ws-link-btn" onClick={() => onKb(k)}>
+                <FileText size={15} aria-hidden />
+                <span>{KB_BY_ID[k].title}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
 
-      <div className="card">
-        <h3>Activity log</h3>
-        <div className="log">
-          {s.log.map((l, i) => (
-            <div key={i}>
-              [{formatClock(l.at)}] {l.text.length > 90 ? l.text.slice(0, 90) + '…' : l.text}
-            </div>
-          ))}
+      <section className="card">
+        <div className="card-head">
+          <h3>
+            <History size={16} aria-hidden />
+            Activity log
+          </h3>
+          <span className="pill" aria-label={`${s.log.length} entries`}>
+            {s.log.length}
+          </span>
         </div>
-      </div>
+        <div className="log" ref={logRef}>
+          {s.log.map((l, i) => {
+            const Icon = LOG_ICON[l.kind] ?? CircleDot;
+            return (
+              <div key={i} className="ws-log-row" title={l.text}>
+                <span className="t">{formatClock(l.at)}</span>
+                <Icon size={12} aria-hidden />
+                <span>{l.text.length > 90 ? l.text.slice(0, 90) + '…' : l.text}</span>
+              </div>
+            );
+          })}
+        </div>
+      </section>
     </>
   );
 }
 
 // ---------------- Conversation ----------------
+
+function ChatBubble({ m, name }: { m: ChatMessage; name: string }) {
+  if (m.from === 'system') {
+    const ok = m.text.startsWith('Identity verified');
+    const bad = m.text.startsWith('Identity NOT');
+    const Icon = ok ? ShieldCheck : bad ? ShieldX : Info;
+    return (
+      <div className={`msg system ws-sys ${ok ? 'ok' : bad ? 'bad' : ''}`}>
+        <Icon size={14} aria-hidden />
+        <span>{m.text}</span>
+      </div>
+    );
+  }
+  const step = m.from === 'agent' && m.text.startsWith(GUIDED_PREFIX);
+  return (
+    <div className={`msg ${m.from}`}>
+      <span className="who">{m.from === 'agent' ? 'You' : name}</span>
+      {step ? (
+        <>
+          <span className="ws-step-tag">
+            <Compass size={12} aria-hidden />
+            Guided step
+          </span>
+          {m.text.slice(GUIDED_PREFIX.length)}
+        </>
+      ) : (
+        m.text
+      )}
+    </div>
+  );
+}
 
 function Conversation({ scenario, s, dispatch, at }: { scenario: Scenario; s: SessionState; dispatch: Dispatch; at: () => number }) {
   const [text, setText] = useState('');
@@ -300,19 +489,34 @@ function Conversation({ scenario, s, dispatch, at }: { scenario: Scenario; s: Se
 
   return (
     <div className="stack">
-      <div className="chat" aria-live="polite">
-        {shown.map((m, i) => (
-          <div key={i} className={`msg ${m.from}`}>
-            {m.from !== 'system' && <span className="who">{m.from === 'agent' ? 'You' : scenario.requester.name}</span>}
-            {m.text}
-          </div>
-        ))}
-        {typing && <div className="typing">{firstName} is typing…</div>}
-        <div ref={endRef} />
+      <div className="ws-chat-frame">
+        <div className="ws-chat-head">
+          <span className="ws-channel">
+            <ChannelIcon channel={scenario.channel} />
+            {CHANNEL_LABEL[scenario.channel]} with {scenario.requester.name}
+          </span>
+          <IdentityPill s={s} />
+        </div>
+        <div className="chat" aria-live="polite">
+          {shown.map((m, i) => (
+            <ChatBubble key={i} m={m} name={scenario.requester.name} />
+          ))}
+          {typing && (
+            <div className="typing">
+              <span className="typing-dots" aria-hidden>
+                <i />
+                <i />
+                <i />
+              </span>
+              {firstName} is typing
+            </div>
+          )}
+          <div ref={endRef} />
+        </div>
       </div>
 
       <form
-        className="row"
+        className="ws-composer"
         onSubmit={(e) => {
           e.preventDefault();
           if (!text.trim() || typing) return;
@@ -324,23 +528,25 @@ function Conversation({ scenario, s, dispatch, at }: { scenario: Scenario; s: Se
           type="text"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder={`Message ${firstName}… (type your own question)`}
-          style={{ flex: 1, width: 'auto' }}
+          placeholder={`Message ${firstName}, or type your own question…`}
           aria-label="Message"
         />
-        <button className="btn btn-primary" disabled={!text.trim() || typing}>
+        <button type="submit" className="btn btn-primary" disabled={!text.trim() || typing}>
+          <Send size={16} aria-hidden />
           Send
         </button>
       </form>
 
       <div>
-        <div className="tiny muted mb" style={{ marginBottom: 6 }}>
-          SUGGESTED QUESTIONS
+        <div className="label ws-label-row">
+          <MessagesSquare size={13} aria-hidden />
+          Suggested questions
         </div>
         <div className="suggestions">
           {!s.verifyAttempted && (
             <button key={VERIFY_QUESTION_ID} className="suggestion verify" disabled={typing} onClick={() => dispatch({ type: 'verify', at: at() })}>
-              🔐 Verify identity
+              <Fingerprint size={14} aria-hidden />
+              Verify identity
             </button>
           )}
           {available.map((q) => (
@@ -352,9 +558,14 @@ function Conversation({ scenario, s, dispatch, at }: { scenario: Scenario; s: Se
         </div>
       </div>
 
-      <details>
-        <summary style={{ cursor: 'pointer', fontWeight: 600 }}>🧭 Guided steps (ask {firstName} to do something)</summary>
-        <div className="mt">
+      <details className="ws-guided">
+        <summary>
+          <ChevronRight size={16} className="chev" aria-hidden />
+          <Compass size={16} aria-hidden />
+          Guided steps
+          <span className="ws-guided-sub">Ask {firstName} to do something</span>
+        </summary>
+        <div className="ws-guided-body">
           <ActionGrid tool="guide" s={s} dispatch={dispatch} at={at} />
         </div>
       </details>
@@ -383,48 +594,65 @@ function ActionGrid({ tool, s, dispatch, at }: { tool: ToolId; s: SessionState; 
           return (
             <button key={a.id} className={`action-btn ${done ? 'done' : ''}`} onClick={() => run(a.id)} title={a.description}>
               <span className="lbl">
-                {done ? '✓ ' : ''}
+                {done && <Check size={14} aria-hidden />}
                 {a.label}
+                {done && <span className="ws-sr"> (done)</span>}
               </span>
               <span className="desc">{a.description}</span>
-              {a.sensitive && !s.verified && <span className="lock">🔒 Requires identity verification</span>}
+              {a.sensitive && !s.verified && (
+                <span className="lock">
+                  <Lock size={12} aria-hidden />
+                  Requires identity verification
+                </span>
+              )}
             </button>
           );
         })}
       </div>
       {results.length > 0 && (
         <div>
-          <div className="tiny muted mb" style={{ marginBottom: 6 }}>
-            RESULTS
+          <div className="label ws-label-row">
+            <ListChecks size={13} aria-hidden />
+            Results
           </div>
           <div className="result-feed">
             {[...results].reverse().map((r, i) => (
               <div key={i} className="result-item">
-                <strong>{ACTION_BY_ID[r.id]?.label}:</strong> {r.text}
+                <div className="ws-result-label">
+                  <CornerDownRight size={13} aria-hidden />
+                  {ACTION_BY_ID[r.id]?.label}
+                </div>
+                {r.text}
               </div>
             ))}
           </div>
         </div>
       )}
       {confirm && (
-        <Modal onClose={() => setConfirm(null)}>
-          <h2>Are you sure?</h2>
-          <p>
-            <strong>{ACTION_BY_ID[confirm].label}</strong>: {ACTION_BY_ID[confirm].description}
-          </p>
-          <div className="row" style={{ justifyContent: 'flex-end' }}>
-            <button className="btn" onClick={() => setConfirm(null)}>
-              Cancel
-            </button>
-            <button
-              className="btn btn-danger"
-              onClick={() => {
-                dispatch({ type: 'action', actionId: confirm, at: at() });
-                setConfirm(null);
-              }}
-            >
-              Yes, do it
-            </button>
+        <Modal title="Confirm action" onClose={() => setConfirm(null)}>
+          <div className="stack">
+            <div className="callout warning">
+              <TriangleAlert size={18} aria-hidden />
+              <div className="callout-body">
+                <strong>{ACTION_BY_ID[confirm].label}</strong>: {ACTION_BY_ID[confirm].description}
+              </div>
+            </div>
+            <p className="ws-modal-note">This is a disruptive action and is recorded on the ticket. Make sure your findings support it.</p>
+            <div className="ws-modal-actions">
+              <button className="btn" onClick={() => setConfirm(null)}>
+                Cancel
+              </button>
+              <button
+                className="btn btn-danger"
+                onClick={() => {
+                  dispatch({ type: 'action', actionId: confirm, at: at() });
+                  setConfirm(null);
+                }}
+              >
+                <TriangleAlert size={15} aria-hidden />
+                Yes, run it
+              </button>
+            </div>
           </div>
         </Modal>
       )}
@@ -435,72 +663,117 @@ function ActionGrid({ tool, s, dispatch, at }: { tool: ToolId; s: SessionState; 
 function DirectoryTool({ scenario, s, dispatch, at }: { scenario: Scenario; s: SessionState; dispatch: Dispatch; at: () => number }) {
   const a = s.account;
   const statusTone = a.status === 'Active' ? 'success' : 'danger';
+  const StatusIcon = a.status === 'Active' ? CircleCheck : a.status === 'Locked' ? Lock : Ban;
   return (
     <div className="stack">
       <div className="grid grid-2">
-        <div className="card card-tight">
-          <div className="spread mb" style={{ marginBottom: 8 }}>
-            <strong className="mono">{a.username}</strong>
-            <span className={`pill pill-${statusTone}`}>{a.status}</span>
+        <section className="card card-tight">
+          <div className="card-head">
+            <h3 className="ws-mono-head">
+              <UserRound size={16} aria-hidden />
+              {a.username}
+            </h3>
+            <span className={`pill pill-${statusTone}`}>
+              <StatusIcon size={12} aria-hidden />
+              {a.status}
+            </span>
           </div>
-          {a.statusNote && <div className="callout warning small mb">{a.statusNote}</div>}
-          <dl className="kv">
-            <dt>Password set</dt>
-            <dd>
-              {a.passwordLastSet} {a.passwordExpired && <span className="pill pill-danger">Expired</span>}
-            </dd>
-            <dt>MFA</dt>
-            <dd>{a.mfa}</dd>
-            <dt>Last logon</dt>
-            <dd>{a.lastLogon}</dd>
-            <dt>Failed logons</dt>
-            <dd>{a.failedLogons}</dd>
-            {a.activeSessions !== undefined && (
-              <>
-                <dt>Sessions</dt>
-                <dd>{a.activeSessions} active</dd>
-              </>
+          <div className="stack">
+            {a.statusNote && (
+              <div className="callout warning small">
+                <TriangleAlert size={16} aria-hidden />
+                <div className="callout-body">{a.statusNote}</div>
+              </div>
             )}
-          </dl>
-        </div>
-        <div className="card card-tight">
-          <strong>Groups</strong>
-          <div className="row mt" style={{ marginTop: 8, gap: 6 }}>
-            {a.groups.map((g) => (
-              <span key={g} className="pill">
-                {g}
-              </span>
-            ))}
+            <dl className="kv">
+              <dt>Password set</dt>
+              <dd>
+                {a.passwordLastSet} {a.passwordExpired && <span className="pill pill-danger">Expired</span>}
+              </dd>
+              <dt>MFA</dt>
+              <dd>{a.mfa}</dd>
+              <dt>Last logon</dt>
+              <dd>{a.lastLogon}</dd>
+              <dt>Failed logons</dt>
+              <dd>{a.failedLogons > 0 ? <span className="pill pill-warning">{a.failedLogons}</span> : <span className="num">{a.failedLogons}</span>}</dd>
+              {a.activeSessions !== undefined && (
+                <>
+                  <dt>Sessions</dt>
+                  <dd>{a.activeSessions} active</dd>
+                </>
+              )}
+            </dl>
           </div>
-          <div className="mt">
-            <strong>Mailbox</strong>
-            <dl className="kv" style={{ marginTop: 6 }}>
+        </section>
+        <section className="card card-tight">
+          <div className="card-head">
+            <h3>
+              <Users size={16} aria-hidden />
+              Groups
+            </h3>
+            <span className="pill" aria-label={`${a.groups.length} groups`}>
+              {a.groups.length}
+            </span>
+          </div>
+          {a.groups.length === 0 ? (
+            <p className="ws-empty-hint">No group memberships.</p>
+          ) : (
+            <div className="ws-pill-wrap">
+              {a.groups.map((g) => (
+                <span key={g} className="pill pill-outline">
+                  {g}
+                </span>
+              ))}
+            </div>
+          )}
+          <div className="ws-divider">
+            <div className="ws-subhead">
+              <Mail size={15} aria-hidden />
+              Mailbox
+            </div>
+            <dl className="kv">
               <dt>Usage</dt>
               <dd>{a.mailboxUsage ?? '—'}</dd>
               <dt>Archive</dt>
               <dd>{a.archive ?? '—'}</dd>
             </dl>
           </div>
-        </div>
+        </section>
       </div>
 
-      <div className="card card-tight">
-        <div className="spread">
-          <strong>Sign-in log</strong>
-          {!s.signInLogViewed && (
+      <section className="card card-tight">
+        <div className="card-head">
+          <h3>
+            <History size={16} aria-hidden />
+            Sign-in log
+          </h3>
+          {!s.signInLogViewed ? (
             <button className="btn btn-sm" onClick={() => dispatch({ type: 'viewSignInLog', at: at() })}>
+              <History size={14} aria-hidden />
               Load sign-in log
             </button>
+          ) : (
+            <span className="pill pill-success">
+              <Check size={12} aria-hidden />
+              Reviewed
+            </span>
           )}
         </div>
-        {s.signInLogViewed && (
-          <pre className="terminal" style={{ height: 'auto', maxHeight: 200, marginTop: 8 }}>
+        {s.signInLogViewed ? (
+          <pre className="terminal ws-signin">
             {(scenario.signInLog?.lines ?? [`${a.lastLogon}  SUCCESS   Windows sign-in   ${s.device.hostname}`, 'No failures in the last 24 hours.']).join('\n')}
           </pre>
+        ) : (
+          <p className="ws-empty-hint">Recent authentication events for this account. Loading the log is recorded on the ticket.</p>
         )}
-      </div>
+      </section>
 
-      <h3 style={{ marginBottom: 0 }}>{TOOL_LABELS.directory} actions</h3>
+      <div className="card-head ws-section-head">
+        <h3>
+          <Wrench size={16} aria-hidden />
+          {TOOL_LABELS.directory} actions
+        </h3>
+      </div>
       <ActionGrid tool="directory" s={s} dispatch={dispatch} at={at} />
     </div>
   );
@@ -511,11 +784,14 @@ function EndpointTool({ s, dispatch, at }: { s: SessionState; dispatch: Dispatch
   const powered = !(d.ip === '' && !d.online);
   return (
     <div className="stack">
-      <div className="card card-tight">
-        <div className="spread mb" style={{ marginBottom: 8 }}>
-          <strong className="mono">{d.hostname}</strong>
-          <span className="row small">
-            <span className={`status-dot ${d.online ? 'ok' : 'bad'}`} />
+      <section className="card card-tight">
+        <div className="card-head">
+          <h3 className="ws-mono-head">
+            <Laptop size={16} aria-hidden />
+            {d.hostname}
+          </h3>
+          <span className={`pill ${d.online ? 'pill-success' : 'pill-danger'}`}>
+            <span className={`status-dot ${d.online ? 'ok' : 'bad'}`} aria-hidden />
             {d.online ? 'Online' : powered ? 'Not reachable' : 'Offline / powered off'}
           </span>
         </div>
@@ -534,17 +810,28 @@ function EndpointTool({ s, dispatch, at }: { s: SessionState; dispatch: Dispatch
           <dd>{d.lastPatch}</dd>
         </dl>
         {d.installedNotes && d.installedNotes.length > 0 && (
-          <div className="mt">
-            <strong className="small">Inventory &amp; health</strong>
-            <ul className="small" style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+          <div className="ws-divider">
+            <div className="ws-subhead">
+              <ListChecks size={15} aria-hidden />
+              Inventory &amp; health
+            </div>
+            <ul className="ws-inventory">
               {d.installedNotes.map((n) => (
-                <li key={n}>{n}</li>
+                <li key={n}>
+                  <CircleDot size={10} aria-hidden />
+                  <span>{n}</span>
+                </li>
               ))}
             </ul>
           </div>
         )}
+      </section>
+      <div className="card-head ws-section-head">
+        <h3>
+          <Wrench size={16} aria-hidden />
+          {TOOL_LABELS.endpoint} actions
+        </h3>
       </div>
-      <h3 style={{ marginBottom: 0 }}>{TOOL_LABELS.endpoint} actions</h3>
       <ActionGrid tool="endpoint" s={s} dispatch={dispatch} at={at} />
     </div>
   );
@@ -564,64 +851,88 @@ function Terminal({ s, dispatch, at }: { s: SessionState; dispatch: Dispatch; at
 
   return (
     <div className="stack">
-      <div className="small muted">
-        Remote shell on <strong className="mono">{s.device.hostname}</strong>
-        {!s.device.online && ' (device is off the network, so the user runs the commands and reads you the results)'}. Type{' '}
-        <code>help</code> for commands.
-      </div>
-      <div className="terminal" ref={boxRef} onClick={() => inputRef.current?.focus()}>
-        {s.terminal.length === 0 && <div style={{ opacity: 0.6 }}>Windows PowerShell — remote session established.{'\n\n'}</div>}
-        {s.terminal.map((l, i) => (
-          <div key={i}>
-            <span className="prompt">{prompt}</span> {l.cmd}
-            {'\n'}
-            {l.output}
-            {'\n\n'}
+      {s.device.online ? (
+        <p className="ws-empty-hint">
+          Remote shell on <strong className="mono">{s.device.hostname}</strong>. Type <code>help</code> for commands.
+        </p>
+      ) : (
+        <div className="callout info small">
+          <Info size={16} aria-hidden />
+          <div className="callout-body">
+            <strong className="mono">{s.device.hostname}</strong> is off the network, so the user runs the commands and reads you the results. Type{' '}
+            <code>help</code> for commands.
           </div>
-        ))}
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!cmd.trim()) return;
-            dispatch({ type: 'command', raw: cmd, at: at() });
-            setHist((h) => [cmd, ...h]);
-            setHIdx(-1);
-            setCmd('');
-          }}
-        >
-          <span className="prompt">{prompt}</span>{' '}
-          <input
-            ref={inputRef}
-            value={cmd}
-            onChange={(e) => setCmd(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'ArrowUp' && hist.length) {
-                e.preventDefault();
-                const n = Math.min(hist.length - 1, hIdx + 1);
-                setHIdx(n);
-                setCmd(hist[n]);
-              } else if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                const n = hIdx - 1;
-                setHIdx(n);
-                setCmd(n >= 0 ? hist[n] : '');
-              }
+        </div>
+      )}
+      <div className="ws-term">
+        <div className="terminal-bar">
+          <SquareTerminal size={14} aria-hidden />
+          <span className="ws-term-title">PowerShell — {s.device.hostname}</span>
+          <span className="ws-term-status">
+            <span className={`status-dot ${s.device.online ? 'ok' : 'bad'}`} aria-hidden />
+            {s.device.online ? 'Online' : 'Offline'}
+          </span>
+        </div>
+        <div className="terminal" ref={boxRef} onClick={() => inputRef.current?.focus()}>
+          {s.terminal.length === 0 && <div className="ws-term-banner">Windows PowerShell — remote session established.{'\n\n'}</div>}
+          {s.terminal.map((l, i) => (
+            <div key={i}>
+              <span className="prompt">{prompt}</span> {l.cmd}
+              {'\n'}
+              {l.output}
+              {'\n\n'}
+            </div>
+          ))}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!cmd.trim()) return;
+              dispatch({ type: 'command', raw: cmd, at: at() });
+              setHist((h) => [cmd, ...h]);
+              setHIdx(-1);
+              setCmd('');
             }}
-            aria-label="Terminal command"
-            autoComplete="off"
-            spellCheck={false}
-          />
-        </form>
+          >
+            <span className="prompt">{prompt}</span>{' '}
+            <input
+              ref={inputRef}
+              value={cmd}
+              onChange={(e) => setCmd(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowUp' && hist.length) {
+                  e.preventDefault();
+                  const n = Math.min(hist.length - 1, hIdx + 1);
+                  setHIdx(n);
+                  setCmd(hist[n]);
+                } else if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  const n = hIdx - 1;
+                  setHIdx(n);
+                  setCmd(n >= 0 ? hist[n] : '');
+                }
+              }}
+              aria-label="Terminal command"
+              autoComplete="off"
+              spellCheck={false}
+            />
+          </form>
+        </div>
       </div>
-      <div className="suggestions">
-        {TERMINAL_HELP.slice(0, 8).map((h) => {
-          const c = h.cmd.replace(/\s*[[<].*$/, '');
-          return (
-            <button key={h.cmd} className="suggestion mono" onClick={() => dispatch({ type: 'command', raw: c, at: at() })} title={h.desc}>
-              {c}
-            </button>
-          );
-        })}
+      <div>
+        <div className="label ws-label-row">
+          <SquareTerminal size={13} aria-hidden />
+          Common commands
+        </div>
+        <div className="suggestions">
+          {TERMINAL_HELP.slice(0, 8).map((h) => {
+            const c = h.cmd.replace(/\s*[[<].*$/, '');
+            return (
+              <button key={h.cmd} className="suggestion mono" onClick={() => dispatch({ type: 'command', raw: c, at: at() })} title={h.desc}>
+                {c}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -634,19 +945,35 @@ function KbBrowser({ related, onOpen }: { related: string[]; onOpen: (id: string
   ).sort((a, b) => Number(related.includes(b.id)) - Number(related.includes(a.id)));
   return (
     <div className="stack">
-      <input type="search" placeholder="Search the knowledge base…" value={q} onChange={(e) => setQ(e.target.value)} />
-      <div className="stack" style={{ gap: 6 }}>
-        {list.map((a) => (
-          <button key={a.id} className="action-btn" onClick={() => onOpen(a.id)}>
-            <span className="lbl">
-              {a.title} {related.includes(a.id) && <span className="pill pill-primary">Related</span>}
-            </span>
-            <span className="desc">
-              {a.category} · {a.tags.slice(0, 4).join(', ')}
-            </span>
-          </button>
-        ))}
+      <div className="search">
+        <Search size={16} aria-hidden />
+        <input type="search" placeholder="Search the knowledge base…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search the knowledge base" />
       </div>
+      <div className="label">
+        {list.length} {list.length === 1 ? 'article' : 'articles'}
+      </div>
+      {list.length === 0 ? (
+        <EmptyState icon={SearchX} title="No matching articles">
+          Try a different keyword, such as a product name or an error message.
+        </EmptyState>
+      ) : (
+        <div className="ws-kb-list">
+          {list.map((a) => (
+            <button key={a.id} className="action-btn ws-kb-item" onClick={() => onOpen(a.id)}>
+              <FileText size={16} aria-hidden />
+              <span className="ws-kb-text">
+                <span className="lbl">
+                  {a.title}
+                  {related.includes(a.id) && <span className="pill pill-primary">Related</span>}
+                </span>
+                <span className="desc">
+                  {a.category} · {a.tags.slice(0, 4).join(', ')}
+                </span>
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -667,6 +994,7 @@ function ResolutionPanel({
   const [reply, setReply] = useState('');
   const [error, setError] = useState('');
   const firstName = scenario.requester.name.split(' ')[0];
+  const ids = useId();
 
   // Shuffle root cause options once so the answer isn't always first.
   const causes = useMemo(() => [...scenario.rootCauses].sort(() => Math.random() - 0.5), [scenario]);
@@ -679,15 +1007,23 @@ function ResolutionPanel({
     onSubmit({ rootCause, outcome, team: outcome === 'escalate' ? (team as Team) : undefined, note, reply });
   };
 
-  return (
-    <div className="card stack" style={{ position: 'sticky', top: 16 }}>
-      <h2 style={{ margin: 0 }}>Resolution</h2>
+  const current = OUTCOMES.find((o) => o.id === outcome);
 
-      <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
-        <legend className="small" style={{ fontWeight: 600, marginBottom: 6 }}>
-          Root cause
-        </legend>
-        <div className="stack" style={{ gap: 6 }}>
+  return (
+    <aside className="card ws-resolution" aria-label="Resolution">
+      <div>
+        <div className="card-head">
+          <h2>
+            <ClipboardCheck size={18} aria-hidden />
+            Resolution
+          </h2>
+        </div>
+        <p className="ws-res-sub">Root cause, outcome, notes and reply are graded when you submit.</p>
+      </div>
+
+      <fieldset className="ws-fieldset">
+        <legend className="ws-legend">Root cause</legend>
+        <div className="ws-causes">
           {causes.map((c) => (
             <label key={c.id} className="radio-row">
               <input type="radio" name="rc" checked={rootCause === c.id} onChange={() => setRootCause(c.id)} />
@@ -697,14 +1033,21 @@ function ResolutionPanel({
         </div>
       </fieldset>
 
-      <label className="field">
-        Outcome
-        <select value={outcome} onChange={(e) => setOutcome(e.target.value as Outcome)}>
-          <option value="resolve">Resolved at tier 1</option>
-          <option value="escalate">Escalate to another team</option>
-          <option value="pending">Pending (waiting on user)</option>
-        </select>
-      </label>
+      <div className="ws-field">
+        <span className="ws-field-label" id={`${ids}-outcome`}>
+          Outcome
+        </span>
+        <div className="seg ws-outcome" role="radiogroup" aria-labelledby={`${ids}-outcome`}>
+          {OUTCOMES.map(({ id: o, label, desc, icon: Icon }) => (
+            <button key={o} type="button" role="radio" aria-checked={outcome === o} className={outcome === o ? 'active' : ''} onClick={() => setOutcome(o)} title={desc}>
+              <Icon size={15} aria-hidden />
+              {label}
+            </button>
+          ))}
+        </div>
+        {current && <span className="ws-outcome-desc">{current.desc}</span>}
+      </div>
+
       {outcome === 'escalate' && (
         <label className="field">
           Assign to team
@@ -719,13 +1062,25 @@ function ResolutionPanel({
 
       <label className="field">
         Work notes (internal)
-        <span className="hint">Symptom → findings → cause → actions → result</span>
+        <span className="ws-note-hint">
+          Symptom
+          <ChevronRight size={12} aria-hidden />
+          findings
+          <ChevronRight size={12} aria-hidden />
+          cause
+          <ChevronRight size={12} aria-hidden />
+          actions
+          <ChevronRight size={12} aria-hidden />
+          result
+        </span>
         <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={5} placeholder="e.g. Verified ID. Sign-in log showed…" />
       </label>
 
-      <label className="field">
-        <span className="spread">
-          Reply to {firstName}
+      <div className="ws-field">
+        <div className="ws-field-head">
+          <label className="ws-field-label" htmlFor={`${ids}-reply`}>
+            Reply to {firstName}
+          </label>
           <button
             type="button"
             className="btn btn-ghost btn-sm"
@@ -735,16 +1090,23 @@ function ResolutionPanel({
               )
             }
           >
+            <FileText size={14} aria-hidden />
             Template
           </button>
-        </span>
-        <textarea value={reply} onChange={(e) => setReply(e.target.value)} rows={6} placeholder={`Hi ${firstName}, …`} />
-      </label>
+        </div>
+        <textarea id={`${ids}-reply`} value={reply} onChange={(e) => setReply(e.target.value)} rows={6} placeholder={`Hi ${firstName}, …`} />
+      </div>
 
-      {error && <div className="callout danger small">{error}</div>}
-      <button className="btn btn-primary btn-lg" onClick={submit}>
+      {error && (
+        <div className="callout danger small" role="alert">
+          <CircleAlert size={16} aria-hidden />
+          <div className="callout-body">{error}</div>
+        </div>
+      )}
+      <button className="btn btn-primary btn-lg btn-block" onClick={submit}>
+        <CheckCheck size={18} aria-hidden />
         Submit &amp; close ticket
       </button>
-    </div>
+    </aside>
   );
 }

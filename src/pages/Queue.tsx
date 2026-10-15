@@ -1,11 +1,17 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { CircleCheck, CircleDashed, Clock, FilterX, LayoutGrid, RotateCcw, Search, SearchX, Shuffle } from 'lucide-react';
 import { bestByScenario } from '../engine/progress';
 import { useStore } from '../state/store';
 import { CATEGORIES, type Category } from '../types';
-import { DifficultyDots, PriorityPill, scoreTone } from '../components/ui';
+import { DifficultyDots, EmptyState, PageHeader, PriorityPill, scoreTone, ticketNumber } from '../components/ui';
+import { CHANNEL_LABEL, CategoryIcon, ChannelIcon } from '../components/icons';
+import '../styles/queue-review.css';
 
-const CHANNEL_ICON = { email: '✉️', portal: '🌐', phone: '☎️', chat: '💬' } as const;
+/** Best score at or above this counts as passed (matches the status filter). */
+const PASS_MARK = 70;
+
+const CATEGORY_OPTIONS: (Category | 'All')[] = ['All', ...CATEGORIES];
 
 export function Queue() {
   const { state, scenarios } = useStore();
@@ -23,89 +29,162 @@ export function Queue() {
         if (diff && s.difficulty !== diff) return false;
         const b = best[s.id];
         if (status === 'new' && b !== undefined) return false;
-        if (status === 'passed' && !(b !== undefined && b >= 70)) return false;
-        if (status === 'retry' && !(b !== undefined && b < 70)) return false;
+        if (status === 'passed' && !(b !== undefined && b >= PASS_MARK)) return false;
+        if (status === 'retry' && !(b !== undefined && b < PASS_MARK)) return false;
         if (q && !`${s.title} ${s.description} ${s.requester.name}`.toLowerCase().includes(q.toLowerCase())) return false;
         return true;
       }),
     [scenarios, cat, diff, status, q, best],
   );
 
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = { All: scenarios.length };
+    for (const s of scenarios) counts[s.category] = (counts[s.category] ?? 0) + 1;
+    return counts;
+  }, [scenarios]);
+
+  const filtersActive = cat !== 'All' || diff !== 0 || status !== 'all' || q !== '';
+  const clearFilters = () => {
+    setCat('All');
+    setDiff(0);
+    setStatus('all');
+    setQ('');
+  };
+
   const random = () => {
     const pool = list.length ? list : scenarios;
+    if (!pool.length) return;
     navigate(`/ticket/${pool[Math.floor(Math.random() * pool.length)].id}`);
   };
 
   return (
     <div>
-      <div className="page-head">
-        <div>
-          <h1>Ticket Queue</h1>
-          <p>Pick a ticket to work. There's no timer pressure here; use Shift Mode for that.</p>
-        </div>
-        <button className="btn btn-primary" onClick={random}>
-          🎲 Random ticket
-        </button>
-      </div>
+      <PageHeader
+        eyebrow="Practice"
+        title="Ticket queue"
+        description="Pick a ticket to work. There's no timer pressure here; use Shift Mode for that."
+        actions={
+          <button className="btn btn-primary" onClick={random} title="Open a random ticket from the current results">
+            <Shuffle size={16} aria-hidden />
+            Random ticket
+          </button>
+        }
+      />
 
-      <div className="card card-tight mb">
-        <div className="row">
-          <input type="search" placeholder="Search tickets, requesters…" value={q} onChange={(e) => setQ(e.target.value)} style={{ flex: '1 1 220px', width: 'auto' }} />
-          <select value={cat} onChange={(e) => setCat(e.target.value as Category | 'All')} style={{ width: 'auto' }} aria-label="Category">
-            <option>All</option>
-            {CATEGORIES.map((c) => (
-              <option key={c}>{c}</option>
-            ))}
-          </select>
-          <select value={diff} onChange={(e) => setDiff(Number(e.target.value) as 0 | 1 | 2 | 3)} style={{ width: 'auto' }} aria-label="Difficulty">
-            <option value={0}>Any difficulty</option>
-            <option value={1}>Beginner</option>
-            <option value={2}>Intermediate</option>
-            <option value={3}>Advanced</option>
-          </select>
-          <select value={status} onChange={(e) => setStatus(e.target.value as typeof status)} style={{ width: 'auto' }} aria-label="Status">
-            <option value="all">All tickets</option>
-            <option value="new">Not attempted</option>
-            <option value="passed">Passed (70+)</option>
-            <option value="retry">Needs retry</option>
-          </select>
-        </div>
-      </div>
+      <div className="qr-body">
+        <section className="card card-tight queue-filters" aria-label="Filter tickets">
+          <div className="queue-filter-row">
+            <div className="search queue-search">
+              <Search size={16} aria-hidden />
+              <input type="search" placeholder="Search tickets, requesters…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search tickets" />
+            </div>
+            <select className="queue-select" value={diff} onChange={(e) => setDiff(Number(e.target.value) as 0 | 1 | 2 | 3)} aria-label="Difficulty">
+              <option value={0}>Any difficulty</option>
+              <option value={1}>Beginner</option>
+              <option value={2}>Intermediate</option>
+              <option value={3}>Advanced</option>
+            </select>
+            <select className="queue-select" value={status} onChange={(e) => setStatus(e.target.value as typeof status)} aria-label="Status">
+              <option value="all">All tickets</option>
+              <option value="new">Not attempted</option>
+              <option value="passed">Passed ({PASS_MARK}+)</option>
+              <option value="retry">Needs retry</option>
+            </select>
+          </div>
 
-      {list.length === 0 ? (
-        <div className="card empty">No tickets match these filters.</div>
-      ) : (
-        <div className="grid grid-auto">
-          {list.map((s) => {
-            const b = best[s.id];
-            return (
-              <Link key={s.id} to={`/ticket/${s.id}`} className="card ticket-card">
-                <div className="spread">
-                  <div className="row">
-                    <PriorityPill p={s.priority} />
-                    <span className="pill">{s.category}</span>
-                    {s.custom && <span className="pill pill-info">Custom</span>}
+          <div className="queue-filter-foot">
+            <div className="seg queue-cats" role="group" aria-label="Category">
+              {CATEGORY_OPTIONS.map((c) => (
+                <button key={c} type="button" className={cat === c ? 'active' : ''} aria-pressed={cat === c} onClick={() => setCat(c)}>
+                  {c === 'All' ? <LayoutGrid size={14} aria-hidden /> : <CategoryIcon category={c} size={14} />}
+                  {c}
+                  <span className="seg-count num">{categoryCounts[c] ?? 0}</span>
+                </button>
+              ))}
+            </div>
+            <div className="queue-results">
+              <span className="label num" aria-live="polite">
+                {list.length} of {scenarios.length} tickets
+              </span>
+              {filtersActive && (
+                <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
+                  <FilterX size={14} aria-hidden />
+                  Clear filters
+                </button>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {list.length === 0 ? (
+          <div className="card">
+            <EmptyState icon={SearchX} title={filtersActive ? 'No tickets match these filters' : 'No tickets available'}>
+              {filtersActive ? (
+                <div className="qr-empty-body">
+                  <span>Try another category, difficulty or status, or clear the search.</span>
+                  <button type="button" className="btn btn-sm" onClick={clearFilters}>
+                    <FilterX size={14} aria-hidden />
+                    Clear filters
+                  </button>
+                </div>
+              ) : (
+                'Add a scenario in the Scenario Builder to see it here.'
+              )}
+            </EmptyState>
+          </div>
+        ) : (
+          <div className="grid grid-auto">
+            {list.map((s) => {
+              const b = best[s.id];
+              const passed = b !== undefined && b >= PASS_MARK;
+              return (
+                <Link key={s.id} to={`/ticket/${s.id}`} className="card ticket-card queue-card">
+                  <div className="queue-card-top">
+                    <div className="queue-card-tags">
+                      <span className="ticket-id">{ticketNumber(s.id)}</span>
+                      <PriorityPill p={s.priority} />
+                      <span className="pill">
+                        <CategoryIcon category={s.category} />
+                        {s.category}
+                      </span>
+                      {s.custom && <span className="pill pill-info">Custom</span>}
+                    </div>
+                    {b !== undefined ? (
+                      <span className={`pill pill-${scoreTone(b)}`} title={passed ? `Best score ${b}, passed` : `Best score ${b}, needs retry`}>
+                        {passed ? <CircleCheck aria-hidden /> : <RotateCcw aria-hidden />}
+                        Best {b}
+                      </span>
+                    ) : (
+                      <span className="pill pill-primary" title="Not attempted yet">
+                        <CircleDashed aria-hidden />
+                        New
+                      </span>
+                    )}
                   </div>
-                  {b !== undefined ? <span className={`pill pill-${scoreTone(b)}`}>Best {b}</span> : <span className="pill pill-primary">New</span>}
-                </div>
-                <div className="title">{s.title}</div>
-                <div className="small muted" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                  {s.description}
-                </div>
-                <div className="spread tiny muted">
-                  <span>
-                    {CHANNEL_ICON[s.channel]} {s.requester.name} · {s.requester.department}
-                  </span>
-                  <span className="row" style={{ gap: 8 }}>
-                    <span>~{s.targetMinutes} min</span>
-                    <DifficultyDots d={s.difficulty} />
-                  </span>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
-      )}
+
+                  <div className="title">{s.title}</div>
+                  <p className="queue-card-desc">{s.description}</p>
+
+                  <div className="queue-card-foot">
+                    <span className="queue-card-req" title={`Received via ${CHANNEL_LABEL[s.channel]}`}>
+                      <ChannelIcon channel={s.channel} />
+                      <span className="qr-truncate">
+                        {s.requester.name} · {s.requester.department}
+                      </span>
+                    </span>
+                    <span className="queue-card-meta">
+                      <span className="inline-icon num" title="Target handling time">
+                        <Clock size={13} aria-hidden />~{s.targetMinutes} min
+                      </span>
+                      <DifficultyDots d={s.difficulty} />
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -219,7 +219,7 @@ export function gradeTicket(
     if (note.length >= 80) {
       score += 3;
       items.push({ ok: true, text: 'Detailed work notes' });
-    } else items.push({ ok: false, text: 'Work notes are too thin (aim for symptom → findings → actions → result)' });
+    } else items.push({ ok: false, text: 'Work notes are too thin (aim for: symptom, findings, actions, result)' });
 
     const kw = includesAny(note, scenario.noteKeywords);
     const need = Math.max(1, Math.ceil(scenario.noteKeywords.length / 2));
