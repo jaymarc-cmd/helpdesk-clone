@@ -15,7 +15,7 @@ export function ProgressBar({ value, tone }: { value: number; tone?: 'success' |
 }
 
 /** 0–5 rating drawn with icons; supports halves. */
-export function Stars({ value, size = 15 }: { value: number; size?: number }) {
+export function Stars({ value, size = 16 }: { value: number; size?: number }) {
   const full = Math.floor(value);
   const half = value - full >= 0.5;
   return (
@@ -239,7 +239,7 @@ export function EmptyState({ icon: Icon, title, children }: { icon: LucideIcon; 
 
 /** Square tinted tile holding an icon. */
 export function IconTile({ icon: Icon, tone = 'primary', size = 'md' }: { icon: LucideIcon; tone?: 'primary' | 'success' | 'warning' | 'danger' | 'info' | 'neutral'; size?: 'sm' | 'md' | 'lg' }) {
-  const px = size === 'sm' ? 15 : size === 'lg' ? 24 : 18;
+  const px = size === 'sm' ? 14 : size === 'lg' ? 24 : 18;
   return (
     <span className={`icon-tile tone-${tone} size-${size}`} aria-hidden>
       <Icon size={px} strokeWidth={2} />

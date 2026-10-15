@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { useStore } from '../state/store';
 import { downloadJson, normalizeState } from '../state/storage';
-import { IconTile, Modal, PageHeader, initials } from '../components/ui';
+import { IconTile, Modal, PageHeader, formatDate, initials } from '../components/ui';
 import { APP_NAME, APP_TAGLINE } from '../config';
 import type { Settings } from '../types';
 import '../styles/progress-builder-settings.css';
@@ -64,12 +64,12 @@ export function SettingsPage() {
   ];
 
   return (
-    <div className="pbs-page pbs-settings">
+    <div className="page page-narrow pbs-page pbs-settings">
       <PageHeader
         eyebrow={
           <>
             <SettingsIcon size={14} aria-hidden />
-            <span>Configuration</span>
+            <span>Resources</span>
           </>
         }
         title="Settings"
@@ -82,10 +82,8 @@ export function SettingsPage() {
             <UserRound size={18} aria-hidden />
             Profile
           </h2>
-          {state.profile?.createdAt && (
-            <span className="tiny muted">Training since {new Date(state.profile.createdAt).toLocaleDateString()}</span>
-          )}
         </div>
+        {state.profile?.createdAt && <p className="card-sub">Training since {formatDate(state.profile.createdAt)}.</p>}
         <div className="stack">
           <div className="pbs-profile">
             <span className="pbs-avatar" aria-hidden>
@@ -151,7 +149,7 @@ export function SettingsPage() {
                     aria-pressed={s.theme === value}
                     onClick={() => dispatch({ type: 'settings', patch: { theme: value } })}
                   >
-                    <Icon size={15} aria-hidden />
+                    <Icon size={16} aria-hidden />
                     {label}
                   </button>
                 ))}
@@ -234,10 +232,8 @@ export function SettingsPage() {
             Your data
           </h2>
         </div>
+        <p className="card-sub">Back up your progress, or move it to another browser or device.</p>
         <div className="pbs-body">
-          <p className="small muted pbs-lead">
-            Back up your progress, or move it to another browser or device.
-          </p>
           <ul className="pbs-inventory" aria-label="Stored in this browser">
             {inventory.map((it) => (
               <li key={it.label}>
@@ -312,23 +308,23 @@ export function SettingsPage() {
                 </li>
               ))}
             </ul>
-            <div className="pbs-modal-actions">
-              <button type="button" className="btn" onClick={() => setConfirmReset(false)} autoFocus>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn btn-danger"
-                onClick={() => {
-                  dispatch({ type: 'reset' });
-                  setConfirmReset(false);
-                  setMsg({ text: 'Progress reset.', tone: 'success', where: 'data' });
-                }}
-              >
-                <Trash2 size={16} aria-hidden />
-                Yes, reset
-              </button>
-            </div>
+          </div>
+          <div className="modal-actions">
+            <button type="button" className="btn" onClick={() => setConfirmReset(false)} autoFocus>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn btn-danger"
+              onClick={() => {
+                dispatch({ type: 'reset' });
+                setConfirmReset(false);
+                setMsg({ text: 'Progress reset.', tone: 'success', where: 'data' });
+              }}
+            >
+              <Trash2 size={16} aria-hidden />
+              Yes, reset
+            </button>
           </div>
         </Modal>
       )}

@@ -3,9 +3,10 @@ import { Link } from 'react-router-dom';
 import {
   ArrowRight,
   Check,
-  ClipboardList,
+  ClipboardCheck,
   Clock,
   Cpu,
+  GraduationCap,
   Headset,
   History,
   Lightbulb,
@@ -61,22 +62,38 @@ const TIME_OPTIONS: { value: number; label: string }[] = [
   { value: 300, label: '5 min' },
 ];
 
+/** Display label in sentence case; the stored category value is unchanged. */
+function catLabel(cat: Cat): string {
+  return cat === 'Customer Service' ? 'Customer service' : cat;
+}
+
 function poolFor(cat: Cat): InterviewQuestion[] {
   return cat === 'Mixed' ? INTERVIEW_QUESTIONS : INTERVIEW_QUESTIONS.filter((q) => q.category === cat);
 }
 
-function CategoryPill({ category }: { category: Cat }) {
+/** Interview question topic. Same chip look as the shared ticket CategoryPill (neutral fill + icon). */
+function TopicPill({ category }: { category: Cat }) {
   const Icon = CAT_ICON[category];
   return (
-    <span className="pill pill-primary">
+    <span className="pill">
       <Icon aria-hidden />
-      {category}
+      {catLabel(category)}
     </span>
   );
 }
 
 function plural(n: number, word: string) {
   return `${n} ${word}${n === 1 ? '' : 's'}`;
+}
+
+function PracticeEyebrow({ detail, live }: { detail?: string; live?: boolean }) {
+  return (
+    <>
+      <GraduationCap size={14} aria-hidden />
+      <span>{detail ? `Practice · ${detail}` : 'Practice'}</span>
+      {live && <span className="live-dot">LIVE</span>}
+    </>
+  );
 }
 
 export function InterviewPage() {
@@ -115,9 +132,9 @@ export function InterviewPage() {
   const voiceOn = state.settings.voice;
 
   return (
-    <div className="iv-page">
+    <div className="page iv-page">
       <PageHeader
-        eyebrow="Career prep"
+        eyebrow={<PracticeEyebrow />}
         title="Mock interview"
         description="Practice the questions service desk hiring managers actually ask. Type or speak your answers and get feedback on each one."
       />
@@ -129,7 +146,7 @@ export function InterviewPage() {
               <SlidersHorizontal size={18} aria-hidden />
               Interview setup
             </h2>
-            <span className="pill pill-outline num">{plural(INTERVIEW_QUESTIONS.length, 'question')} in bank</span>
+            <span className="pill num">{plural(INTERVIEW_QUESTIONS.length, 'question')} in bank</span>
           </div>
 
           <div className="iv-field">
@@ -142,7 +159,7 @@ export function InterviewPage() {
                 return (
                   <button key={c} type="button" className={cat === c ? 'active' : ''} aria-pressed={cat === c} onClick={() => setCat(c)}>
                     <Icon size={14} aria-hidden />
-                    {c}
+                    {catLabel(c)}
                   </button>
                 );
               })}
@@ -180,19 +197,19 @@ export function InterviewPage() {
           <div className="iv-plan-wrap">
             <ul className="iv-plan" aria-label="Interview plan">
               <li>
-                <ListChecks size={15} aria-hidden />
+                <ListChecks size={14} aria-hidden />
                 <span className="num">{plural(planned, 'question')}</span>
               </li>
               <li>
-                <Clock size={15} aria-hidden />
+                <Clock size={14} aria-hidden />
                 <span className="num">{perQ / 60} min each</span>
               </li>
               <li>
-                <Timer size={15} aria-hidden />
+                <Timer size={14} aria-hidden />
                 <span className="num">Up to {Math.round((planned * perQ) / 60)} min</span>
               </li>
               <li>
-                {voiceOn ? <Volume2 size={15} aria-hidden /> : <VolumeX size={15} aria-hidden />}
+                {voiceOn ? <Volume2 size={14} aria-hidden /> : <VolumeX size={14} aria-hidden />}
                 {voiceOn ? (
                   <span>Read aloud</span>
                 ) : (
@@ -204,7 +221,7 @@ export function InterviewPage() {
             </ul>
             {capped && (
               <p className="small muted iv-note">
-                The {cat} bank has {plural(poolSize, 'question')}, so this interview uses all of them.
+                The {catLabel(cat)} bank has {plural(poolSize, 'question')}, so this interview uses all of them.
               </p>
             )}
           </div>
@@ -219,63 +236,91 @@ export function InterviewPage() {
 
           <div className="iv-start">
             <button className="btn btn-primary btn-lg" onClick={start}>
-              <Play size={18} aria-hidden />
+              <Play size={16} aria-hidden />
               Start interview
             </button>
           </div>
         </section>
 
-        <aside className="iv-side">
-          <div className="iv-stats">
-            <StatTile label="Completed" value={taken} sub={taken === 1 ? 'interview' : 'interviews'} icon={History} tone="neutral" />
-            <StatTile
-              label="Best score"
-              value={best ?? '—'}
-              sub={avg !== null ? `Average ${avg}` : 'No scores yet'}
-              icon={Trophy}
-              tone={best !== null ? scoreTone(best) : 'neutral'}
-            />
-          </div>
-
-          <section className="card" aria-labelledby="iv-history-title">
-            <div className="card-head">
-              <h3 id="iv-history-title">
-                <ClipboardList size={16} aria-hidden />
-                Previous interviews
-              </h3>
-              {taken > 10 && <span className="tiny muted">Latest 10</span>}
-            </div>
-            {history.length > 0 ? (
-              <div className="table-wrap">
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>When</th>
-                      <th>Questions</th>
-                      <th>Score</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {history.map((i) => (
-                      <tr key={i.id}>
-                        <td>{timeAgo(i.completedAt)}</td>
-                        <td className="num">{i.answers.length}</td>
-                        <td>
-                          <span className={`pill pill-${scoreTone(i.score)}`}>{i.score}</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <EmptyState icon={ClipboardList} title="No interviews yet">
-                Your score for each mock interview appears here once you finish it.
-              </EmptyState>
-            )}
-          </section>
+        <aside className="iv-side" aria-label="Interview record">
+          <StatTile
+            label="Completed"
+            value={taken}
+            sub={taken === 1 ? 'Mock interview' : 'Mock interviews'}
+            icon={ClipboardCheck}
+            tone={taken ? 'primary' : 'neutral'}
+          />
+          <StatTile
+            label="Best score"
+            value={
+              best !== null ? (
+                <>
+                  {best}
+                  <span className="faint">/100</span>
+                </>
+              ) : (
+                '–'
+              )
+            }
+            sub={avg !== null ? `Average ${avg}` : 'No scores yet'}
+            icon={Trophy}
+            tone={best !== null ? scoreTone(best) : 'neutral'}
+          />
         </aside>
       </div>
+
+      <section className="card iv-history" aria-labelledby="iv-history-title">
+        <div className="card-head">
+          <h2 id="iv-history-title">
+            <History size={18} aria-hidden />
+            Previous interviews
+          </h2>
+          {taken > 0 && <span className="pill num">{taken > 10 ? `Latest 10 of ${taken}` : `${taken} completed`}</span>}
+        </div>
+        {history.length > 0 ? (
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>When</th>
+                  <th>Questions</th>
+                  <th>Key points</th>
+                  <th>Score</th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.map((i) => {
+                  const covered = i.answers.reduce((n, a) => n + a.matched.length, 0);
+                  const points = i.answers.reduce((n, a) => n + a.matched.length + a.missed.length, 0);
+                  return (
+                    <tr key={i.id}>
+                      <td className="muted">{timeAgo(i.completedAt)}</td>
+                      <td className="num">{i.answers.length}</td>
+                      <td className="num">
+                        {points ? (
+                          <>
+                            {covered}
+                            <span className="faint">/{points}</span>
+                          </>
+                        ) : (
+                          <span className="faint">–</span>
+                        )}
+                      </td>
+                      <td>
+                        <span className={`pill pill-${scoreTone(i.score)}`}>{i.score}</span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <EmptyState icon={History} title="No interviews yet">
+            Your score for each mock interview appears here once you finish it.
+          </EmptyState>
+        )}
+      </section>
     </div>
   );
 }
@@ -321,9 +366,9 @@ function LiveInterview({ questions, perQ, onFinish }: { questions: InterviewQues
   const last = idx + 1 >= questions.length;
 
   return (
-    <div className="iv-page iv-live">
+    <div className="page page-narrow iv-page iv-live">
       <PageHeader
-        eyebrow="Mock interview in progress"
+        eyebrow={<PracticeEyebrow detail="Mock interview" live />}
         title={
           <>
             Question {idx + 1} <span className="iv-of">of {questions.length}</span>
@@ -361,7 +406,7 @@ function LiveInterview({ questions, perQ, onFinish }: { questions: InterviewQues
           <div className="iv-asker-body">
             <div className="iv-asker-meta">
               <span className="label">Hiring manager</span>
-              <CategoryPill category={q.category} />
+              <TopicPill category={q.category} />
               <DifficultyDots d={q.difficulty} showLabel />
             </div>
             <h2 id="iv-question" className="iv-question">
@@ -397,13 +442,13 @@ function LiveInterview({ questions, perQ, onFinish }: { questions: InterviewQues
           <div className="iv-tools">
             {dict.supported && (
               <button className={`btn btn-sm ${dict.listening ? 'btn-danger' : ''}`} onClick={() => (dict.listening ? dict.stop() : dict.start())}>
-                {dict.listening ? <MicOff size={15} aria-hidden /> : <Mic size={15} aria-hidden />}
+                {dict.listening ? <MicOff size={14} aria-hidden /> : <Mic size={14} aria-hidden />}
                 {dict.listening ? 'Stop dictation' : 'Dictate'}
               </button>
             )}
             {ttsOk && state.settings.voice && (
               <button className="btn btn-sm" onClick={() => speak(q.question)}>
-                <Repeat size={15} aria-hidden />
+                <Repeat size={14} aria-hidden />
                 Repeat question
               </button>
             )}
@@ -412,10 +457,7 @@ function LiveInterview({ questions, perQ, onFinish }: { questions: InterviewQues
             </span>
           </div>
           <div className="iv-nav">
-            <button
-              className="btn btn-ghost"
-              onClick={() => next(true)}
-            >
+            <button className="btn btn-ghost" onClick={() => next(true)}>
               <SkipForward size={16} aria-hidden />
               Skip
             </button>
@@ -441,9 +483,9 @@ function Results({ questions, results, onAgain }: { questions: InterviewQuestion
   const seconds = results.reduce((n, r) => n + r.seconds, 0);
 
   return (
-    <div className="iv-page">
+    <div className="page iv-page">
       <PageHeader
-        eyebrow="Mock interview results"
+        eyebrow={<PracticeEyebrow detail="Mock interview" />}
         title="Interview feedback"
         description={verdict}
         actions={
@@ -467,14 +509,14 @@ function Results({ questions, results, onAgain }: { questions: InterviewQuestion
             <dt className="label">Key points covered</dt>
             <dd className="num">
               {matched}
-              <span className="faint"> / {totalPoints}</span>
+              <span className="faint">/{totalPoints}</span>
             </dd>
           </div>
           <div>
             <dt className="label">Answered</dt>
             <dd className="num">
               {answered}
-              <span className="faint"> / {results.length}</span>
+              <span className="faint">/{results.length}</span>
             </dd>
           </div>
           <div>
@@ -497,11 +539,11 @@ function Results({ questions, results, onAgain }: { questions: InterviewQuestion
                 Q{i + 1}
               </span>
               <div className="iv-result-title">
-                <h3 id={`iv-r-${i}`}>{q.question}</h3>
+                <h2 id={`iv-r-${i}`}>{q.question}</h2>
                 <div className="iv-result-meta">
-                  <CategoryPill category={q.category} />
-                  <span className="inline-icon tiny muted num">
-                    <Clock size={13} aria-hidden />
+                  <TopicPill category={q.category} />
+                  <span className="inline-icon small muted num">
+                    <Clock size={14} aria-hidden />
                     {formatClock(r.seconds)}
                   </span>
                   {!r.answer && <span className="pill pill-outline">Skipped</span>}
@@ -520,12 +562,12 @@ function Results({ questions, results, onAgain }: { questions: InterviewQuestion
                 </div>
                 <div className="iv-block">
                   <span className="label num">
-                    Key points {r.matched.length} / {r.matched.length + r.missed.length}
+                    Key points {r.matched.length}/{r.matched.length + r.missed.length}
                   </span>
                   <ul className="check-list">
                     {r.matched.map((m) => (
                       <li key={m}>
-                        <Check size={15} className="ok" aria-hidden />
+                        <Check size={16} className="ok" aria-hidden />
                         <span>
                           <span className="iv-sr">Covered: </span>
                           {m}
@@ -534,7 +576,7 @@ function Results({ questions, results, onAgain }: { questions: InterviewQuestion
                     ))}
                     {r.missed.map((m) => (
                       <li key={m} className="iv-missed">
-                        <X size={15} className="no" aria-hidden />
+                        <X size={16} className="no" aria-hidden />
                         <span>
                           <span className="iv-sr">Missed: </span>
                           {m}

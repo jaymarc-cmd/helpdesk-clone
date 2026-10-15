@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
-import { Headset, History, PhoneCall, Trophy, Volume2, VolumeX } from 'lucide-react';
+import { History, PhoneCall, Volume2, VolumeX } from 'lucide-react';
 import { CALLS } from '../data/calls';
 import { useStore } from '../state/store';
-import { DifficultyDots, PageHeader, initials, scoreTone, timeAgo } from '../components/ui';
+import { BestScorePill, DifficultyDots, NewPill, PageHeader, initials, scoreTone, timeAgo } from '../components/ui';
 import '../styles/shift-calls.css';
 
 function moodTone(mood: number): 'danger' | 'warning' | 'success' {
@@ -17,19 +17,19 @@ export function CallsPage() {
   const voiceOn = state.settings.voice;
 
   return (
-    <div className="sc-page">
+    <div className="page sc-page">
       <PageHeader
         eyebrow={
           <>
-            <Headset size={14} aria-hidden />
-            Practice
+            <PhoneCall size={14} aria-hidden />
+            <span>Practice</span>
           </>
         }
         title="Voice calls"
         description="Live phone simulations with spoken callers. Every choice changes the caller's mood and the outcome."
         actions={
           <label className={`sc-voice ${voiceOn ? 'on' : ''}`}>
-            {voiceOn ? <Volume2 size={18} aria-hidden /> : <VolumeX size={18} aria-hidden />}
+            {voiceOn ? <Volume2 size={16} aria-hidden /> : <VolumeX size={16} aria-hidden />}
             <span className="sc-voice-text">
               <span>Caller voice</span>
               {!speechOk && <span className="sc-voice-hint">Not supported in this browser</span>}
@@ -70,14 +70,7 @@ export function CallsPage() {
             <div className="sc-call-foot">
               <div className="spread">
                 <DifficultyDots d={c.difficulty} showLabel />
-                {best[c.id] !== undefined ? (
-                  <span className={`pill pill-${scoreTone(best[c.id])}`}>
-                    <Trophy aria-hidden />
-                    Best {best[c.id]}
-                  </span>
-                ) : (
-                  <span className="pill pill-outline">Not attempted</span>
-                )}
+                {best[c.id] !== undefined ? <BestScorePill score={best[c.id]} /> : <NewPill />}
               </div>
               <Link className="btn btn-block sc-call-cta" to={`/call/${c.id}`}>
                 <PhoneCall size={16} aria-hidden />

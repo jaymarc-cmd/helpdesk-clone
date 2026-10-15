@@ -15,16 +15,7 @@
 }
 
 /* ================= Mock interview ================= */
-
-.iv-page {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  min-width: 0;
-}
-.iv-page > .page-head {
-  margin-bottom: 0;
-}
+/* Page rhythm comes from the shared .page root; .iv-page only scopes the rules below. */
 
 /* ---------- Setup ---------- */
 .card.iv-setup {
@@ -123,32 +114,36 @@
   align-items: center;
 }
 
+/* Record tiles stack beside the setup card; side by side once the layout is one column. */
 .iv-side {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   min-width: 0;
 }
-.iv-stats {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+@media (max-width: 860px) {
+  .iv-side {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
-.iv-stats > * {
-  min-width: 0;
+@media (max-width: 640px) {
+  .iv-side {
+    gap: 10px;
+  }
+  .iv-side > .stat {
+    padding: 14px;
+  }
+  .iv-side .stat-value {
+    font-size: 1.4rem;
+  }
 }
-.iv-side .table th:last-child,
-.iv-side .table td:last-child {
+.iv-history .table th:last-child,
+.iv-history .table td:last-child {
   text-align: right;
 }
 
 /* ---------- Live ---------- */
-/* Focus mode: one centred column so the question and answer box read as the whole screen. */
-.iv-page.iv-live {
-  width: 100%;
-  max-width: 880px;
-  margin-inline: auto;
-}
+/* Focus mode uses the shared .page-narrow column. */
 .iv-live > .page-head {
   flex-wrap: nowrap;
 }
@@ -253,12 +248,7 @@
   height: 7px;
   border-radius: 50%;
   background: currentColor;
-  animation: iv-blink 1.4s ease-in-out infinite;
-}
-@keyframes iv-blink {
-  50% {
-    opacity: 0.3;
-  }
+  animation: blink 1.4s ease-in-out infinite;
 }
 
 .iv-toolbar {
@@ -365,7 +355,7 @@
   flex-direction: column;
   gap: 8px;
 }
-.iv-result .iv-result-title h3 {
+.iv-result .iv-result-title h2 {
   margin: 0;
   font-size: 1rem;
   line-height: 1.35;
@@ -505,16 +495,7 @@
 }
 
 /* ================= Knowledge base ================= */
-
-.kb-page {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  min-width: 0;
-}
-.kb-page > .page-head {
-  margin-bottom: 0;
-}
+/* Page rhythm comes from the shared .page root; .kb-page only scopes the rules below. */
 
 .kb-progress {
   width: min(240px, 100%);
@@ -560,22 +541,6 @@
     flex: 1 1 auto;
     min-height: 0;
   }
-}
-
-/* Search with a themed clear button in place of the browser's native one. */
-.search.kb-search input {
-  padding-right: 38px;
-}
-.search.kb-search input::-webkit-search-cancel-button,
-.search.kb-search input::-webkit-search-decoration {
-  -webkit-appearance: none;
-  appearance: none;
-}
-.icon-btn.kb-search-clear {
-  position: absolute;
-  right: 4px;
-  width: 30px;
-  height: 30px;
 }
 
 .seg.kb-seg {
@@ -685,29 +650,18 @@
   scroll-margin-top: 76px;
 }
 .kb-article-head {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
   padding-bottom: 16px;
   margin-bottom: 18px;
   border-bottom: 1px solid var(--border);
-}
-.kb-eyebrow {
-  display: flex;
 }
 .kb-article .kb-title {
   margin: 0;
   font-size: 1.6rem;
   overflow-wrap: break-word;
 }
-.kb-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 18px;
-  font-size: 0.8rem;
-  color: var(--text-muted);
+/* Shared .meta-row; a little extra column gap because these items are text, not chips. */
+.meta-row.kb-meta {
+  column-gap: 14px;
 }
 .kb-tagline {
   position: relative;
@@ -740,20 +694,6 @@
   display: flex;
   flex-direction: column;
   gap: 22px;
-}
-.kb-home-intro {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-}
-.kb-home-text {
-  min-width: 0;
-}
-.kb-home-text h2 {
-  margin: 0 0 4px;
-}
-.kb-home-text p {
-  margin: 0;
 }
 .kb-home-section {
   display: flex;

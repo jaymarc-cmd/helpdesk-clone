@@ -257,9 +257,9 @@ export const ACTIONS: CatalogAction[] = [
 export const ACTION_BY_ID: Record<string, CatalogAction> = Object.fromEntries(ACTIONS.map((a) => [a.id, a]));
 
 export const TOOL_LABELS: Record<ToolId, string> = {
-  directory: 'Directory & Mailbox',
+  directory: 'Directory & mailbox',
   endpoint: 'Endpoint Manager',
-  guide: 'Guided Steps',
+  guide: 'Guided steps',
 };
 
 export function actionsForTool(tool: ToolId): CatalogAction[] {

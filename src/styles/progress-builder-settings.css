@@ -1,23 +1,8 @@
 /* Progress, Scenario Builder and Settings pages.
    Overrides of global classes use at least two classes so they win regardless of load order. */
 
-/* ---------- Shared page frame ---------- */
-.pbs-page {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  min-width: 0;
-}
-.pbs-page > .page-head {
-  margin-bottom: 0;
-}
-.pbs-page .card-head .pbs-head-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  min-width: 0;
-}
+/* ---------- Shared ---------- */
+/* Page rhythm comes from the global .page; .pbs-page only scopes these pages. */
 .pbs-body {
   display: flex;
   flex-direction: column;
@@ -75,24 +60,12 @@
   justify-content: center;
 }
 
-/* Full-bleed tables inside cards: row rules run edge to edge and cell text lines up
-   with the card heading. Matches the card's 20px padding. */
-.table-wrap.pbs-bleed {
-  margin-inline: -20px;
-}
-.pbs-bleed > .table th:first-child,
-.pbs-bleed > .table td:first-child {
-  padding-left: 20px;
-}
-.pbs-bleed > .table th:last-child,
-.pbs-bleed > .table td:last-child {
-  padding-right: 20px;
-}
-.pbs-modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
+/* Satisfaction stat: stars sit next to the number (same as the dashboard tile). */
+.pbs-csat {
+  display: inline-flex;
+  align-items: center;
   flex-wrap: wrap;
+  gap: 4px 10px;
 }
 
 /* ---------- Progress: career ladder ---------- */
@@ -281,8 +254,8 @@
   color: var(--text-faint);
 }
 
-/* Ticket history on phones: each row becomes a compact two-part card
-   (title + score on top, category / mode / time / when below). */
+/* Ticket history on phones: each row becomes a compact card
+   (title on the left with score, rating and date stacked on the right; category / mode / time below). */
 @media (max-width: 640px) {
   .pbs-history thead {
     position: absolute;
@@ -302,7 +275,8 @@
     grid-template-areas:
       'ticket ticket ticket score'
       'ticket ticket ticket csat'
-      'cat mode time when';
+      'ticket ticket ticket when'
+      'cat mode time time';
     align-items: center;
     gap: 4px 8px;
     padding: 12px 20px;
@@ -312,7 +286,7 @@
     border-bottom: 0;
     padding-bottom: 4px;
   }
-  .pbs-bleed > .table.pbs-history td:nth-child(n) {
+  .card > .table-wrap > .table.pbs-history td:nth-child(n) {
     display: block;
     padding: 0;
     border: 0;
@@ -350,10 +324,8 @@
   .pbs-history .pbs-h-when {
     grid-area: when;
     justify-self: end;
-  }
-  .pbs-history .pbs-h-cat .pbs-cat {
-    font-size: 0.82rem;
-    color: var(--text-muted);
+    align-self: start;
+    font-size: 0.78rem;
   }
   .pbs-h-icon {
     display: inline;
@@ -431,10 +403,6 @@
 .card-head.pbs-flush {
   margin-bottom: 0;
 }
-/* Sibling card headings share one height so their titles line up across columns. */
-.pbs-builder .split-main .card > .card-head {
-  min-height: 34px;
-}
 .pbs-builder .json-editor {
   display: block;
 }
@@ -489,7 +457,6 @@
   gap: 10px;
   flex-wrap: wrap;
   min-width: 0;
-  min-height: 34px;
 }
 .pill.pbs-idpill {
   display: inline-block;
@@ -685,12 +652,6 @@
 }
 
 /* ---------- Settings ---------- */
-.pbs-settings {
-  max-width: 780px;
-}
-.pbs-lead {
-  margin: 0;
-}
 .pbs-profile {
   display: flex;
   align-items: center;

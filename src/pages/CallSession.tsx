@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
   CircleHelp,
+  Clock,
   GraduationCap,
   MessageSquare,
   Phone,
@@ -15,6 +16,7 @@ import {
   Target,
   ThumbsDown,
   ThumbsUp,
+  UserRound,
   VolumeX,
 } from 'lucide-react';
 import { CALL_BY_ID } from '../data/calls';
@@ -22,7 +24,7 @@ import { callScore, clampMood } from '../engine/calls';
 import { useStore } from '../state/store';
 import { uid } from '../state/storage';
 import type { CallAttempt, CallOption, CallScenario } from '../types';
-import { EmptyState, PageHeader, ScoreRing, formatClock, initials, useNow } from '../components/ui';
+import { DifficultyDots, EmptyState, PageHeader, ScoreRing, formatClock, initials, useNow } from '../components/ui';
 import { useSpeaker } from '../components/speech';
 import '../styles/shift-calls.css';
 
@@ -30,28 +32,45 @@ type Line = CallAttempt['transcript'][number];
 
 const OPTION_KEYS = 'ABCDEFGHIJ';
 
+const BACK = { to: '/calls', label: 'Voice calls' };
+
 export function CallSession() {
   const { id = '' } = useParams();
   const call = CALL_BY_ID[id];
+  // Bumped by "Retry this call": a new key remounts the session so every piece of call state starts fresh.
+  const [run, setRun] = useState(0);
   if (!call) {
     return (
-      <div className="sc-page">
-        <Link to="/calls" className="sc-back">
-          <ArrowLeft size={16} aria-hidden />
-          All calls
-        </Link>
+      <div className="page sc-page">
+        <PageHeader
+          back={BACK}
+          eyebrow={
+            <>
+              <PhoneCall size={14} aria-hidden />
+              <span>Practice · Voice call</span>
+            </>
+          }
+          title="Call not found"
+        />
         <div className="card">
-          <EmptyState icon={PhoneOff} title="Call not found">
-            <Link className="btn btn-sm" to="/calls">
-              <ArrowLeft size={14} aria-hidden />
-              Back to calls
-            </Link>
+          <EmptyState icon={PhoneOff} title="This call isn't in the library">
+            <div className="sc-empty-body">
+              <span>The link may be out of date. Pick a caller from the voice calls list instead.</span>
+              <Link className="btn btn-sm" to="/calls">
+                <ArrowLeft size={14} aria-hidden />
+                Back to calls
+              </Link>
+            </div>
           </EmptyState>
         </div>
       </div>
     );
   }
-  return <Session key={call.id} call={call} />;
+  const retry = () => {
+    setRun((n) => n + 1);
+    window.scrollTo({ top: 0 });
+  };
+  return <Session key={`${call.id}:${run}`} call={call} onRetry={retry} />;
 }
 
 function MoodMeter({ mood }: { mood: number }) {
@@ -100,7 +119,7 @@ function FeedbackCallout({ text, points }: { text: string; points: number }) {
   );
 }
 
-function Session({ call }: { call: CallScenario }) {
+function Session({ call, onRetry }: { call: CallScenario; onRetry: () => void }) {
   const { state, dispatch } = useStore();
   const { speak, stop, speaking, supported } = useSpeaker(state.settings.voice, state.settings.voiceRate);
   const nodes = new Map(call.nodes.map((n) => [n.id, n]));
@@ -183,41 +202,38 @@ function Session({ call }: { call: CallScenario }) {
   const verdict = callVerdict(score);
   const duration = formatClock(((phase === 'ended' ? endedAt : now) - startedAt) / 1000);
 
-  const eyebrow =
-    phase === 'ringing' ? (
-      <>
-        <PhoneIncoming size={14} aria-hidden />
-        Incoming call
-      </>
-    ) : phase === 'live' ? (
-      <>
-        <span className="live-dot">LIVE</span>
-        On call
-      </>
-    ) : (
-      <>
-        <PhoneOff size={14} aria-hidden />
-        Call ended
-      </>
-    );
-
   return (
-    <div className="sc-page">
-      <Link to="/calls" className="sc-back">
-        <ArrowLeft size={16} aria-hidden />
-        All calls
-      </Link>
+    <div className="page sc-page">
       <PageHeader
-        eyebrow={eyebrow}
+        back={BACK}
+        eyebrow={
+          <>
+            <PhoneCall size={14} aria-hidden />
+            <span>Practice · Voice call</span>
+            {phase === 'live' && <span className="live-dot">LIVE</span>}
+          </>
+        }
         title={call.title}
-        description={call.summary}
-        actions={
-          phase !== 'ringing' && (
-            <span className={`timer ${phase === 'ended' ? 'sc-timer-ended' : ''}`} role="timer" aria-label={phase === 'ended' ? 'Call length' : 'Call duration'}>
-              {phase === 'ended' ? <PhoneOff size={16} aria-hidden /> : <Phone size={16} aria-hidden />}
-              {duration}
+        meta={
+          <>
+            <DifficultyDots d={call.difficulty} showLabel />
+            <span className="inline-icon">
+              <UserRound size={14} aria-hidden />
+              <span>
+                {call.caller} · {call.role}
+              </span>
             </span>
-          )
+            <span className="inline-icon" role="timer">
+              <Clock size={14} aria-hidden />
+              {phase === 'ringing' ? (
+                <span>Not answered yet</span>
+              ) : (
+                <span>
+                  {phase === 'ended' ? 'Call length' : 'On call'} <span className="num">{duration}</span>
+                </span>
+              )}
+            </span>
+          </>
         }
       />
 
@@ -237,8 +253,9 @@ function Session({ call }: { call: CallScenario }) {
                   <h2>{call.caller}</h2>
                   <p className="muted">{call.role}</p>
                 </div>
+                <p className="sc-ringing-brief">{call.summary}</p>
                 <button className="btn btn-primary btn-lg" onClick={answer}>
-                  <Phone size={18} aria-hidden />
+                  <Phone size={16} aria-hidden />
                   Answer
                 </button>
                 {!supported && (
@@ -263,7 +280,7 @@ function Session({ call }: { call: CallScenario }) {
                           <PhoneCall size={16} aria-hidden />
                           More calls
                         </Link>
-                        <button className="btn" onClick={() => window.location.reload()}>
+                        <button className="btn" onClick={onRetry}>
                           <RotateCcw size={16} aria-hidden />
                           Retry this call
                         </button>
@@ -273,7 +290,7 @@ function Session({ call }: { call: CallScenario }) {
                   <div className="sc-coaching">
                     <div className="card-head">
                       <h3>
-                        <GraduationCap size={17} aria-hidden />
+                        <GraduationCap size={16} aria-hidden />
                         Coaching
                       </h3>
                     </div>
@@ -298,17 +315,6 @@ function Session({ call }: { call: CallScenario }) {
                     <MessageSquare size={18} aria-hidden />
                     Transcript
                   </h2>
-                  {phase === 'live' ? (
-                    <span className="pill pill-success">
-                      <Phone aria-hidden />
-                      Connected
-                    </span>
-                  ) : (
-                    <span className="pill">
-                      <PhoneOff aria-hidden />
-                      Disconnected
-                    </span>
-                  )}
                 </div>
 
                 <div className="chat" aria-live="polite" ref={chatRef}>
@@ -374,13 +380,13 @@ function Session({ call }: { call: CallScenario }) {
           <div className="card sc-side-card">
             <div className="card-head">
               <h3>
-                <Target size={17} aria-hidden />
+                <Target size={16} aria-hidden />
                 Skills in focus
               </h3>
             </div>
             <div className="sc-skills">
               {call.skills.map((s) => (
-                <span key={s} className="pill pill-primary">
+                <span key={s} className="pill pill-outline">
                   {s}
                 </span>
               ))}

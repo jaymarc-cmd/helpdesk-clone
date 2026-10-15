@@ -28,7 +28,7 @@ import { useStore } from '../state/store';
 import { downloadJson } from '../state/storage';
 import { TEAMS, type Scenario } from '../types';
 import { CategoryIcon } from '../components/icons';
-import { EmptyState, Modal, PageHeader, PriorityPill } from '../components/ui';
+import { CategoryPill, EmptyState, Modal, PageHeader, PriorityPill } from '../components/ui';
 import '../styles/progress-builder-settings.css';
 
 const pretty = (o: unknown) => JSON.stringify(o, null, 2);
@@ -118,15 +118,15 @@ export function Builder() {
   const count = state.customScenarios.length;
 
   return (
-    <div className="pbs-page pbs-builder">
+    <div className="page pbs-page pbs-builder">
       <PageHeader
         eyebrow={
           <>
             <Wrench size={14} aria-hidden />
-            <span>Authoring</span>
+            <span>Resources</span>
           </>
         }
-        title="Scenario Builder"
+        title="Scenario builder"
         description="Write your own tickets, or share packs with your class or team as JSON. Custom tickets appear in the queue and in shifts."
         actions={
           <>
@@ -242,7 +242,7 @@ export function Builder() {
                 </span>
                 {savedIsScenario && (
                   <Link to={`/ticket/${saved}`} className="btn btn-sm btn-primary">
-                    <Play size={14} aria-hidden />
+                    <Play size={16} aria-hidden />
                     Play it now
                   </Link>
                 )}
@@ -268,11 +268,11 @@ export function Builder() {
         <div className="pbs-side">
           <section className="card" aria-labelledby="pbs-yours-h">
             <div className="card-head">
-              <h2 id="pbs-yours-h">
-                <FolderOpen size={18} aria-hidden />
+              <h3 id="pbs-yours-h">
+                <FolderOpen size={16} aria-hidden />
                 Your scenarios
-              </h2>
-              <span className={`pill ${count ? 'pill-primary' : ''} num`}>{count}</span>
+              </h3>
+              <span className="pill num">{count}</span>
             </div>
             {count === 0 ? (
               <EmptyState icon={FilePlus2} title="No custom scenarios yet">
@@ -288,17 +288,14 @@ export function Builder() {
                         <div className="pbs-scn-title">{s.title}</div>
                         <div className="pbs-scn-id">{s.id}</div>
                         <div className="pbs-scn-meta">
-                          <span className="inline-icon">
-                            <CategoryIcon category={s.category} size={13} />
-                            {s.category}
-                          </span>
+                          <CategoryPill category={s.category} />
                           {s.priority && <PriorityPill p={s.priority} />}
                           {isEditing && <span className="pill pill-primary">In editor</span>}
                         </div>
                       </div>
                       <div className="pbs-scn-actions">
                         <Link className="btn btn-sm" to={`/ticket/${s.id}`}>
-                          <Play size={14} aria-hidden />
+                          <Play size={16} aria-hidden />
                           Play
                         </Link>
                         <div className="pbs-scn-icons">
@@ -439,15 +436,15 @@ export function Builder() {
               It will be removed from this browser and will no longer appear in the queue or in new shifts. Export it first if you want to
               keep a copy.
             </p>
-            <div className="pbs-modal-actions">
-              <button type="button" className="btn" onClick={() => setPendingDelete(null)} autoFocus>
-                Cancel
-              </button>
-              <button type="button" className="btn btn-danger" onClick={confirmDelete}>
-                <Trash2 size={16} aria-hidden />
-                Delete scenario
-              </button>
-            </div>
+          </div>
+          <div className="modal-actions">
+            <button type="button" className="btn" onClick={() => setPendingDelete(null)} autoFocus>
+              Cancel
+            </button>
+            <button type="button" className="btn btn-danger" onClick={confirmDelete}>
+              <Trash2 size={16} aria-hidden />
+              Delete scenario
+            </button>
           </div>
         </Modal>
       )}

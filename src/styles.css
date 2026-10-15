@@ -38,6 +38,8 @@
   --rail-accent: #52d3c1;
   --rail-line: #1f302e;
   --rail-live: #ff8f86;
+  /* Text on the always-dark rail and hero (same in both themes). */
+  --rail-strong: #ffffff;
   --rail-accent-hover: #7ee3d5;
   --seg-active: #ffffff;
 
@@ -239,7 +241,7 @@ svg {
   gap: 10px;
   padding: 2px 8px 10px;
   border-bottom: 1px solid var(--rail-line);
-  color: #fff;
+  color: var(--rail-strong);
 }
 .brand-name {
   font-family: var(--font-display);
@@ -300,7 +302,7 @@ svg {
 }
 .nav a:hover {
   background: var(--rail-hover);
-  color: #fff;
+  color: var(--rail-strong);
   text-decoration: none;
 }
 .nav a:hover svg {
@@ -308,7 +310,7 @@ svg {
 }
 .nav a.active {
   background: var(--rail-active);
-  color: #fff;
+  color: var(--rail-strong);
 }
 .nav a.active svg {
   color: var(--rail-accent);
@@ -359,7 +361,7 @@ svg {
 }
 .sidebar-footer .name {
   font-weight: 600;
-  color: #fff;
+  color: var(--rail-strong);
   font-size: 0.9rem;
 }
 .sidebar-footer .rank {
@@ -728,6 +730,11 @@ svg {
   padding: 5px 10px;
   font-size: 0.8rem;
   gap: 6px;
+}
+/* Icons scale with the button: 14px in small buttons, 16px elsewhere. */
+.btn-sm svg {
+  width: 14px;
+  height: 14px;
 }
 .btn-lg {
   padding: 11px 20px;
@@ -1290,6 +1297,14 @@ label.field > span.hint,
   flex-wrap: wrap;
   margin-top: 18px;
 }
+@media (max-width: 560px) {
+  .modal-actions {
+    flex-direction: column-reverse;
+  }
+  .modal-actions .btn {
+    width: 100%;
+  }
+}
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -1352,7 +1367,7 @@ label.field > span.hint,
   background-size: auto, 28px 28px, 28px 28px;
 }
 .hero h1 {
-  color: #fff;
+  color: var(--rail-strong);
 }
 .hero p {
   color: var(--rail-text);
@@ -1369,7 +1384,7 @@ label.field > span.hint,
 }
 .hero .btn {
   background: transparent;
-  color: #fff;
+  color: var(--rail-strong);
   border-color: rgba(255, 255, 255, 0.25);
 }
 .hero .btn:hover {

@@ -1,5 +1,4 @@
-import { useEffect, useId, useMemo, useReducer, useRef, useState, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
+import { useEffect, useId, useMemo, useReducer, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -22,6 +21,7 @@ import {
   History,
   Hourglass,
   IdCard,
+  Inbox,
   Info,
   Laptop,
   Lightbulb,
@@ -32,7 +32,6 @@ import {
   MessageCircleQuestion,
   MessageSquare,
   MessagesSquare,
-  Radio,
   ScanSearch,
   Search,
   SearchX,
@@ -41,6 +40,7 @@ import {
   ShieldQuestion,
   ShieldX,
   SquareTerminal,
+  Timer,
   TriangleAlert,
   UserRound,
   Users,
@@ -56,8 +56,21 @@ import { TERMINAL_HELP } from '../engine/terminal';
 import { useStore } from '../state/store';
 import { uid } from '../state/storage';
 import { TEAMS, type Outcome, type Scenario, type Team, type TicketAttempt, type ToolId, type WorkLogEntry } from '../types';
-import { DifficultyDots, EmptyState, Markdown, Modal, PriorityPill, formatClock, initials, ticketNumber, useNow } from '../components/ui';
-import { CHANNEL_LABEL, CategoryIcon, ChannelIcon } from '../components/icons';
+import {
+  CategoryPill,
+  DifficultyDots,
+  EmptyState,
+  Markdown,
+  Modal,
+  ModePill,
+  PageHeader,
+  PriorityPill,
+  formatClock,
+  initials,
+  ticketNumber,
+  useNow,
+} from '../components/ui';
+import { CHANNEL_LABEL, ChannelIcon } from '../components/icons';
 import '../styles/workspace.css';
 
 type Tab = 'conversation' | 'directory' | 'endpoint' | 'terminal' | 'kb';
@@ -98,13 +111,23 @@ export function TicketWorkspace() {
   const scenario = getScenario(id);
   if (!scenario) {
     return (
-      <div className="ws-root">
-        <div className="card ws-notfound-card">
-          <EmptyState icon={SearchX} title="Ticket not found">
+      <div className="page ws-root">
+        <PageHeader
+          back={{ to: '/tickets', label: 'Ticket queue' }}
+          eyebrow={
+            <>
+              <Inbox size={14} aria-hidden />
+              <span>Practice</span>
+            </>
+          }
+          title="Ticket not found"
+        />
+        <div className="card">
+          <EmptyState icon={SearchX} title="This ticket isn't in the queue">
             <span className="ws-notfound">
-              The ticket may have been removed, or the link is out of date.
-              <Link to="/tickets" className="btn">
-                <ArrowLeft size={16} aria-hidden />
+              It may have been removed, or the link is out of date.
+              <Link to="/tickets" className="btn btn-sm">
+                <ArrowLeft size={14} aria-hidden />
                 Back to queue
               </Link>
             </span>
@@ -179,44 +202,45 @@ function Workspace({ scenario }: { scenario: Scenario }) {
   const kbArticle = kbOpen ? KB_BY_ID[kbOpen] : undefined;
 
   return (
-    <div className="ws-root">
-      <header className="ws-header">
-        <Link to={inShift ? '/shift' : '/tickets'} className="ws-back">
-          <ArrowLeft size={15} aria-hidden />
-          {inShift ? 'Shift board' : 'Queue'}
-        </Link>
-        <div className="ws-meta">
-          <span className="ticket-id">{ticketNumber(scenario.id)}</span>
-          <PriorityPill p={scenario.priority} long />
-          <span className="pill pill-outline">
-            <CategoryIcon category={scenario.category} size={12} />
-            {scenario.category}
-          </span>
-          <DifficultyDots d={scenario.difficulty} showLabel />
-          {inShift && (
-            <span className="pill pill-danger">
-              <Radio size={12} aria-hidden />
-              Shift
+    <div className="page ws-root">
+      <PageHeader
+        back={inShift ? { to: '/shift', label: 'Shift board' } : { to: '/tickets', label: 'Ticket queue' }}
+        eyebrow={
+          <>
+            <Inbox size={14} aria-hidden />
+            <span>Practice · {ticketNumber(scenario.id)}</span>
+            {inShift && <span className="live-dot">LIVE</span>}
+          </>
+        }
+        title={scenario.title}
+        meta={
+          <>
+            <PriorityPill p={scenario.priority} long />
+            <CategoryPill category={scenario.category} />
+            <DifficultyDots d={scenario.difficulty} showLabel />
+            {inShift && <ModePill mode="shift" />}
+            <span className="inline-icon">
+              <Clock size={14} aria-hidden />
+              <span>Target {scenario.targetMinutes} min</span>
             </span>
-          )}
-        </div>
-        <h1 className="ws-title">{scenario.title}</h1>
-        <div className="ws-controls">
-          {state.settings.hints && (
-            <button className="btn btn-sm" onClick={showHint} title={`Costs ${HINT_PENALTY} points`}>
-              <Lightbulb size={15} aria-hidden />
-              Hint (−{HINT_PENALTY})
-            </button>
-          )}
-          <span className={`timer ${over ? 'over' : ''}`} title={`Target: ${scenario.targetMinutes} min`} role="timer">
-            <Clock size={16} aria-hidden />
-            {formatClock(elapsed)}
-            <span className="ws-timer-target">
-              {over ? 'over' : '/'} {scenario.targetMinutes}:00
+          </>
+        }
+        actions={
+          <>
+            {state.settings.hints && (
+              <button className="btn" onClick={showHint} title={`Costs ${HINT_PENALTY} points`}>
+                <Lightbulb size={16} aria-hidden />
+                Hint (−{HINT_PENALTY})
+              </button>
+            )}
+            <span className={`timer ${over ? 'over' : ''}`} title={`Target: ${scenario.targetMinutes} min`} role="timer">
+              <Timer size={16} aria-hidden />
+              {formatClock(elapsed)}
+              {over && <span className="ws-timer-over">over target</span>}
             </span>
-          </span>
-        </div>
-      </header>
+          </>
+        }
+      />
 
       {hint && (
         <div className="callout warning ws-hint" role="status">
@@ -275,13 +299,10 @@ function Workspace({ scenario }: { scenario: Scenario }) {
       </div>
 
       {kbOpen && kbArticle && (
-        <WsModal title={kbArticle.title} onClose={() => setKbOpen(null)}>
+        <Modal title={kbArticle.title} onClose={() => setKbOpen(null)}>
           <div className="stack">
-            <div className="ws-pill-wrap">
-              <span className="pill pill-outline">
-                <BookOpen size={12} aria-hidden />
-                {kbArticle.category}
-              </span>
+            <div className="row">
+              <CategoryPill category={kbArticle.category} />
               {scenario.kb.includes(kbOpen) && (
                 <span className="pill pill-primary">
                   <Link2 size={12} aria-hidden />
@@ -291,25 +312,13 @@ function Workspace({ scenario }: { scenario: Scenario }) {
             </div>
             <Markdown text={kbArticle.body} />
           </div>
-        </WsModal>
+        </Modal>
       )}
     </div>
   );
 }
 
 type Dispatch = (e: Parameters<ReturnType<typeof sessionReducer>>[1]) => void;
-
-/** Modal rendered on <body> so no ancestor (sticky panel, size container) can clip or re-anchor it. */
-function WsModal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
-  return createPortal(
-    <div className="ws-root">
-      <Modal title={title} onClose={onClose}>
-        {children}
-      </Modal>
-    </div>,
-    document.body,
-  );
-}
 
 function IdentityPill({ s }: { s: SessionState }) {
   if (s.verified)
@@ -350,7 +359,13 @@ function TicketInfo({ scenario, s, onKb }: { scenario: Scenario; s: SessionState
 
   return (
     <>
-      <section className="card" aria-label="Requester">
+      <section className="card">
+        <div className="card-head">
+          <h3>
+            <UserRound size={16} aria-hidden />
+            Requester
+          </h3>
+        </div>
         <div className="ws-requester-head">
           <div className="avatar" aria-hidden>
             {initials(r.name)}
@@ -406,7 +421,7 @@ function TicketInfo({ scenario, s, onKb }: { scenario: Scenario; s: SessionState
             <ScanSearch size={16} aria-hidden />
             Findings
           </h3>
-          <span className={`pill ${found.length ? 'pill-primary' : ''}`} aria-label={`${found.length} findings`}>
+          <span className="pill num" aria-label={`${found.length} findings`}>
             {found.length}
           </span>
         </div>
@@ -437,7 +452,7 @@ function TicketInfo({ scenario, s, onKb }: { scenario: Scenario; s: SessionState
           <div className="ws-link-list">
             {related.map((k) => (
               <button key={k} className="btn btn-ghost btn-sm ws-link-btn" onClick={() => onKb(k)}>
-                <FileText size={15} aria-hidden />
+                <FileText size={16} aria-hidden />
                 <span>{KB_BY_ID[k].title}</span>
               </button>
             ))}
@@ -451,7 +466,7 @@ function TicketInfo({ scenario, s, onKb }: { scenario: Scenario; s: SessionState
             <History size={16} aria-hidden />
             Activity log
           </h3>
-          <span className="pill" aria-label={`${s.log.length} entries`}>
+          <span className="pill num" aria-label={`${s.log.length} entries`}>
             {s.log.length}
           </span>
         </div>
@@ -588,7 +603,7 @@ function Conversation({ scenario, s, dispatch, at }: { scenario: Scenario; s: Se
 
       <div>
         <div className="label ws-label-row">
-          <MessagesSquare size={13} aria-hidden />
+          <MessagesSquare size={14} aria-hidden />
           Suggested questions
         </div>
         {available.length === 0 && s.verifyAttempted ? (
@@ -597,13 +612,13 @@ function Conversation({ scenario, s, dispatch, at }: { scenario: Scenario; s: Se
           <div className="suggestions ws-questions">
             {!s.verifyAttempted && (
               <button key={VERIFY_QUESTION_ID} className="suggestion verify" disabled={typing} onClick={() => dispatch({ type: 'verify', at: at() })}>
-                <Fingerprint size={15} aria-hidden />
+                <Fingerprint size={16} aria-hidden />
                 <span>Verify identity</span>
               </button>
             )}
             {available.map((q) => (
               <button key={q.id} className="suggestion" disabled={typing} onClick={() => dispatch({ type: 'ask', questionId: q.id, at: at() })}>
-                <MessageCircleQuestion size={15} aria-hidden />
+                <MessageCircleQuestion size={16} aria-hidden />
                 <span>{q.text}</span>
               </button>
             ))}
@@ -691,7 +706,7 @@ function ActionGrid({ tool, s, dispatch, at }: { tool: ToolId; s: SessionState; 
         {latest ? `${ACTION_BY_ID[latest.id]?.label ?? ''}: ${latest.text}` : ''}
       </div>
       {confirm && (
-        <WsModal title="Confirm action" onClose={() => setConfirm(null)}>
+        <Modal title="Confirm action" onClose={() => setConfirm(null)}>
           <div className="stack">
             <div className="callout warning">
               <TriangleAlert size={18} aria-hidden />
@@ -699,24 +714,24 @@ function ActionGrid({ tool, s, dispatch, at }: { tool: ToolId; s: SessionState; 
                 <strong>{ACTION_BY_ID[confirm].label}</strong>: {ACTION_BY_ID[confirm].description}
               </div>
             </div>
-            <p className="ws-modal-note">This is a disruptive action and is recorded on the ticket. Make sure your findings support it.</p>
-            <div className="ws-modal-actions">
-              <button className="btn" onClick={() => setConfirm(null)}>
-                Cancel
-              </button>
-              <button
-                className="btn btn-danger"
-                onClick={() => {
-                  dispatch({ type: 'action', actionId: confirm, at: at() });
-                  setConfirm(null);
-                }}
-              >
-                <TriangleAlert size={15} aria-hidden />
-                Yes, run it
-              </button>
-            </div>
+            <div className="muted small">This is a disruptive action and is recorded on the ticket. Make sure your findings support it.</div>
           </div>
-        </WsModal>
+          <div className="modal-actions">
+            <button className="btn" onClick={() => setConfirm(null)}>
+              Cancel
+            </button>
+            <button
+              className="btn btn-danger"
+              onClick={() => {
+                dispatch({ type: 'action', actionId: confirm, at: at() });
+                setConfirm(null);
+              }}
+            >
+              <TriangleAlert size={16} aria-hidden />
+              Yes, run it
+            </button>
+          </div>
+        </Modal>
       )}
     </>
   );
@@ -773,7 +788,7 @@ function DirectoryTool({ scenario, s, dispatch, at }: { scenario: Scenario; s: S
               <Users size={16} aria-hidden />
               Groups
             </h3>
-            <span className="pill" aria-label={`${a.groups.length} groups`}>
+            <span className="pill num" aria-label={`${a.groups.length} groups`}>
               {a.groups.length}
             </span>
           </div>
@@ -790,14 +805,14 @@ function DirectoryTool({ scenario, s, dispatch, at }: { scenario: Scenario; s: S
           )}
           <div className="ws-divider">
             <div className="ws-subhead">
-              <Mail size={15} aria-hidden />
+              <Mail size={14} aria-hidden />
               Mailbox
             </div>
             <dl className="kv">
               <dt>Usage</dt>
-              <dd>{a.mailboxUsage ?? '—'}</dd>
+              <dd>{a.mailboxUsage ?? '–'}</dd>
               <dt>Archive</dt>
-              <dd>{a.archive ?? '—'}</dd>
+              <dd>{a.archive ?? '–'}</dd>
             </dl>
           </div>
         </section>
@@ -821,10 +836,9 @@ function DirectoryTool({ scenario, s, dispatch, at }: { scenario: Scenario; s: S
             </span>
           )}
         </div>
-        {s.signInLogViewed ? (
+        <p className="card-sub">Recent authentication events for this account. Loading the log is recorded on the ticket.</p>
+        {s.signInLogViewed && (
           <SignInLog lines={scenario.signInLog?.lines ?? [`${a.lastLogon}  SUCCESS   Windows sign-in   ${s.device.hostname}`, 'No failures in the last 24 hours.']} />
-        ) : (
-          <p className="ws-empty-hint">Recent authentication events for this account. Loading the log is recorded on the ticket.</p>
         )}
       </section>
 
@@ -897,7 +911,7 @@ function EndpointTool({ s, dispatch, at }: { s: SessionState; dispatch: Dispatch
           <dt>OS</dt>
           <dd>{d.os}</dd>
           <dt>IP address</dt>
-          <dd className="mono">{d.ip || '—'}</dd>
+          <dd className="mono">{d.ip || '–'}</dd>
           <dt>Disk free</dt>
           <dd>{d.diskFree}</dd>
           <dt>Uptime</dt>
@@ -908,13 +922,13 @@ function EndpointTool({ s, dispatch, at }: { s: SessionState; dispatch: Dispatch
         {d.installedNotes && d.installedNotes.length > 0 && (
           <div className="ws-divider">
             <div className="ws-subhead">
-              <ListChecks size={15} aria-hidden />
+              <ListChecks size={14} aria-hidden />
               Inventory &amp; health
             </div>
             <ul className="ws-inventory">
               {d.installedNotes.map((n) => (
                 <li key={n}>
-                  <CircleDot size={10} aria-hidden />
+                  <CircleDot size={12} aria-hidden />
                   <span>{n}</span>
                 </li>
               ))}
@@ -1029,7 +1043,7 @@ function Terminal({ s, dispatch, at }: { s: SessionState; dispatch: Dispatch; at
       </div>
       <div>
         <div className="label ws-label-row">
-          <SquareTerminal size={13} aria-hidden />
+          <SquareTerminal size={14} aria-hidden />
           Common commands
         </div>
         <div className="suggestions">
@@ -1083,7 +1097,7 @@ function KbBrowser({ related, onOpen }: { related: string[]; onOpen: (id: string
           {linked.length > 0 && (
             <div>
               <div className="label ws-label-row">
-                <Link2 size={13} aria-hidden />
+                <Link2 size={14} aria-hidden />
                 Related to this ticket
               </div>
               <div className="ws-kb-list related">{linked.map(item)}</div>
@@ -1092,7 +1106,7 @@ function KbBrowser({ related, onOpen }: { related: string[]; onOpen: (id: string
           {others.length > 0 && (
             <div>
               <div className="label ws-label-row">
-                <BookOpen size={13} aria-hidden />
+                <BookOpen size={14} aria-hidden />
                 {q ? (linked.length ? 'Other matches' : 'Matches') : linked.length ? 'Other articles' : 'All articles'} · {others.length}
               </div>
               <div className="ws-kb-list">{others.map(item)}</div>
@@ -1151,15 +1165,14 @@ function ResolutionPanel({
 
   return (
     <aside className="card ws-resolution" aria-label="Resolution" ref={panelRef}>
+      <div className="card-head">
+        <h3>
+          <ClipboardCheck size={16} aria-hidden />
+          Resolution
+        </h3>
+      </div>
+      <p className="card-sub">Everything below is graded when you submit.</p>
       <div className="ws-res-layout">
-        <div className="ws-res-head">
-          <h2>
-            <ClipboardCheck size={18} aria-hidden />
-            Resolution
-          </h2>
-          <p className="ws-res-sub">Everything below is graded when you submit.</p>
-        </div>
-
         <div className="ws-res-col">
           <fieldset className={`ws-fieldset ${invalid('rootCause')}`}>
             <legend className="ws-legend">Root cause</legend>
@@ -1188,7 +1201,7 @@ function ResolutionPanel({
             <div className="seg ws-outcome" role="radiogroup" aria-labelledby={`${ids}-outcome`}>
               {OUTCOMES.map(({ id: o, label, desc, icon: Icon }) => (
                 <button key={o} type="button" role="radio" aria-checked={outcome === o} className={outcome === o ? 'active' : ''} onClick={() => setOutcome(o)} title={desc}>
-                  <Icon size={15} aria-hidden />
+                  <Icon size={14} aria-hidden />
                   {label}
                 </button>
               ))}
@@ -1287,7 +1300,7 @@ function ResolutionPanel({
             </div>
           )}
           <button className="btn btn-primary btn-lg ws-submit" onClick={submit}>
-            <CheckCheck size={18} aria-hidden />
+            <CheckCheck size={16} aria-hidden />
             Submit &amp; close ticket
           </button>
         </div>

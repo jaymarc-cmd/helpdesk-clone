@@ -79,7 +79,7 @@
     width: 7px;
     height: 7px;
     border-radius: 50%;
-    background: var(--danger);
+    background: var(--rail-live);
     box-shadow: 0 0 0 2px var(--rail-bg);
   }
 }
@@ -159,14 +159,14 @@
 .onboard .onboard-hero h2 {
   margin: 0;
   font-size: 1.5rem;
-  color: rgba(255, 255, 255, 0.97);
+  color: var(--rail-strong);
 }
 .onboard .onboard-hero p {
   font-size: 0.94rem;
   line-height: 1.6;
 }
 .onboard .onboard-hero strong {
-  color: rgba(255, 255, 255, 0.97);
+  color: var(--rail-strong);
 }
 .onboard .onboard-points {
   list-style: none;
@@ -212,11 +212,9 @@
 }
 
 /* ---------- Dashboard ---------- */
+/* Root is "page dash": .page owns the vertical rhythm; this only names the container for the queries below. */
 .dash {
   container: dash / inline-size;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
 }
 
 /* Console band */
@@ -226,12 +224,6 @@
   align-items: stretch;
   gap: 28px;
   padding: 28px 30px;
-  /* An edge and a faint accent glow keep the band distinct from the page in the dark theme. */
-  border: 1px solid var(--rail-line);
-  background-image: radial-gradient(120% 140% at 100% 0%, color-mix(in srgb, var(--rail-accent) 11%, transparent), transparent 60%),
-    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
-  background-size: auto, 28px 28px, 28px 28px;
 }
 .dash .dash-hero-main {
   min-width: 0;
@@ -271,8 +263,8 @@
   gap: 5px;
   padding: 2px 9px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--rail-active);
+  border: 1px solid color-mix(in srgb, var(--rail-text) 14%, transparent);
   color: var(--rail-accent);
   font-family: var(--mono);
   font-size: 0.72rem;
@@ -282,7 +274,7 @@
 .dash .dash-rank-title {
   font-weight: 600;
   font-size: 0.92rem;
-  color: rgba(255, 255, 255, 0.94);
+  color: var(--rail-strong);
 }
 .dash .dash-rank-xp {
   margin-left: auto;
@@ -310,12 +302,12 @@
   gap: 6px;
   padding: 14px 16px;
   border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: color-mix(in srgb, var(--rail-text) 5%, transparent);
+  border: 1px solid color-mix(in srgb, var(--rail-text) 12%, transparent);
 }
 .dash .dash-next-live {
-  border-color: color-mix(in srgb, var(--danger) 45%, transparent);
-  background: color-mix(in srgb, var(--danger) 8%, transparent);
+  border-color: color-mix(in srgb, var(--rail-live) 45%, transparent);
+  background: color-mix(in srgb, var(--rail-live) 8%, transparent);
 }
 .dash .dash-next-label {
   display: flex;
@@ -337,7 +329,7 @@
   font-weight: 700;
   font-size: 1rem;
   line-height: 1.3;
-  color: rgba(255, 255, 255, 0.96);
+  color: var(--rail-strong);
   overflow-wrap: anywhere;
 }
 .dash .dash-next-meta {
@@ -357,37 +349,14 @@
   flex: 1 1 auto;
 }
 
-/* Figures */
-.dash .dash-stats {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-.dash .dash-stats .stat {
-  gap: 6px;
-}
-.dash .dash-value {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 2px;
-}
-.dash .dash-value-of {
-  font-family: var(--mono);
-  font-size: 0.8rem;
-  font-weight: 500;
-  letter-spacing: 0;
-  color: var(--text-faint);
-}
+/* Figures: layout comes from the shared .grid-4 / StatTile. Stars sit next to the CSAT number. */
 .dash .dash-csat {
   display: inline-flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 4px 10px;
 }
-.dash .dash-stats .stat-sub {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-}
+
 /* Quick start */
 .dash .dash-section {
   display: flex;
@@ -448,20 +417,7 @@
   display: flex;
   flex-direction: column;
 }
-.dash .dash-head-text {
-  flex: 1 1 200px;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.dash .dash-head-text p {
-  margin: 0;
-  font-size: 0.84rem;
-  color: var(--text-muted);
-}
 .dash .dash-head-link {
-  align-self: flex-start;
   display: inline-flex;
   align-items: center;
   gap: 2px;
@@ -503,9 +459,6 @@
 .dash .mastery-name {
   font-weight: 600;
   font-size: 0.9rem;
-}
-.dash .mastery-top .pill {
-  line-height: 1.4;
 }
 .dash .mastery-count {
   margin-left: auto;
@@ -555,15 +508,13 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 2px 6px;
-  font-size: 0.76rem;
+  gap: 4px 6px;
+  font-size: 0.78rem;
   line-height: 1.4;
   color: var(--text-muted);
 }
-.dash .activity-meta .pill {
-  padding: 0 7px;
-  font-size: 0.7rem;
-  line-height: 1.45;
+.dash .activity-when {
+  white-space: nowrap;
 }
 .dash .activity-score {
   flex-shrink: 0;
@@ -584,7 +535,6 @@
 
 /* Narrow main column (container-based, so the sidebar width does not matter) */
 @container dash (max-width: 960px) {
-  .dash .dash-stats,
   .dash .dash-quick {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -613,16 +563,6 @@
 @container dash (max-width: 560px) {
   .dash .dash-hero h1 {
     font-size: 1.5rem;
-  }
-  .dash .dash-stats,
-  .dash .dash-quick {
-    gap: 10px;
-  }
-  .dash .dash-stats .stat {
-    padding: 14px;
-  }
-  .dash .dash-stats .stat-value {
-    font-size: 1.4rem;
   }
   /* Quick links become a compact 2 x 2 launcher; the descriptions are dropped. */
   .dash-quick .quick {

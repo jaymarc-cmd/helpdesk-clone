@@ -13,10 +13,11 @@ import {
   History,
   Inbox,
   LibraryBig,
+  Medal,
   PhoneCall,
   Smile,
   Target,
-  TicketCheck,
+  Ticket,
   Timer,
   Trophy,
   type LucideIcon,
@@ -27,14 +28,26 @@ import { shiftEndsAt } from '../engine/shift';
 import { useStore } from '../state/store';
 import { CATEGORIES } from '../types';
 import { CATEGORY_ICON, CategoryIcon } from '../components/icons';
-import { EmptyState, IconTile, ProgressBar, Stars, StatTile, scoreTone, ticketNumber, timeAgo, useNow } from '../components/ui';
+import {
+  CategoryPill,
+  EmptyState,
+  IconTile,
+  ModePill,
+  ProgressBar,
+  Stars,
+  StatTile,
+  scoreTone,
+  ticketNumber,
+  timeAgo,
+  useNow,
+} from '../components/ui';
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 const fmt = (n: number) => n.toLocaleString('en-US');
 
 const SCORE_LABEL: Record<'success' | 'warning' | 'danger', string> = {
   success: 'On target',
-  warning: 'Developing',
+  warning: 'Getting there',
   danger: 'Needs work',
 };
 
@@ -109,7 +122,7 @@ export function Dashboard() {
   const shiftLabel = shift ? 'Resume shift' : 'Start a shift';
 
   return (
-    <div className="dash">
+    <div className="page dash">
       <section className="hero dash-hero" aria-labelledby="dash-greeting">
         <div className="dash-hero-main">
           <div className="eyebrow">
@@ -122,7 +135,7 @@ export function Dashboard() {
           <div className="dash-rank">
             <div className="dash-rank-row">
               <span className="dash-rank-level">
-                <Award size={13} aria-hidden />
+                <Award size={12} aria-hidden />
                 Level {rank.level}
               </span>
               <span className="dash-rank-title">{rank.current.title}</span>
@@ -142,7 +155,7 @@ export function Dashboard() {
               <div className="dash-next-title">{waiting === 0 ? 'No tickets waiting' : `${plural(waiting, 'ticket')} waiting`}</div>
               <div className="dash-next-meta">
                 <span className="inline-icon">
-                  <Clock size={13} aria-hidden />
+                  <Clock size={14} aria-hidden />
                   {minutesLeft > 0 ? `${minutesLeft} min left` : 'Time is up'}
                 </span>
                 <span>{handled} handled</span>
@@ -152,14 +165,14 @@ export function Dashboard() {
           ) : recommended ? (
             <div className="dash-next">
               <div className="dash-next-label">
-                <Target size={13} aria-hidden />
+                <Target size={14} aria-hidden />
                 Recommended next
               </div>
               <div className="dash-next-title">{recommended.title}</div>
               <div className="dash-next-meta">
                 <span className="mono">{ticketNumber(recommended.id)}</span>
                 <span className="inline-icon">
-                  <CategoryIcon category={recommended.category} size={13} />
+                  <CategoryIcon category={recommended.category} size={14} />
                   {recommended.category}
                 </span>
                 <span className="mono">{recommended.priority}</span>
@@ -168,7 +181,7 @@ export function Dashboard() {
           ) : (
             <div className="dash-next">
               <div className="dash-next-label">
-                <Trophy size={13} aria-hidden />
+                <Trophy size={14} aria-hidden />
                 Queue cleared
               </div>
               <div className="dash-next-title">Every built-in ticket is passed</div>
@@ -179,12 +192,12 @@ export function Dashboard() {
             {shift || !openRecommended ? (
               <>
                 <Link className="btn btn-primary btn-lg" to="/shift">
-                  <Timer size={18} aria-hidden />
+                  <Timer size={16} aria-hidden />
                   {shiftLabel}
                 </Link>
                 {openRecommended && (
                   <button type="button" className="btn btn-lg" onClick={openRecommended}>
-                    <Target size={18} aria-hidden />
+                    <Target size={16} aria-hidden />
                     Recommended ticket
                   </button>
                 )}
@@ -192,11 +205,11 @@ export function Dashboard() {
             ) : (
               <>
                 <button type="button" className="btn btn-primary btn-lg" onClick={openRecommended}>
-                  <Target size={18} aria-hidden />
+                  <Target size={16} aria-hidden />
                   Recommended ticket
                 </button>
                 <Link className="btn btn-lg" to="/shift">
-                  <Timer size={18} aria-hidden />
+                  <Timer size={16} aria-hidden />
                   {shiftLabel}
                 </Link>
               </>
@@ -205,11 +218,11 @@ export function Dashboard() {
         </div>
       </section>
 
-      <section className="grid grid-4 dash-stats" aria-label="Your figures">
+      <section className="grid grid-4" aria-label="Your figures">
         <StatTile
           label="Tickets closed"
-          icon={TicketCheck}
-          tone="primary"
+          icon={Ticket}
+          tone={stats.tickets ? 'primary' : 'neutral'}
           value={stats.tickets}
           sub={`${passed} of ${BUILTIN_SCENARIOS.length} scenarios passed`}
         />
@@ -219,15 +232,15 @@ export function Dashboard() {
           tone={stats.tickets ? scoreState : 'neutral'}
           value={
             stats.tickets ? (
-              <span className="dash-value">
+              <>
                 {stats.avgScore}
-                <span className="dash-value-of">/100</span>
-              </span>
+                <span className="faint">/100</span>
+              </>
             ) : (
               '–'
             )
           }
-          sub={stats.tickets ? <span className={`pill pill-${scoreState}`}>{SCORE_LABEL[scoreState]}</span> : 'No graded tickets yet'}
+          sub={stats.tickets ? <span className={`pill pill-${scoreState}`}>{SCORE_LABEL[scoreState]}</span> : 'No tickets yet'}
         />
         <StatTile
           label="Satisfaction"
@@ -243,17 +256,17 @@ export function Dashboard() {
               '–'
             )
           }
-          sub={stats.tickets ? 'Average CSAT, out of 5' : 'Rated after each ticket'}
+          sub={stats.tickets ? 'Average rating out of 5' : 'Rated after each ticket'}
         />
         <StatTile
           label="Badges"
-          icon={Award}
-          tone="primary"
+          icon={Medal}
+          tone={state.badges.length ? 'primary' : 'neutral'}
           value={
-            <span className="dash-value">
+            <>
               {state.badges.length}
-              <span className="dash-value-of">/{BADGES.length}</span>
-            </span>
+              <span className="faint">/{BADGES.length}</span>
+            </>
           }
           sub={state.badges.length >= BADGES.length ? 'Full set collected' : `${BADGES.length - state.badges.length} still to unlock`}
         />
@@ -281,18 +294,16 @@ export function Dashboard() {
       <section className="grid grid-2 dash-panels">
         <div className="card dash-panel">
           <div className="card-head">
-            <div className="dash-head-text">
-              <h2>
-                <ChartNoAxesColumn size={18} aria-hidden />
-                Skill mastery
-              </h2>
-              <p>Built-in scenarios passed at 70 or above, by category.</p>
-            </div>
+            <h2>
+              <ChartNoAxesColumn size={18} aria-hidden />
+              Skill mastery
+            </h2>
             <Link to="/progress" className="dash-head-link">
               Details
               <ChevronRight size={14} aria-hidden />
             </Link>
           </div>
+          <p className="card-sub">Built-in scenarios passed at 70 or above, by category.</p>
           <ul className="mastery">
             {CATEGORIES.map((c) => {
               const s = cats[c];
@@ -330,25 +341,23 @@ export function Dashboard() {
 
         <div className="card dash-panel">
           <div className="card-head">
-            <div className="dash-head-text">
-              <h2>
-                <History size={18} aria-hidden />
-                Recent activity
-              </h2>
-              <p>Your most recent closed tickets, newest first.</p>
-            </div>
+            <h2>
+              <History size={18} aria-hidden />
+              Recent activity
+            </h2>
             <Link to="/tickets" className="dash-head-link">
               Queue
               <ChevronRight size={14} aria-hidden />
             </Link>
           </div>
+          <p className="card-sub">Your most recent closed tickets, newest first.</p>
           {recent.length === 0 ? (
             <div className="dash-empty">
               <EmptyState icon={Inbox} title="No tickets closed yet">
                 Every ticket you close lands here with its score and grade, so you can reopen the review and see what to improve.
               </EmptyState>
               <Link className="btn btn-sm" to="/tickets">
-                <Inbox size={14} aria-hidden />
+                <Inbox size={16} aria-hidden />
                 Browse the queue
               </Link>
             </div>
@@ -357,19 +366,12 @@ export function Dashboard() {
               {recent.map((t) => (
                 <li key={t.id}>
                   <Link to={`/review/${t.id}`} className="activity-item">
-                    <IconTile icon={CATEGORY_ICON[t.category]} tone="neutral" size="sm" />
                     <span className="activity-body">
                       <span className="activity-title">{t.title}</span>
                       <span className="activity-meta">
-                        <span>{t.category}</span>
-                        <span aria-hidden>·</span>
-                        <span>{timeAgo(t.completedAt)}</span>
-                        {t.mode === 'shift' && (
-                          <span className="pill pill-outline">
-                            <Timer aria-hidden />
-                            Shift
-                          </span>
-                        )}
+                        <CategoryPill category={t.category} />
+                        <ModePill mode={t.mode} />
+                        <span className="activity-when">{timeAgo(t.completedAt)}</span>
                       </span>
                     </span>
                     <span className={`pill pill-${scoreTone(t.result.total)} activity-score`}>

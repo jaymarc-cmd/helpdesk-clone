@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
 import {
   Activity,
-  Award,
   ChartNoAxesColumn,
   CircleCheck,
   Clock,
@@ -17,34 +16,55 @@ import {
   ScanSearch,
   ShieldCheck,
   Smile,
+  Sparkles,
   Stethoscope,
   Target,
-  TicketCheck,
-  Timer,
+  Ticket,
   TrendingUp,
   Wrench,
   type LucideIcon,
+  Crosshair,
 } from 'lucide-react';
 import { BADGES, RANKS, categoryStats, overallStats, rankFor, totalXp } from '../engine/progress';
+import { BUILTIN_SCENARIOS } from '../data/scenarios';
 import { useStore } from '../state/store';
 import { CATEGORIES } from '../types';
 import { BadgeGlyph, CategoryIcon } from '../components/icons';
-import { EmptyState, PageHeader, ProgressBar, StatTile, Stars, formatClock, scoreTone, ticketNumber, timeAgo } from '../components/ui';
+import {
+  CategoryPill,
+  EmptyState,
+  ModePill,
+  PageHeader,
+  ProgressBar,
+  StatTile,
+  Stars,
+  formatClock,
+  formatDateTime,
+  scoreTone,
+  ticketNumber,
+  timeAgo,
+} from '../components/ui';
 import '../styles/progress-builder-settings.css';
 
 const SECTIONS = [
   { key: 'diagnosis', label: 'Diagnosis', icon: Stethoscope },
   { key: 'investigation', label: 'Investigation', icon: ScanSearch },
   { key: 'resolution', label: 'Resolution', icon: Wrench },
-  { key: 'process', label: 'Process & Security', icon: ShieldCheck },
+  { key: 'process', label: 'Process & security', icon: ShieldCheck },
   { key: 'communication', label: 'Communication', icon: MessagesSquare },
   { key: 'documentation', label: 'Documentation', icon: FileText },
-  { key: 'time', label: 'Handling Time', icon: Clock },
+  { key: 'time', label: 'Handling time', icon: Clock },
 ] as const satisfies readonly { key: string; label: string; icon: LucideIcon }[];
 
 type SectionKey = (typeof SECTIONS)[number]['key'];
 
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+const fmt = (n: number) => n.toLocaleString('en-US');
+
+const SCORE_LABEL: Record<'success' | 'warning' | 'danger', string> = {
+  success: 'On target',
+  warning: 'Getting there',
+  danger: 'Needs work',
+};
 
 const FOCUS_TIP: Record<SectionKey, string> = {
   communication: 'Greet by name, show empathy, explain plainly, and close with next steps.',
@@ -53,7 +73,7 @@ const FOCUS_TIP: Record<SectionKey, string> = {
   investigation: 'Ask more questions and use the tools before deciding on a fix.',
   diagnosis: 'Gather evidence until one root cause clearly fits all the facts.',
   resolution: 'Check whether a ticket belongs with another team, and complete every fix step.',
-  time: 'Use Shift Mode to practise working efficiently under SLA pressure.',
+  time: 'Use shift mode to practise working efficiently under SLA pressure.',
 };
 
 export function ProgressPage() {
@@ -76,6 +96,7 @@ export function ProgressPage() {
   const avgs = Object.fromEntries(SECTIONS.map((s) => [s.key, sectionAvg(s.key)])) as Record<SectionKey, number>;
   const weakest = hasTickets ? [...SECTIONS].sort((a, b) => avgs[a.key] - avgs[b.key])[0] : null;
 
+  const scoreState = scoreTone(stats.avgScore);
   const csatTone = stats.avgCsat >= 4 ? 'success' : stats.avgCsat >= 3 ? 'warning' : 'danger';
   const badgeCount = state.badges.length;
   const ranksReached = RANKS.filter((r) => xp >= r.xp).length;
@@ -85,18 +106,18 @@ export function ProgressPage() {
   );
 
   return (
-    <div className="pbs-page">
+    <div className="page pbs-page pbs-progress">
       <PageHeader
         eyebrow={
           <>
             <ChartNoAxesColumn size={14} aria-hidden />
-            <span>Training record{state.profile?.name ? ` · ${state.profile.name}` : ''}</span>
+            <span>Resources</span>
           </>
         }
         title="Your progress"
-        description={`Level ${rank.level} · ${rank.current.title}`}
+        description={`${state.profile?.name ? `${state.profile.name} · ` : ''}Level ${rank.level} · ${rank.current.title}`}
         actions={
-          <button type="button" className="btn no-print print-btn" onClick={() => window.print()}>
+          <button type="button" className="btn print-btn no-print" onClick={() => window.print()}>
             <Printer size={16} aria-hidden />
             Print training record
           </button>
@@ -106,31 +127,49 @@ export function ProgressPage() {
       <section className="grid grid-4" aria-label="Summary">
         <StatTile
           label="Total XP"
-          icon={Award}
-          tone="primary"
-          value={xp.toLocaleString()}
-          sub={rank.next ? `${(rank.next.xp - xp).toLocaleString()} XP to ${rank.next.title}` : 'Top rank reached'}
+          icon={Sparkles}
+          tone={xp ? 'primary' : 'neutral'}
+          value={fmt(xp)}
+          sub={rank.next ? `${fmt(rank.next.xp - xp)} XP to ${rank.next.title}` : 'Top rank reached'}
         />
         <StatTile
           label="Tickets closed"
-          icon={TicketCheck}
+          icon={Ticket}
           tone={hasTickets ? 'primary' : 'neutral'}
           value={stats.tickets}
-          sub={`${plural(stats.calls, 'call')} · ${plural(stats.interviews, 'interview')} · ${plural(stats.shifts, 'shift')}`}
+          sub={`${catTotals.passed} of ${BUILTIN_SCENARIOS.length} scenarios passed`}
         />
         <StatTile
           label="Average score"
           icon={Gauge}
-          tone={hasTickets ? scoreTone(stats.avgScore) : 'neutral'}
-          value={stats.avgScore || '–'}
-          sub={hasTickets ? `Across ${plural(stats.tickets, 'ticket')}` : 'No scored tickets yet'}
+          tone={hasTickets ? scoreState : 'neutral'}
+          value={
+            hasTickets ? (
+              <>
+                {stats.avgScore}
+                <span className="faint">/100</span>
+              </>
+            ) : (
+              '–'
+            )
+          }
+          sub={hasTickets ? <span className={`pill pill-${scoreState}`}>{SCORE_LABEL[scoreState]}</span> : 'No tickets yet'}
         />
         <StatTile
-          label="Customer satisfaction"
+          label="Satisfaction"
           icon={Smile}
           tone={hasTickets ? csatTone : 'neutral'}
-          value={hasTickets ? stats.avgCsat.toFixed(1) : '–'}
-          sub={hasTickets ? <Stars value={stats.avgCsat} size={14} /> : 'No CSAT yet'}
+          value={
+            hasTickets ? (
+              <span className="pbs-csat">
+                {stats.avgCsat.toFixed(1)}
+                <Stars value={stats.avgCsat} size={16} />
+              </span>
+            ) : (
+              '–'
+            )
+          }
+          sub={hasTickets ? 'Average rating out of 5' : 'Rated after each ticket'}
         />
       </section>
 
@@ -140,12 +179,9 @@ export function ProgressPage() {
             <TrendingUp size={18} aria-hidden />
             Career ladder
           </h2>
-          <div className="pbs-head-meta">
-            <span className="tiny muted">
-              {ranksReached} of {RANKS.length} ranks reached
-            </span>
-            <span className="pill pill-primary">Level {rank.level}</span>
-          </div>
+          <span className="pill num">
+            {ranksReached}/{RANKS.length} reached
+          </span>
         </div>
         <ol className="pbs-ladder">
           {RANKS.map((r, i) => {
@@ -171,7 +207,7 @@ export function ProgressPage() {
                   {current && <span className="pill pill-primary">Current</span>}
                 </span>
                 <ProgressBar value={frac} tone={reached && !current ? 'success' : undefined} />
-                <span className="pbs-rung-xp">{r.xp.toLocaleString()} XP</span>
+                <span className="pbs-rung-xp">{fmt(r.xp)} XP</span>
               </li>
             );
           })}
@@ -185,8 +221,8 @@ export function ProgressPage() {
               <Activity size={18} aria-hidden />
               Skill breakdown
             </h2>
-            {hasTickets && <span className="tiny muted">Average across all tickets</span>}
           </div>
+          {hasTickets && <p className="card-sub">Average across all tickets.</p>}
           {!hasTickets ? (
             <EmptyState icon={Activity} title="No skill data yet">
               Complete a ticket to see your skill breakdown.
@@ -203,7 +239,7 @@ export function ProgressPage() {
                         <Icon size={16} aria-hidden />
                         <span className="pbs-skill-name">
                           {label}
-                          {weakest?.key === key && <span className="pill pill-warning">Focus</span>}
+                          {weakest?.key === key && <span className="pill pill-primary"><Crosshair aria-hidden />Focus</span>}
                         </span>
                         <span className={`pbs-skill-pct pbs-tone-${tone}`}>{Math.round(v * 100)}%</span>
                       </div>
@@ -230,9 +266,9 @@ export function ProgressPage() {
               <LayoutGrid size={18} aria-hidden />
               Categories
             </h2>
-            <span className="tiny muted">Passed means a best score of 70 or more</span>
           </div>
-          <div className="table-wrap pbs-bleed">
+          <p className="card-sub">Passed means a best score of 70 or more.</p>
+          <div className="table-wrap">
             <table className="table pbs-cat-table">
               <thead>
                 <tr>
@@ -289,7 +325,7 @@ export function ProgressPage() {
             <Medal size={18} aria-hidden />
             Badges
           </h2>
-          <span className={`pill ${badgeCount ? 'pill-primary' : ''} num`}>
+          <span className="pill num">
             {badgeCount}/{BADGES.length} earned
           </span>
         </div>
@@ -306,12 +342,12 @@ export function ProgressPage() {
                   <div className="pbs-badge-desc">{b.description}</div>
                   {at ? (
                     <span className="pbs-badge-status earned">
-                      <CircleCheck size={13} aria-hidden />
+                      <CircleCheck size={14} aria-hidden />
                       Earned {timeAgo(at)}
                     </span>
                   ) : (
                     <span className="pbs-badge-status">
-                      <Lock size={12} aria-hidden />
+                      <Lock size={14} aria-hidden />
                       Locked
                     </span>
                   )}
@@ -333,13 +369,13 @@ export function ProgressPage() {
         {!hasTickets ? (
           <EmptyState icon={Inbox} title="No tickets yet">
             <p className="pbs-empty-text">Closed tickets appear here with their score and customer rating.</p>
-            <Link to="/tickets" className="btn btn-sm btn-primary">
-              <Inbox size={14} aria-hidden />
+            <Link to="/tickets" className="btn btn-sm">
+              <Inbox size={16} aria-hidden />
               Open the ticket queue
             </Link>
           </EmptyState>
         ) : (
-          <div className="table-wrap pbs-bleed">
+          <div className="table-wrap">
             <table className="table pbs-history">
               <thead>
                 <tr>
@@ -362,24 +398,14 @@ export function ProgressPage() {
                       </div>
                     </td>
                     <td className="pbs-h-cat">
-                      <span className="pbs-cat">
-                        <CategoryIcon category={t.category} size={14} />
-                        {t.category}
-                      </span>
+                      <CategoryPill category={t.category} />
                     </td>
                     <td className="pbs-h-mode">
-                      {t.mode === 'shift' ? (
-                        <span className="pill pill-info">
-                          <Timer aria-hidden />
-                          Shift
-                        </span>
-                      ) : (
-                        <span className="pill pill-outline">Practice</span>
-                      )}
+                      <ModePill mode={t.mode} />
                     </td>
                     <td className="mono small pbs-h-time">
                       <span className="pbs-h-time-inner">
-                        <Clock size={13} className="pbs-h-icon" aria-hidden />
+                        <Clock size={14} className="pbs-h-icon" aria-hidden />
                         {formatClock(t.durationSec)}
                       </span>
                     </td>
@@ -391,7 +417,7 @@ export function ProgressPage() {
                         {t.result.total} · {t.result.grade}
                       </span>
                     </td>
-                    <td className="small muted pbs-nowrap pbs-h-when" title={new Date(t.completedAt).toLocaleString()}>
+                    <td className="small muted pbs-nowrap pbs-h-when" title={formatDateTime(t.completedAt)}>
                       {timeAgo(t.completedAt)}
                     </td>
                   </tr>

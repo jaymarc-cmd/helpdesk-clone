@@ -149,7 +149,7 @@ export function gradeTicket(
     } else if (!uniqueHarmful.length) {
       items.push({ ok: true, text: 'Targeted troubleshooting, with no shotgun changes' });
     }
-    sections.push({ key: 'process', label: 'Process & Security', score: round1(clamp(score, 0, 15)), max: 15, items });
+    sections.push({ key: 'process', label: 'Process & security', score: round1(clamp(score, 0, 15)), max: 15, items });
   }
 
   // ---- Communication (15)
@@ -246,7 +246,7 @@ export function gradeTicket(
     const mm = (n: number) => `${Math.floor(n / 60)}:${String(Math.round(n % 60)).padStart(2, '0')}`;
     sections.push({
       key: 'time',
-      label: 'Handling Time',
+      label: 'Handling time',
       score: round1(score),
       max: 10,
       items: [

@@ -7,7 +7,6 @@ import {
   CircleAlert,
   CircleCheck,
   CircleSlash,
-  ClipboardCheck,
   ClipboardList,
   Clock,
   Gauge,
@@ -33,6 +32,7 @@ import { SHIFT_SLA_MIN, shiftEndsAt, slaDeadline } from '../engine/shift';
 import { useStore } from '../state/store';
 import type { Priority, ShiftReport } from '../types';
 import {
+  CategoryPill,
   DifficultyDots,
   EmptyState,
   IconTile,
@@ -49,6 +49,12 @@ import {
 } from '../components/ui';
 import { CategoryIcon } from '../components/icons';
 import '../styles/shift-calls.css';
+
+const SCORE_LABEL: Record<'success' | 'warning' | 'danger', string> = {
+  success: 'On target',
+  warning: 'Getting there',
+  danger: 'Needs work',
+};
 
 const DURATIONS: { min: number; label: string; desc: string; detail: string; icon: LucideIcon; recommended?: boolean }[] = [
   { min: 15, label: 'Quick shift', desc: '~4 tickets', detail: 'A short run to practise triage under a clock.', icon: Timer },
@@ -75,12 +81,12 @@ export function ShiftPage() {
 
   if (!shift) {
     return (
-      <div className="sc-page">
+      <div className="page sc-page">
         <PageHeader
           eyebrow={
             <>
               <Timer size={14} aria-hidden />
-              Shift mode
+              <span>Practice</span>
             </>
           }
           title="Start a shift"
@@ -183,16 +189,17 @@ export function ShiftPage() {
   };
 
   return (
-    <div className="sc-page">
+    <div className="page sc-page">
       <PageHeader
         eyebrow={
           <>
+            <Timer size={14} aria-hidden />
+            <span>Practice</span>
             <span className="live-dot">LIVE</span>
-            Shift mode · {shift.durationMin} min
           </>
         }
         title="Shift board"
-        description="Sorted by SLA deadline. The most urgent ticket is on top."
+        description={`${shift.durationMin}-minute shift. The queue is sorted by SLA deadline, so the most urgent ticket is on top.`}
         actions={
           <>
             <span className={`timer ${remaining < 120 ? 'over' : ''}`} role="timer" aria-label="Time left in shift">
@@ -222,15 +229,15 @@ export function ShiftPage() {
         </div>
       )}
 
-      <div className="sc-stats">
+      <section className="grid grid-4" aria-label="Shift figures">
         <StatTile
           label="Waiting"
           value={waiting.length}
           icon={Inbox}
-          tone={atRisk > 0 ? 'warning' : 'info'}
+          tone={waiting.length === 0 ? 'neutral' : atRisk > 0 ? 'warning' : 'primary'}
           sub={waiting.length === 0 ? 'Queue clear' : atRisk > 0 ? <span className="sc-text-warning">{atRisk} close to breach</span> : 'None close to breach'}
         />
-        <StatTile label="Handled" value={done.length} icon={CircleCheck} tone="success" sub={`of ${totalTickets} this shift`} />
+        <StatTile label="Handled" value={done.length} icon={CircleCheck} tone={done.length ? 'primary' : 'neutral'} sub={`of ${totalTickets} this shift`} />
         <StatTile
           label="SLA breaches"
           value={breached > 0 ? <span className="sc-text-danger">{breached}</span> : breached}
@@ -242,7 +249,7 @@ export function ShiftPage() {
           label="Incoming"
           value={shift.pending.length}
           icon={Hourglass}
-          tone="neutral"
+          tone={shift.pending.length ? 'primary' : 'neutral'}
           sub={
             shift.pending.length === 0
               ? 'All tickets delivered'
@@ -251,7 +258,7 @@ export function ShiftPage() {
                 : 'Counted as missed'
           }
         />
-      </div>
+      </section>
 
       <section className="card">
         <div className="card-head">
@@ -285,14 +292,14 @@ export function ShiftPage() {
                         <div className="sc-qrow-meta">
                           <PriorityPill p={sc.priority} />
                           <span className="ticket-id">{ticketNumber(sc.id)}</span>
-                          <span>{sc.category}</span>
+                          <CategoryPill category={sc.category} />
                           <DifficultyDots d={sc.difficulty} />
                         </div>
                       </div>
                     </div>
                     <div className="sc-qrow-actions">
                       <span className={`sc-sla ${tone}`} aria-label={left > 0 ? `SLA time left ${formatClock(left / 1000)}` : 'SLA breached'}>
-                        {left > 0 ? <Clock size={15} aria-hidden /> : <CircleAlert size={15} aria-hidden />}
+                        {left > 0 ? <Clock size={14} aria-hidden /> : <CircleAlert size={14} aria-hidden />}
                         {left > 0 ? formatClock(left / 1000) : 'Breached'}
                       </span>
                       <button className="btn btn-primary btn-sm" onClick={() => navigate(`/ticket/${sc.id}?mode=shift`)}>
@@ -346,9 +353,9 @@ export function ShiftPage() {
             )}
             <p className="small muted">Clock out to file a shift report. Discarding ends the shift without a report.</p>
           </div>
-          <div className="sc-modal-actions">
+          <div className="modal-actions">
             <button
-              className="btn btn-danger sc-modal-discard"
+              className="btn btn-danger"
               onClick={() => {
                 dispatch({ type: 'abandonShift' });
                 setConfirmEnd(false);
@@ -357,10 +364,10 @@ export function ShiftPage() {
               <Trash2 size={16} aria-hidden />
               Discard shift
             </button>
-            <button className="btn sc-modal-keep" onClick={() => setConfirmEnd(false)}>
+            <button className="btn" onClick={() => setConfirmEnd(false)}>
               Keep working
             </button>
-            <button className="btn btn-primary sc-modal-confirm" onClick={end}>
+            <button className="btn btn-primary" onClick={end}>
               <LogOut size={16} aria-hidden />
               Clock out &amp; see report
             </button>
@@ -459,13 +466,15 @@ function verdictFor(report: ShiftReport): { title: string; text: string; tone: '
 function ReportView({ report, handled, onClose }: { report: ShiftReport; handled: HandledRow[]; onClose: () => void }) {
   const verdict = verdictFor(report);
   const xp = 50 + report.handled * 10;
+  const scoreState = scoreTone(report.avgScore);
+  const csatTone = report.avgCsat >= 4 ? 'success' : report.avgCsat >= 3 ? 'warning' : 'danger';
   return (
-    <div className="sc-page">
+    <div className="page sc-page">
       <PageHeader
         eyebrow={
           <>
-            <ClipboardCheck size={14} aria-hidden />
-            Shift report
+            <Timer size={14} aria-hidden />
+            <span>Practice · Shift report</span>
           </>
         }
         title="Shift complete"
@@ -498,36 +507,54 @@ function ReportView({ report, handled, onClose }: { report: ShiftReport; handled
         </div>
       </section>
 
-      <div className="sc-stats">
+      <section className="grid grid-4" aria-label="Shift figures">
         <StatTile
           label="Tickets handled"
           value={report.handled}
           icon={Ticket}
-          tone="primary"
+          tone={report.handled ? 'primary' : 'neutral'}
           sub={report.missed > 0 ? <span className="sc-text-warning">{report.missed} missed</span> : 'None missed'}
         />
         <StatTile
           label="Average score"
-          value={report.handled ? report.avgScore : '–'}
+          value={
+            report.handled ? (
+              <>
+                {report.avgScore}
+                <span className="faint">/100</span>
+              </>
+            ) : (
+              '–'
+            )
+          }
           icon={Gauge}
-          tone={report.handled ? scoreTone(report.avgScore) : 'neutral'}
-          sub="Across handled tickets"
+          tone={report.handled ? scoreState : 'neutral'}
+          sub={report.handled ? <span className={`pill pill-${scoreState}`}>{SCORE_LABEL[scoreState]}</span> : 'No tickets yet'}
         />
         <StatTile
-          label="Avg. CSAT"
-          value={report.handled ? <Stars value={report.avgCsat} size={20} /> : '–'}
+          label="Satisfaction"
+          value={
+            report.handled ? (
+              <span className="sc-csat">
+                {report.avgCsat.toFixed(1)}
+                <Stars value={report.avgCsat} size={16} />
+              </span>
+            ) : (
+              '–'
+            )
+          }
           icon={Smile}
-          tone="info"
-          sub={report.handled ? `${report.avgCsat} / 5` : 'No tickets handled'}
+          tone={report.handled ? csatTone : 'neutral'}
+          sub={report.handled ? 'Average rating out of 5' : 'Rated after each ticket'}
         />
         <StatTile
           label="SLA breaches"
-          value={<span className={report.breaches ? 'sc-text-danger' : 'sc-text-success'}>{report.breaches}</span>}
+          value={report.breaches ? <span className="sc-text-danger">{report.breaches}</span> : report.breaches}
           icon={ShieldAlert}
-          tone={report.breaches ? 'danger' : 'success'}
+          tone={report.breaches ? 'danger' : report.handled ? 'success' : 'neutral'}
           sub={report.breaches ? 'Tickets past their SLA window' : 'No tickets past SLA'}
         />
-      </div>
+      </section>
 
       <section className="card">
         <div className="card-head">
@@ -587,7 +614,7 @@ function ShiftHistory({ reports }: { reports: ShiftReport[] }) {
                 <tr key={r.id}>
                   <td className="sc-rtable-title">
                     <span className="sc-when">
-                      <CalendarClock size={15} aria-hidden />
+                      <CalendarClock size={14} aria-hidden />
                       {timeAgo(r.completedAt)}
                     </span>
                   </td>

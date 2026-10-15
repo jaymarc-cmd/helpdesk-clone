@@ -1,11 +1,5 @@
-/* Queue + Ticket review pages. Builds on the tokens and primitives in styles.css. */
-
-.qr-body {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  min-width: 0;
-}
+/* Queue + Ticket review pages. Builds on the tokens and primitives in styles.css.
+   Page roots are .page.queue-page / .page.review-page; the .page gap sets the rhythm between sections. */
 
 .qr-truncate {
   min-width: 0;
@@ -43,23 +37,6 @@
 .queue-search {
   flex: 1 1 260px;
   min-width: 0;
-}
-/* Theme-aware clear button for the native search field. */
-.queue-search input::-webkit-search-cancel-button {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 16px;
-  height: 16px;
-  margin-left: 6px;
-  cursor: pointer;
-  background-color: var(--text-faint);
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M18 6 6 18M6 6l12 12'/%3E%3C/svg%3E")
-    center / 14px 14px no-repeat;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M18 6 6 18M6 6l12 12'/%3E%3C/svg%3E")
-    center / 14px 14px no-repeat;
-}
-.queue-search input::-webkit-search-cancel-button:hover {
-  background-color: var(--text);
 }
 .queue-select {
   width: auto;
@@ -195,11 +172,6 @@
       'tags tags';
   }
 }
-.pill.queue-new {
-  color: var(--text-muted);
-  border-color: var(--border-strong);
-  padding-block: 1px;
-}
 .queue-card:hover .title {
   color: var(--primary);
 }
@@ -242,22 +214,6 @@
 }
 .queue-card-meta .inline-icon {
   gap: 4px;
-}
-
-/* ---------- Review: header meta ---------- */
-.review-meta {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 16px;
-}
-.review-meta > span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.review-meta svg {
-  color: var(--text-faint);
 }
 
 /* ---------- Review: summary ---------- */
@@ -516,6 +472,9 @@
 }
 
 @media print {
+  .review-page .back-link {
+    display: none;
+  }
   .log.review-log {
     max-height: none;
     overflow: visible;

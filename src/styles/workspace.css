@@ -22,129 +22,31 @@
   white-space: nowrap;
   border: 0;
 }
-.ws-root .ws-notfound-card {
-  max-width: 560px;
-  margin: 24px auto 0;
-}
 .ws-root .ws-notfound {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 14px;
 }
+/* A .card-sub that ends its card (nothing loaded under it yet) needs no trailing gap. */
+.ws-root .card-sub:last-child {
+  margin-bottom: 0;
+}
 
-/* ---------- Header ---------- */
-.ws-root .ws-header {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-areas:
-    'back meta meta'
-    'title title controls';
-  align-items: center;
-  column-gap: 12px;
-  row-gap: 8px;
-  margin-bottom: 18px;
-}
-.ws-root .ws-back {
-  grid-area: back;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 9px 3px 5px;
-  margin-left: -5px;
-  border-radius: var(--radius-sm);
-  color: var(--text-muted);
-  font-weight: 600;
-  font-size: 0.84rem;
-  white-space: nowrap;
-}
-.ws-root .ws-back:hover {
-  background: var(--surface-3);
-  color: var(--text);
-  text-decoration: none;
-}
-.ws-root .ws-meta {
-  grid-area: meta;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px 8px;
-  min-width: 0;
-  padding-left: 12px;
-  border-left: 1px solid var(--border-strong);
-}
-.ws-root .ws-title {
-  grid-area: title;
-  margin: 0;
-  font-size: 1.5rem;
-  overflow-wrap: anywhere;
-}
-.ws-root .ws-controls {
-  grid-area: controls;
-  align-self: center;
-  justify-self: end;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
-}
-.ws-root .ws-controls .btn {
+/* ---------- Header (shared PageHeader; only the action row is tuned here) ---------- */
+/* Hint button and timer share one height so the action row reads as a single control strip. */
+.ws-root .page-actions > .btn,
+.ws-root .page-actions > .timer {
   height: 36px;
 }
-.ws-root .ws-controls .timer {
-  height: 36px;
+.ws-root .page-actions > .timer {
   padding-block: 0;
 }
-.ws-root .ws-timer-target {
+.ws-root .ws-timer-over {
   font-size: 0.74rem;
   font-weight: 500;
-  color: var(--text-muted);
-}
-.ws-root .timer.over .ws-timer-target {
-  color: var(--danger);
-}
-@media (max-width: 640px) {
-  .ws-root .ws-header {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-      'back controls'
-      'meta meta'
-      'title title';
-    row-gap: 10px;
-    margin-bottom: 14px;
-  }
-  .ws-root .ws-meta {
-    padding-left: 0;
-    border-left: 0;
-  }
-  /* The priority colour and code carry the meaning; drop the word to keep the row on one line. */
-  .ws-root .ws-meta .prio-long {
-    display: none;
-  }
-  .ws-root .ws-controls {
-    align-self: center;
-    flex-wrap: nowrap;
-    gap: 6px;
-  }
-  .ws-root .ws-controls .btn {
-    height: 34px;
-    padding-inline: 10px;
-  }
-  .ws-root .ws-controls .timer {
-    height: 34px;
-    padding-inline: 10px;
-    font-size: 0.92rem;
-    gap: 6px;
-  }
-  .ws-root .ws-title {
-    font-size: 1.3rem;
-  }
 }
 
-.ws-root .ws-hint {
-  margin-bottom: 16px;
-}
 .ws-root .ws-hint .icon-btn {
   width: 28px;
   height: 28px;
@@ -595,19 +497,6 @@
   margin-top: 4px;
 }
 
-.ws-root .ws-modal-note {
-  margin: 0;
-  font-size: 0.86rem;
-  color: var(--text-muted);
-}
-.ws-root .ws-modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding-top: 4px;
-}
-
 /* ---------- Directory / endpoint ---------- */
 @container ws-center (max-width: 639px) {
   .ws-root .grid.ws-dir-grid {
@@ -846,20 +735,6 @@
   flex-direction: column;
   gap: 14px;
 }
-.ws-root .ws-res-head h2 {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
-}
-.ws-root .ws-res-head h2 svg {
-  color: var(--text-muted);
-}
-.ws-root .ws-res-sub {
-  margin: 4px 0 0;
-  font-size: 0.8rem;
-  color: var(--text-muted);
-}
 .ws-root .ws-res-col {
   display: flex;
   flex-direction: column;
@@ -882,7 +757,6 @@
     gap: 20px 28px;
     align-items: start;
   }
-  .ws-root .ws-res-head,
   .ws-root .ws-res-foot {
     grid-column: 1 / -1;
   }
@@ -974,10 +848,6 @@
 .ws-root .ws-field-head .btn {
   margin-right: -6px;
 }
-.ws-root .ws-resolution select,
-.ws-root .ws-resolution textarea {
-  font-weight: 400;
-}
 
 /* Field the validation message points at. */
 .ws-root .ws-invalid .ws-legend,
@@ -1019,7 +889,5 @@
   color: var(--text-muted);
 }
 .ws-root .ws-note-hint svg {
-  width: 11px;
-  height: 11px;
   color: var(--text-faint);
 }

@@ -31,14 +31,14 @@ type NavItem = { section: string } | { to: string; icon: LucideIcon; label: stri
 const NAV: NavItem[] = [
   { section: 'Practice' },
   { to: '/', icon: LayoutDashboard, label: 'Dashboard', end: true },
-  { to: '/tickets', icon: Inbox, label: 'Ticket Queue' },
-  { to: '/shift', icon: Timer, label: 'Shift Mode' },
-  { to: '/calls', icon: PhoneCall, label: 'Voice Calls' },
-  { to: '/interview', icon: GraduationCap, label: 'Mock Interview' },
+  { to: '/tickets', icon: Inbox, label: 'Ticket queue' },
+  { to: '/shift', icon: Timer, label: 'Shift mode' },
+  { to: '/calls', icon: PhoneCall, label: 'Voice calls' },
+  { to: '/interview', icon: GraduationCap, label: 'Mock interview' },
   { section: 'Resources' },
-  { to: '/kb', icon: LibraryBig, label: 'Knowledge Base' },
+  { to: '/kb', icon: LibraryBig, label: 'Knowledge base' },
   { to: '/progress', icon: ChartNoAxesColumn, label: 'Progress' },
-  { to: '/builder', icon: Wrench, label: 'Scenario Builder' },
+  { to: '/builder', icon: Wrench, label: 'Scenario builder' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];
 
@@ -141,7 +141,7 @@ export function Layout() {
       </main>
 
       {!state.profile && (
-        <Modal>
+        <Modal labelledBy="onboard-title">
           <div className="onboard">
             <div className="hero onboard-hero">
               <div className="onboard-brand">
@@ -150,7 +150,7 @@ export function Layout() {
                 </div>
                 <div className="onboard-brand-text">
                   <div className="eyebrow">{APP_TAGLINE}</div>
-                  <h2>Welcome to {APP_NAME}</h2>
+                  <h2 id="onboard-title">Welcome to {APP_NAME}</h2>
                 </div>
               </div>
               <p>
@@ -185,7 +185,7 @@ export function Layout() {
               </label>
               <button className="btn btn-primary btn-lg btn-block" type="submit">
                 Start my first day
-                <ArrowRight size={18} aria-hidden />
+                <ArrowRight size={16} aria-hidden />
               </button>
               <p className="onboard-note">
                 <HardDrive size={14} aria-hidden />

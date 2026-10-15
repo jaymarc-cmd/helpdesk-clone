@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowRight, BookOpen, Check, CircleCheck, Clock, FileText, Info, Search, SearchX, Tag, X, type LucideIcon } from 'lucide-react';
+import { ArrowRight, BookOpen, Check, CircleCheck, Clock, FileText, LibraryBig, Search, SearchX, Tag, X, type LucideIcon } from 'lucide-react';
 import { KB_ARTICLES, KB_BY_ID } from '../data/kb';
 import { useStore } from '../state/store';
-import { EmptyState, IconTile, Markdown, PageHeader, ProgressBar } from '../components/ui';
+import { CategoryPill, EmptyState, IconTile, Markdown, PageHeader, ProgressBar } from '../components/ui';
 import { CATEGORY_ICON } from '../components/icons';
 import type { KbArticle } from '../types';
 import '../styles/interview-kb.css';
@@ -14,8 +14,9 @@ type ArticleCat = KbArticle['category'];
 
 const ARTICLE_CATS = CATS.filter((c): c is Exclude<Cat, 'All'> => c !== 'All');
 
+/** Same glyphs as the shared CategoryPill (BookOpen for General). */
 function categoryIcon(category: ArticleCat): LucideIcon {
-  return category === 'General' ? Info : CATEGORY_ICON[category];
+  return category === 'General' ? BookOpen : CATEGORY_ICON[category];
 }
 
 function readingMinutes(body: string) {
@@ -66,12 +67,16 @@ export function KnowledgeBase() {
   const filtered = q !== '' || cat !== 'All';
   const isRead = article ? isReadId(article.id) : false;
   const nextUnread = KB_ARTICLES.find((a) => !isReadId(a.id));
-  const ArticleIcon = article ? categoryIcon(article.category) : null;
 
   return (
-    <div className="kb-page">
+    <div className="page kb-page">
       <PageHeader
-        eyebrow="Reference"
+        eyebrow={
+          <>
+            <LibraryBig size={14} aria-hidden />
+            <span>Resources</span>
+          </>
+        }
         title="Knowledge base"
         description={`${KB_ARTICLES.length} runbooks and policies used across the service desk. Related articles also open from inside any ticket.`}
         actions={
@@ -80,7 +85,7 @@ export function KnowledgeBase() {
               <span className="label">Articles read</span>
               <span className="kb-progress-count num">
                 {readCount}
-                <span className="faint"> / {KB_ARTICLES.length}</span>
+                <span className="faint">/{KB_ARTICLES.length}</span>
               </span>
             </div>
             <ProgressBar value={readCount / Math.max(1, KB_ARTICLES.length)} tone={readCount === KB_ARTICLES.length ? 'success' : undefined} />
@@ -90,14 +95,9 @@ export function KnowledgeBase() {
 
       <div className={`split-side kb-split ${article ? 'has-article' : 'no-article'}`}>
         <nav className="card kb-side" aria-label="Knowledge base articles">
-          <div className="search kb-search">
+          <div className="search">
             <Search size={16} aria-hidden />
             <input type="search" placeholder="Search articles…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search articles" />
-            {q && (
-              <button type="button" className="icon-btn kb-search-clear" onClick={() => setQ('')} aria-label="Clear search">
-                <X size={15} aria-hidden />
-              </button>
-            )}
           </div>
 
           <div className="seg kb-seg" role="group" aria-label="Filter by category">
@@ -162,14 +162,9 @@ export function KnowledgeBase() {
           {article ? (
             <>
               <header className="kb-article-head">
-                <div className="kb-eyebrow">
-                  <span className="pill pill-primary">
-                    {ArticleIcon && <ArticleIcon aria-hidden />}
-                    {article.category}
-                  </span>
-                </div>
-                <h1 className="kb-title">{article.title}</h1>
-                <div className="kb-meta">
+                <h2 className="kb-title">{article.title}</h2>
+                <div className="meta-row kb-meta">
+                  <CategoryPill category={article.category} />
                   <span className="inline-icon">
                     <Clock size={14} aria-hidden />
                     {readingMinutes(article.body)} min read
@@ -198,53 +193,55 @@ export function KnowledgeBase() {
               <Markdown text={article.body} />
             </>
           ) : (
-            <div className="kb-home">
-              <div className="kb-home-intro">
-                <IconTile icon={BookOpen} tone="primary" size="md" />
-                <div className="kb-home-text">
-                  <h2>Browse the library</h2>
-                  <p className="small muted">Pick a runbook or policy from the list, or narrow the list to one category below.</p>
-                </div>
+            <>
+              <div className="card-head">
+                <h2>
+                  <LibraryBig size={18} aria-hidden />
+                  Browse the library
+                </h2>
               </div>
+              <p className="card-sub">Pick a runbook or policy from the list, or narrow the list to one category below.</p>
 
-              <div className="kb-home-section">
-                <span className="label" id="kb-cats-label">
-                  Categories
-                </span>
-                <ul className="kb-cats" aria-labelledby="kb-cats-label">
-                  {ARTICLE_CATS.map((c) => {
-                    const inCat = KB_ARTICLES.filter((a) => a.category === c);
-                    const readInCat = inCat.filter((a) => isReadId(a.id)).length;
-                    const done = inCat.length > 0 && readInCat === inCat.length;
-                    return (
-                      <li key={c}>
-                        <button type="button" className={`kb-cat ${cat === c ? 'active' : ''}`} aria-pressed={cat === c} onClick={() => setCat(c)}>
-                          <IconTile icon={categoryIcon(c)} tone={cat === c ? 'primary' : 'neutral'} size="sm" />
-                          <span className="kb-cat-name">{c}</span>
-                          <span className="kb-cat-bar" aria-hidden>
-                            <ProgressBar value={readInCat / Math.max(1, inCat.length)} tone={done ? 'success' : undefined} />
-                          </span>
-                          <span className="kb-cat-count num">
-                            {readInCat}
-                            <span className="faint"> / {inCat.length} read</span>
-                          </span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-
-              {nextUnread && (
-                <Link to={`/kb/${nextUnread.id}`} className="kb-next">
-                  <span className="kb-next-text">
-                    <span className="label">Next unread</span>
-                    <span className="kb-next-title">{nextUnread.title}</span>
+              <div className="kb-home">
+                <div className="kb-home-section">
+                  <span className="label" id="kb-cats-label">
+                    Categories
                   </span>
-                  <ArrowRight size={16} aria-hidden />
-                </Link>
-              )}
-            </div>
+                  <ul className="kb-cats" aria-labelledby="kb-cats-label">
+                    {ARTICLE_CATS.map((c) => {
+                      const inCat = KB_ARTICLES.filter((a) => a.category === c);
+                      const readInCat = inCat.filter((a) => isReadId(a.id)).length;
+                      const done = inCat.length > 0 && readInCat === inCat.length;
+                      return (
+                        <li key={c}>
+                          <button type="button" className={`kb-cat ${cat === c ? 'active' : ''}`} aria-pressed={cat === c} onClick={() => setCat(c)}>
+                            <IconTile icon={categoryIcon(c)} tone={cat === c ? 'primary' : 'neutral'} size="sm" />
+                            <span className="kb-cat-name">{c}</span>
+                            <span className="kb-cat-bar" aria-hidden>
+                              <ProgressBar value={readInCat / Math.max(1, inCat.length)} tone={done ? 'success' : undefined} />
+                            </span>
+                            <span className="kb-cat-count num">
+                              {readInCat}
+                              <span className="faint">/{inCat.length} read</span>
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+
+                {nextUnread && (
+                  <Link to={`/kb/${nextUnread.id}`} className="kb-next">
+                    <span className="kb-next-text">
+                      <span className="label">Next unread</span>
+                      <span className="kb-next-title">{nextUnread.title}</span>
+                    </span>
+                    <ArrowRight size={16} aria-hidden />
+                  </Link>
+                )}
+              </div>
+            </>
           )}
         </article>
       </div>

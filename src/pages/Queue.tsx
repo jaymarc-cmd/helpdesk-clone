@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { CircleCheck, CircleDashed, Clock, FilterX, LayoutGrid, RotateCcw, Search, SearchX, Shuffle } from 'lucide-react';
+import { Clock, FilterX, Inbox, LayoutGrid, Search, SearchX, Shuffle } from 'lucide-react';
 import { bestByScenario } from '../engine/progress';
 import { useStore } from '../state/store';
 import { CATEGORIES, type Category } from '../types';
-import { DifficultyDots, EmptyState, PageHeader, PriorityPill, scoreTone, ticketNumber } from '../components/ui';
+import { BestScorePill, CategoryPill, DifficultyDots, EmptyState, NewPill, PageHeader, PriorityPill, ticketNumber } from '../components/ui';
 import { CHANNEL_LABEL, CategoryIcon, ChannelIcon } from '../components/icons';
 import '../styles/queue-review.css';
 
@@ -84,11 +84,16 @@ export function Queue() {
   };
 
   return (
-    <div>
+    <div className="page queue-page">
       <PageHeader
-        eyebrow="Practice"
+        eyebrow={
+          <>
+            <Inbox size={14} aria-hidden />
+            <span>Practice</span>
+          </>
+        }
         title="Ticket queue"
-        description="Pick a ticket to work. There's no timer pressure here; use Shift Mode for that."
+        description="Pick a ticket to work. There's no timer pressure here; use shift mode for that."
         actions={
           <button className="btn btn-primary" onClick={random} title="Open a random ticket from the current results">
             <Shuffle size={16} aria-hidden />
@@ -97,143 +102,127 @@ export function Queue() {
         }
       />
 
-      <div className="qr-body">
-        <section className="card card-tight queue-filters" aria-label="Filter tickets">
-          <div className="queue-filter-row">
-            <div className="search queue-search">
-              <Search size={16} aria-hidden />
-              <input type="search" placeholder="Search tickets, requesters…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search tickets" />
-            </div>
-            <select className="queue-select" value={diff} onChange={(e) => setDiff(Number(e.target.value) as 0 | 1 | 2 | 3)} aria-label="Difficulty">
-              <option value={0}>Any difficulty</option>
-              <option value={1}>Beginner</option>
-              <option value={2}>Intermediate</option>
-              <option value={3}>Advanced</option>
-            </select>
-            <select className="queue-select" value={status} onChange={(e) => setStatus(e.target.value as typeof status)} aria-label="Status">
-              <option value="all">All tickets</option>
-              <option value="new">Not attempted</option>
-              <option value="passed">Passed ({PASS_MARK}+)</option>
-              <option value="retry">Needs retry</option>
-            </select>
+      <section className="card card-tight queue-filters" aria-label="Filter tickets">
+        <div className="queue-filter-row">
+          <div className="search queue-search">
+            <Search size={16} aria-hidden />
+            <input type="search" placeholder="Search tickets, requesters…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search tickets" />
           </div>
+          <select className="queue-select" value={diff} onChange={(e) => setDiff(Number(e.target.value) as 0 | 1 | 2 | 3)} aria-label="Difficulty">
+            <option value={0}>Any difficulty</option>
+            <option value={1}>Beginner</option>
+            <option value={2}>Intermediate</option>
+            <option value={3}>Advanced</option>
+          </select>
+          <select className="queue-select" value={status} onChange={(e) => setStatus(e.target.value as typeof status)} aria-label="Status">
+            <option value="all">All tickets</option>
+            <option value="new">Not attempted</option>
+            <option value="passed">Passed ({PASS_MARK}+)</option>
+            <option value="retry">Needs retry</option>
+          </select>
+        </div>
 
-          <div
-            ref={catsRef}
-            className={`seg queue-cats${catEdges.start ? ' fade-start' : ''}${catEdges.end ? ' fade-end' : ''}`}
-            role="group"
-            aria-label="Category"
-          >
-            {CATEGORY_OPTIONS.map((c) => (
-              <button
-                key={c}
-                type="button"
-                className={cat === c ? 'active' : ''}
-                aria-pressed={cat === c}
-                onClick={(e) => {
-                  setCat(c);
-                  // Keep the chosen option clear of the faded edge when the row scrolls.
-                  e.currentTarget.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-                }}
-              >
-                {c === 'All' ? <LayoutGrid size={14} aria-hidden /> : <CategoryIcon category={c} size={14} />}
-                {c}
-                <span className="seg-count num">{categoryCounts[c] ?? 0}</span>
-              </button>
-            ))}
-          </div>
-        </section>
+        <div
+          ref={catsRef}
+          className={`seg queue-cats${catEdges.start ? ' fade-start' : ''}${catEdges.end ? ' fade-end' : ''}`}
+          role="group"
+          aria-label="Category"
+        >
+          {CATEGORY_OPTIONS.map((c) => (
+            <button
+              key={c}
+              type="button"
+              className={cat === c ? 'active' : ''}
+              aria-pressed={cat === c}
+              onClick={(e) => {
+                setCat(c);
+                // Keep the chosen option clear of the faded edge when the row scrolls.
+                e.currentTarget.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+              }}
+            >
+              {c === 'All' ? <LayoutGrid size={14} aria-hidden /> : <CategoryIcon category={c} size={14} />}
+              {c}
+              <span className="seg-count num">{categoryCounts[c] ?? 0}</span>
+            </button>
+          ))}
+        </div>
+      </section>
 
-        <div className="queue-results-wrap">
-          <div className="queue-results">
-            <p className="queue-results-text" aria-live="polite">
-              {filtersActive ? (
-                <>
-                  <strong className="num">{list.length}</strong> of <span className="num">{scenarios.length}</span> tickets match
-                </>
-              ) : (
-                <>
-                  <strong className="num">{scenarios.length}</strong> tickets
-                </>
-              )}
-            </p>
-            {filtersActive && list.length > 0 && (
-              <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
-                <FilterX size={14} aria-hidden />
-                Clear filters
-              </button>
+      <div className="queue-results-wrap">
+        <div className="queue-results">
+          <p className="queue-results-text" aria-live="polite">
+            {filtersActive ? (
+              <>
+                <strong className="num">{list.length}</strong> of <span className="num">{scenarios.length}</span> tickets match
+              </>
+            ) : (
+              <>
+                <strong className="num">{scenarios.length}</strong> tickets
+              </>
             )}
-          </div>
-
-          {list.length === 0 ? (
-            <div className="card">
-              <EmptyState icon={SearchX} title={filtersActive ? 'No tickets match these filters' : 'No tickets available'}>
-                {filtersActive ? (
-                  <div className="qr-empty-body">
-                    <span>Try another category, difficulty or status, or clear the search.</span>
-                    <button type="button" className="btn btn-sm" onClick={clearFilters}>
-                      <FilterX size={14} aria-hidden />
-                      Clear filters
-                    </button>
-                  </div>
-                ) : (
-                  'Add a scenario in the Scenario Builder to see it here.'
-                )}
-              </EmptyState>
-            </div>
-          ) : (
-            <div className="grid grid-auto">
-              {list.map((s) => {
-                const b = best[s.id];
-                const passed = b !== undefined && b >= PASS_MARK;
-                return (
-                  <Link key={s.id} to={`/ticket/${s.id}`} className="card ticket-card queue-card">
-                    <div className="queue-card-top">
-                      <span className="ticket-id">{ticketNumber(s.id)}</span>
-                      <div className="queue-card-tags">
-                        <PriorityPill p={s.priority} />
-                        <span className="pill">
-                          <CategoryIcon category={s.category} />
-                          {s.category}
-                        </span>
-                        {s.custom && <span className="pill pill-info">Custom</span>}
-                      </div>
-                      {b !== undefined ? (
-                        <span className={`pill pill-${scoreTone(b)}`} title={passed ? `Best score ${b}, passed` : `Best score ${b}, needs retry`}>
-                          {passed ? <CircleCheck aria-hidden /> : <RotateCcw aria-hidden />}
-                          Best {b}
-                        </span>
-                      ) : (
-                        <span className="pill pill-outline queue-new" title="Not attempted yet">
-                          <CircleDashed aria-hidden />
-                          New
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="title">{s.title}</div>
-                    <p className="queue-card-desc">{s.description}</p>
-
-                    <div className="queue-card-foot">
-                      <span className="queue-card-req" title={`Received via ${CHANNEL_LABEL[s.channel]}`}>
-                        <ChannelIcon channel={s.channel} />
-                        <span className="qr-truncate">
-                          {s.requester.name} · {s.requester.department}
-                        </span>
-                      </span>
-                      <span className="queue-card-meta">
-                        <span className="inline-icon num" title="Target handling time">
-                          <Clock size={13} aria-hidden />~{s.targetMinutes} min
-                        </span>
-                        <DifficultyDots d={s.difficulty} />
-                      </span>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
+          </p>
+          {filtersActive && list.length > 0 && (
+            <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
+              <FilterX size={14} aria-hidden />
+              Clear filters
+            </button>
           )}
         </div>
+
+        {list.length === 0 ? (
+          <div className="card">
+            <EmptyState icon={SearchX} title={filtersActive ? 'No tickets match these filters' : 'No tickets available'}>
+              {filtersActive ? (
+                <div className="qr-empty-body">
+                  <span>Try another category, difficulty or status, or clear the search.</span>
+                  <button type="button" className="btn btn-sm" onClick={clearFilters}>
+                    <FilterX size={14} aria-hidden />
+                    Clear filters
+                  </button>
+                </div>
+              ) : (
+                'Add a scenario in the scenario builder to see it here.'
+              )}
+            </EmptyState>
+          </div>
+        ) : (
+          <div className="grid grid-auto">
+            {list.map((s) => {
+              const b = best[s.id];
+              return (
+                <Link key={s.id} to={`/ticket/${s.id}`} className="card ticket-card queue-card">
+                  <div className="queue-card-top">
+                    <span className="ticket-id">{ticketNumber(s.id)}</span>
+                    <div className="queue-card-tags">
+                      <PriorityPill p={s.priority} />
+                      <CategoryPill category={s.category} />
+                      {s.custom && <span className="pill pill-info">Custom</span>}
+                    </div>
+                    {b !== undefined ? <BestScorePill score={b} /> : <NewPill />}
+                  </div>
+
+                  <div className="title">{s.title}</div>
+                  <p className="queue-card-desc">{s.description}</p>
+
+                  <div className="queue-card-foot">
+                    <span className="queue-card-req" title={`Received via ${CHANNEL_LABEL[s.channel]}`}>
+                      <ChannelIcon channel={s.channel} />
+                      <span className="qr-truncate">
+                        {s.requester.name} · {s.requester.department}
+                      </span>
+                    </span>
+                    <span className="queue-card-meta">
+                      <span className="inline-icon num" title="Target handling time">
+                        <Clock size={14} aria-hidden />~{s.targetMinutes} min
+                      </span>
+                      <DifficultyDots d={s.difficulty} />
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
