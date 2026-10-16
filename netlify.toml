@@ -1,0 +1,13 @@
+# Netlify: build the Vite app and publish the compiled output (not the source index.html).
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# The app uses hash routes (#/tickets), but send any deep path back to the app just in case.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
