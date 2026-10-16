@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Clock, FilterX, Inbox, LayoutGrid, Search, SearchX, Shuffle, Timer } from 'lucide-react';
+import { Clock, FilterX, Inbox, LayoutGrid, List, Search, SearchX, Shuffle, Timer } from 'lucide-react';
 import { bestByScenario } from '../engine/progress';
 import { useStore } from '../state/store';
 import { CATEGORIES, type Category } from '../types';
@@ -38,6 +38,8 @@ function useScrollEdges<T extends HTMLElement>() {
   return [ref, edges] as const;
 }
 
+const VIEW_KEY = 'tierone-queue-view';
+
 export function Queue() {
   const { state, scenarios, work } = useStore();
   const navigate = useNavigate();
@@ -46,6 +48,21 @@ export function Queue() {
   const [diff, setDiff] = useState<0 | 1 | 2 | 3>(0);
   const [status, setStatus] = useState<'all' | 'new' | 'passed' | 'retry'>('all');
   const [q, setQ] = useState('');
+  const [view, setView] = useState<'cards' | 'list'>(() => {
+    try {
+      return localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'cards';
+    } catch {
+      return 'cards';
+    }
+  });
+  const changeView = (v: 'cards' | 'list') => {
+    setView(v);
+    try {
+      localStorage.setItem(VIEW_KEY, v);
+    } catch {
+      // Storage unavailable: the choice just won't be remembered.
+    }
+  };
   const [catsRef, catEdges] = useScrollEdges<HTMLDivElement>();
 
   const list = useMemo(
@@ -161,12 +178,24 @@ export function Queue() {
               </>
             )}
           </p>
-          {filtersActive && list.length > 0 && (
-            <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
-              <FilterX size={14} aria-hidden />
-              Clear filters
-            </button>
-          )}
+          <div className="queue-results-actions">
+            {filtersActive && list.length > 0 && (
+              <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
+                <FilterX size={14} aria-hidden />
+                Clear filters
+              </button>
+            )}
+            <div className="seg" role="group" aria-label="Layout">
+              <button type="button" className={view === 'cards' ? 'active' : ''} aria-pressed={view === 'cards'} onClick={() => changeView('cards')} title="Card view">
+                <LayoutGrid size={14} aria-hidden />
+                Cards
+              </button>
+              <button type="button" className={view === 'list' ? 'active' : ''} aria-pressed={view === 'list'} onClick={() => changeView('list')} title="List view">
+                <List size={14} aria-hidden />
+                List
+              </button>
+            </div>
+          </div>
         </div>
 
         {list.length === 0 ? (
@@ -184,6 +213,67 @@ export function Queue() {
                 'Add a scenario in the scenario builder to see it here.'
               )}
             </EmptyState>
+          </div>
+        ) : view === 'list' ? (
+          <div className="card queue-list-card">
+            <div className="table-wrap">
+              <table className="table queue-table">
+                <thead>
+                  <tr>
+                    <th>Ticket</th>
+                    <th>Priority</th>
+                    <th className="ql-hide-md">Category</th>
+                    <th className="ql-hide-md">Requester</th>
+                    <th className="ql-hide-sm">Target</th>
+                    <th className="ql-hide-sm">Difficulty</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {list.map((s) => {
+                    const b = best[s.id];
+                    return (
+                      <tr key={s.id} className="queue-row" onClick={() => navigate(`/ticket/${s.id}`)}>
+                        <td>
+                          <Link to={`/ticket/${s.id}`} className="queue-row-link" onClick={(e) => e.stopPropagation()}>
+                            <span className="ticket-id">{ticketNumber(s.id)}</span>
+                            <span className="queue-row-title">{s.title}</span>
+                          </Link>
+                        </td>
+                        <td>
+                          <PriorityPill p={s.priority} />
+                        </td>
+                        <td className="ql-hide-md">
+                          <CategoryPill category={s.category} />
+                        </td>
+                        <td className="ql-hide-md">
+                          <span className="queue-card-req">
+                            <ChannelIcon channel={s.channel} />
+                            <span className="qr-truncate">{s.requester.name}</span>
+                          </span>
+                        </td>
+                        <td className="ql-hide-sm num">~{s.targetMinutes} min</td>
+                        <td className="ql-hide-sm">
+                          <DifficultyDots d={s.difficulty} />
+                        </td>
+                        <td>
+                          {work?.scenario.id === s.id ? (
+                            <span className="pill pill-info">
+                              <Timer aria-hidden />
+                              In progress
+                            </span>
+                          ) : b !== undefined ? (
+                            <BestScorePill score={b} />
+                          ) : (
+                            <NewPill />
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         ) : (
           <div className="grid grid-auto">

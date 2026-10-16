@@ -483,3 +483,55 @@
     break-inside: avoid;
   }
 }
+
+/* ---------- List view ---------- */
+.queue-results-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.queue-list-card {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+.queue-table .queue-row {
+  cursor: pointer;
+}
+.queue-row-link {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--text);
+  min-width: 0;
+}
+.queue-row-link:hover {
+  text-decoration: none;
+}
+.queue-row:hover .queue-row-title {
+  color: var(--primary);
+}
+.queue-row-title {
+  font-weight: 600;
+  line-height: 1.3;
+}
+.queue-table td {
+  white-space: nowrap;
+}
+.queue-table td:first-child {
+  white-space: normal;
+  min-width: 220px;
+}
+@media (max-width: 1100px) {
+  .queue-table .ql-hide-md {
+    display: none;
+  }
+}
+@media (max-width: 640px) {
+  .queue-table .ql-hide-sm {
+    display: none;
+  }
+  .queue-table td:first-child {
+    min-width: 0;
+  }
+}

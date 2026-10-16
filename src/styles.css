@@ -137,6 +137,11 @@
 
 * {
   box-sizing: border-box;
+  /* Scrolling still works (wheel, trackpad, touch, keyboard); the bars are just not drawn. */
+  scrollbar-width: none;
+}
+*::-webkit-scrollbar {
+  display: none;
 }
 
 html,
