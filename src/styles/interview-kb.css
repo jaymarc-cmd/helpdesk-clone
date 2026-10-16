@@ -341,7 +341,7 @@
   gap: 12px;
 }
 .iv-qnum {
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 600;
   padding: 3px 8px;
   margin-top: 1px;
@@ -389,14 +389,15 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-/* Answers read as quotations: yours in neutral, the model answer in the accent. */
+/* Answers sit on a tint: yours neutral, the model answer in the accent's soft tone. */
 .iv-yours .iv-answer-text,
 .iv-sample .iv-answer-text {
-  padding: 2px 0 2px 12px;
-  border-left: 3px solid var(--border-strong);
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
 }
 .iv-sample .iv-answer-text {
-  border-left-color: var(--primary);
+  background: var(--primary-soft);
 }
 .iv-yours .iv-answer-empty {
   padding-left: 0;
@@ -597,7 +598,10 @@
 }
 .kb-row.active {
   background: var(--primary-soft);
-  box-shadow: inset 3px 0 0 var(--primary);
+}
+.kb-row.active .kb-row-title {
+  color: var(--primary);
+  font-weight: 600;
 }
 .kb-row:focus-visible {
   outline-offset: -2px;
@@ -625,10 +629,7 @@
   font-weight: 600;
 }
 .kb-row-cat {
-  font-family: var(--mono);
-  font-size: 0.64rem;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+  font-size: 0.75rem;
   color: var(--text-faint);
 }
 .kb-row-read {
@@ -674,8 +675,7 @@
   display: inline-flex;
   flex-wrap: wrap;
   gap: 0 4px;
-  font-family: var(--mono);
-  font-size: 0.74rem;
+  font-size: 0.75rem;
 }
 .kb-tag:not(:last-child)::after {
   content: ',';

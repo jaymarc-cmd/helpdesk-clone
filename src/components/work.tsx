@@ -25,7 +25,7 @@ export function ActiveTicketBar() {
   return (
     <div className="wk-bar" role="status" aria-label="Ticket in progress">
       <span className="wk-bar-label">
-        <span className="live-dot">WORKING</span>
+        <span className="live-dot">Working</span>
       </span>
       <span className="wk-bar-ticket">
         <span className="mono">{ticketNumber(sc.id)}</span>

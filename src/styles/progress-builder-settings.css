@@ -107,7 +107,6 @@
   font-weight: 600;
 }
 .pbs-rung-xp {
-  font-family: var(--mono);
   font-size: 0.76rem;
   color: var(--text-muted);
   text-align: right;
@@ -165,7 +164,6 @@
   flex-wrap: wrap;
 }
 .pbs-skill-pct {
-  font-family: var(--mono);
   font-size: 0.8rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -199,7 +197,6 @@
   padding: 12px 14px;
   border-radius: var(--radius-sm);
   background: var(--surface-2);
-  border: 1px solid var(--border);
 }
 .pbs-cat-table {
   margin-bottom: 16px;
@@ -389,8 +386,7 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 500;
   letter-spacing: 0.02em;
   color: var(--text-faint);
@@ -534,7 +530,7 @@
 }
 .pbs-scn-id {
   font-family: var(--mono);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   color: var(--text-muted);
   overflow-wrap: anywhere;
 }
@@ -609,8 +605,7 @@
   overflow-y: auto;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  font-family: var(--mono);
-  font-size: 0.74rem;
+  font-size: 0.75rem;
 }
 .pbs-ref-list li {
   display: flex;
@@ -849,7 +844,7 @@ input.pbs-switch[type='checkbox']:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 .pbs-inventory-label {
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   color: var(--text-muted);
 }
 .pbs-reset-summary {

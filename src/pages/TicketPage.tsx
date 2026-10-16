@@ -15,10 +15,8 @@ import {
   Crown,
   FileText,
   Fingerprint,
-  History,
   Hourglass,
   IdCard,
-  Inbox,
   Info,
   Lightbulb,
   ListChecks,
@@ -26,7 +24,6 @@ import {
   MonitorSmartphone,
   PackageCheck,
   Play,
-  ScanSearch,
   SearchX,
   Send,
   Server,
@@ -36,7 +33,6 @@ import {
   SquareTerminal,
   ThumbsUp,
   Timer,
-  UserRound,
   Wrench,
   X,
   type LucideIcon,
@@ -92,12 +88,6 @@ export function TicketPage() {
       <div className="page ws-root">
         <PageHeader
           back={{ to: '/tickets', label: 'Ticket queue' }}
-          eyebrow={
-            <>
-              <Inbox size={14} aria-hidden />
-              <span>Ticketing</span>
-            </>
-          }
           title="Ticket not found"
         />
         <div className="card">
@@ -150,15 +140,10 @@ function UnassignedTicket({ scenario }: { scenario: Scenario }) {
     <div className="page ws-root wk-ticket">
       <PageHeader
         back={inShift ? { to: '/shift', label: 'Shift board' } : { to: '/tickets', label: 'Ticket queue' }}
-        eyebrow={
-          <>
-            <Inbox size={14} aria-hidden />
-            <span>Ticketing · {ticketNumber(scenario.id)}</span>
-          </>
-        }
         title={scenario.title}
         meta={
           <>
+            <span className="mono meta-id">{ticketNumber(scenario.id)}</span>
             <span className="pill pill-outline">
               <CircleDot aria-hidden />
               New
@@ -174,7 +159,6 @@ function UnassignedTicket({ scenario }: { scenario: Scenario }) {
           <section className="card">
             <div className="card-head">
               <h2>
-                <FileText size={18} aria-hidden />
                 Request
               </h2>
               <span className="pill">
@@ -314,16 +298,10 @@ function AssignedTicket({ work }: { work: Work }) {
     <div className="page ws-root wk-ticket">
       <PageHeader
         back={work.mode === 'shift' ? { to: '/shift', label: 'Shift board' } : { to: '/tickets', label: 'Ticket queue' }}
-        eyebrow={
-          <>
-            <Inbox size={14} aria-hidden />
-            <span>Ticketing · {ticketNumber(sc.id)}</span>
-            {work.mode === 'shift' && <span className="live-dot">LIVE</span>}
-          </>
-        }
         title={sc.title}
         meta={
           <>
+            <span className="mono meta-id">{ticketNumber(sc.id)}</span>
             <span className="pill pill-info">
               <Timer aria-hidden />
               In progress
@@ -436,7 +414,6 @@ function RequesterCard({ scenario, s }: { scenario: Scenario; s?: SessionState }
     <section className="card">
       <div className="card-head">
         <h3>
-          <UserRound size={16} aria-hidden />
           Requester
         </h3>
         {s && <IdentityPill s={s} />}
@@ -474,19 +451,16 @@ function RequesterCard({ scenario, s }: { scenario: Scenario; s?: SessionState }
 
 function ToolsCard({ work }: { work: Work }) {
   const sc = work.scenario;
-  const tools: { to: string; icon: LucideIcon; label: string; sub: string }[] = [
-    { to: `/directory/${sc.account.username}`, icon: IdCard, label: 'Directory', sub: sc.account.username },
-    { to: `/devices/${sc.device.hostname}`, icon: MonitorSmartphone, label: 'Remote desktop', sub: sc.device.hostname },
+  const tools: { to: string; icon: LucideIcon; label: string; sub: string; id?: boolean }[] = [
+    { to: `/directory/${sc.account.username}`, icon: IdCard, label: 'Directory', sub: sc.account.username, id: true },
+    { to: `/devices/${sc.device.hostname}`, icon: MonitorSmartphone, label: 'Remote desktop', sub: sc.device.hostname, id: true },
     { to: '/servers', icon: Server, label: 'Server room', sub: 'Shared infrastructure' },
     { to: '/deploy', icon: PackageCheck, label: 'Deployment', sub: 'Push software' },
   ];
   return (
     <section className="card">
       <div className="card-head">
-        <h3>
-          <Wrench size={16} aria-hidden />
-          Workstation
-        </h3>
+        <h3>Workstation</h3>
       </div>
       <div className="wk-tools">
         {tools.map((t) => (
@@ -494,7 +468,7 @@ function ToolsCard({ work }: { work: Work }) {
             <t.icon size={16} aria-hidden />
             <span className="wk-tool-text">
               <span className="wk-tool-label">{t.label}</span>
-              <span className="wk-tool-sub mono">{t.sub}</span>
+              <span className={`wk-tool-sub ${t.id ? 'mono' : ''}`}>{t.sub}</span>
             </span>
             <ArrowRight size={14} className="wk-tool-go" aria-hidden />
           </Link>
@@ -510,7 +484,6 @@ function FindingsCard({ scenario, s }: { scenario: Scenario; s: SessionState }) 
     <section className="card">
       <div className="card-head">
         <h3>
-          <ScanSearch size={16} aria-hidden />
           Findings
         </h3>
         <span className="pill num">{found.length}</span>
@@ -538,7 +511,6 @@ function RelatedKbCard({ scenario, s }: { scenario: Scenario; s: SessionState })
     <section className="card">
       <div className="card-head">
         <h3>
-          <BookOpen size={16} aria-hidden />
           Related articles
         </h3>
       </div>
@@ -566,7 +538,6 @@ function ActivityCard({ s }: { s: SessionState }) {
     <section className="card">
       <div className="card-head">
         <h3>
-          <History size={16} aria-hidden />
           Activity
         </h3>
         <span className="pill num">{s.log.length}</span>

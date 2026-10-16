@@ -117,7 +117,7 @@ export function Layout() {
               >
                 <Icon size={18} aria-hidden />
                 <span className="nav-label">{item.label}</span>
-                {live && <span className="nav-badge live-dot nav-label">LIVE</span>}
+                {live && <span className="nav-badge live-dot nav-label">Live</span>}
               </NavLink>
             );
           })}
@@ -159,7 +159,7 @@ export function Layout() {
                   <Headset size={22} aria-hidden />
                 </div>
                 <div className="onboard-brand-text">
-                  <div className="eyebrow">{APP_TAGLINE}</div>
+                  <div className="brand-tagline">{APP_TAGLINE}</div>
                   <h2 id="onboard-title">Welcome to {APP_NAME}</h2>
                 </div>
               </div>

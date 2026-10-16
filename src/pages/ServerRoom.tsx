@@ -32,12 +32,6 @@ export function ServerRoom() {
   return (
     <div className="page ws-root wk-app">
       <PageHeader
-        eyebrow={
-          <>
-            <Server size={14} aria-hidden />
-            <span>Workstation</span>
-          </>
-        }
         title="Server room"
         description="Live status of shared servers and network gear. Restart a stopped service, or reboot when nothing else helps."
         actions={
@@ -88,10 +82,10 @@ function ServerCard({ srv }: { srv: ServerState }) {
   return (
     <section className={`card wk-server ${srv.status !== 'Healthy' ? 'attention' : ''}`} aria-label={srv.id}>
       <div className="card-head">
-        <h3>
-          <Icon size={16} aria-hidden />
+        <h2 className="srv-name">
+          <Icon size={16} aria-label={srv.kind === 'network' ? 'Network switch' : 'Server'} />
           <span className="mono">{srv.id}</span>
-        </h3>
+        </h2>
         <span className={`pill ${STATUS_TONE[srv.status]}`}>{srv.status}</span>
       </div>
       <p className="card-sub">

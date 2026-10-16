@@ -2,22 +2,15 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowRight,
   Award,
-  ChartNoAxesColumn,
   ChevronRight,
   CircleCheck,
   Clock,
   Crosshair,
-  Gauge,
   GraduationCap,
-  Headset,
-  History,
   Inbox,
   LibraryBig,
-  Medal,
   PhoneCall,
-  Smile,
   Target,
-  Ticket,
   Timer,
   Trophy,
   type LucideIcon,
@@ -77,7 +70,6 @@ export function Dashboard() {
   const minutesLeft = shift ? Math.ceil((shiftEndsAt(shift) - now) / 60_000) : 0;
   const passed = CATEGORIES.reduce((n, c) => n + cats[c].completed, 0);
   const scoreState = scoreTone(stats.avgScore);
-  const csatTone = stats.avgCsat >= 4 ? 'success' : stats.avgCsat >= 3 ? 'warning' : 'danger';
 
   const lead = shift
     ? 'You are on shift. Work the waiting tickets before their SLA timers run out.'
@@ -125,10 +117,6 @@ export function Dashboard() {
     <div className="page dash">
       <section className="hero dash-hero" aria-labelledby="dash-greeting">
         <div className="dash-hero-main">
-          <div className="eyebrow">
-            <Headset size={14} aria-hidden />
-            <span>Service desk · Harbor &amp; Pine Logistics</span>
-          </div>
           <h1 id="dash-greeting">{greeting}</h1>
           <p className="dash-lead">{lead}</p>
 
@@ -150,7 +138,8 @@ export function Dashboard() {
           {shift ? (
             <div className="dash-next dash-next-live">
               <div className="dash-next-label">
-                <span className="live-dot">Shift in progress</span>
+                <span className="status-dot bad" aria-hidden />
+                Shift in progress
               </div>
               <div className="dash-next-title">{waiting === 0 ? 'No tickets waiting' : `${plural(waiting, 'ticket')} waiting`}</div>
               <div className="dash-next-meta">
@@ -218,18 +207,14 @@ export function Dashboard() {
         </div>
       </section>
 
-      <section className="grid grid-4" aria-label="Your figures">
+      <section className="card stat-strip" aria-label="Your figures">
         <StatTile
           label="Tickets closed"
-          icon={Ticket}
-          tone={stats.tickets ? 'primary' : 'neutral'}
           value={stats.tickets}
           sub={`${passed} of ${BUILTIN_SCENARIOS.length} scenarios passed`}
         />
         <StatTile
           label="Average score"
-          icon={Gauge}
-          tone={stats.tickets ? scoreState : 'neutral'}
           value={
             stats.tickets ? (
               <>
@@ -244,8 +229,6 @@ export function Dashboard() {
         />
         <StatTile
           label="Satisfaction"
-          icon={Smile}
-          tone={stats.tickets ? csatTone : 'neutral'}
           value={
             stats.tickets ? (
               <span className="dash-csat">
@@ -260,8 +243,6 @@ export function Dashboard() {
         />
         <StatTile
           label="Badges"
-          icon={Medal}
-          tone={state.badges.length ? 'primary' : 'neutral'}
           value={
             <>
               {state.badges.length}
@@ -272,30 +253,31 @@ export function Dashboard() {
         />
       </section>
 
-      <section className="dash-section" aria-labelledby="dash-quick-title">
-        <h2 id="dash-quick-title" className="label">
-          Quick start
-        </h2>
-        <div className="grid grid-4 dash-quick">
-          {quick.map((q) => (
-            <Link key={q.to} to={q.to} className="card quick">
-              <IconTile icon={q.icon} tone="primary" />
-              <span className="quick-text">
-                <strong>{q.title}</strong>
-                <span className="small muted quick-desc">{q.text}</span>
-                <span className="quick-meta">{q.meta}</span>
-              </span>
-              <ArrowRight className="quick-arrow" size={16} aria-hidden />
-            </Link>
-          ))}
+      <section className="card dash-quick" aria-labelledby="dash-quick-title">
+        <div className="card-head">
+          <h2 id="dash-quick-title">Practice</h2>
         </div>
+        <ul className="quick-list">
+          {quick.map((q) => (
+            <li key={q.to}>
+              <Link to={q.to} className="quick-row">
+                <q.icon size={18} className="quick-icon" aria-hidden />
+                <span className="quick-text">
+                  <strong>{q.title}</strong>
+                  <span className="quick-desc">{q.text}</span>
+                </span>
+                <span className="quick-meta num">{q.meta}</span>
+                <ArrowRight className="quick-arrow" size={16} aria-hidden />
+              </Link>
+            </li>
+          ))}
+        </ul>
       </section>
 
       <section className="grid grid-2 dash-panels">
         <div className="card dash-panel">
           <div className="card-head">
             <h2>
-              <ChartNoAxesColumn size={18} aria-hidden />
               Skill mastery
             </h2>
             <Link to="/progress" className="dash-head-link">
@@ -342,7 +324,6 @@ export function Dashboard() {
         <div className="card dash-panel">
           <div className="card-head">
             <h2>
-              <History size={18} aria-hidden />
               Recent activity
             </h2>
             <Link to="/tickets" className="dash-head-link">

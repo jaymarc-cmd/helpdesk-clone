@@ -43,7 +43,7 @@
   padding-block: 0;
 }
 .ws-root .ws-timer-over {
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   font-weight: 500;
 }
 
@@ -308,11 +308,8 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  font-family: var(--mono);
-  font-size: 0.66rem;
+  font-size: 0.75rem;
   font-weight: 600;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
   opacity: 0.85;
   margin-bottom: 2px;
 }
@@ -347,14 +344,13 @@
 }
 
 /* Suggested questions: one calm list instead of a cloud of wrapping pills. */
+/* A plain list between two rules, not a box inside the conversation card. */
 .ws-root .suggestions.ws-questions {
   flex-direction: column;
   flex-wrap: nowrap;
   gap: 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  overflow: hidden;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
 }
 .ws-root .ws-questions .suggestion {
   width: 100%;
@@ -403,8 +399,7 @@
 }
 
 .ws-root .ws-guided {
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-sm);
   background: var(--surface-2);
   min-width: 0;
 }
@@ -469,7 +464,7 @@
 }
 .ws-root .ws-risky {
   color: var(--danger);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 600;
   display: inline-flex;
   align-items: center;
@@ -529,7 +524,6 @@
   overflow-wrap: anywhere;
 }
 .ws-root .ws-mono-head {
-  font-family: var(--mono);
   font-size: 0.92rem;
   overflow-wrap: anywhere;
   min-width: 0;
@@ -567,9 +561,7 @@
   font-variant-numeric: tabular-nums;
 }
 .ws-root .ws-signin-status .pill {
-  font-family: var(--mono);
-  font-size: 0.66rem;
-  letter-spacing: 0.04em;
+  font-size: 0.75rem;
   padding: 0 7px;
 }
 .ws-root .ws-signin-event {
@@ -814,11 +806,8 @@
 }
 .ws-root .ws-field-tag {
   margin-left: 4px;
-  font-family: var(--mono);
-  font-size: 0.66rem;
+  font-size: 0.75rem;
   font-weight: 500;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
   color: var(--text-muted);
 }
 .ws-root .ws-causes {

@@ -3,10 +3,8 @@ import { Link } from 'react-router-dom';
 import {
   ArrowRight,
   Check,
-  ClipboardCheck,
   Clock,
   Cpu,
-  GraduationCap,
   Headset,
   History,
   Lightbulb,
@@ -19,9 +17,7 @@ import {
   ShieldCheck,
   Shuffle,
   SkipForward,
-  SlidersHorizontal,
   Timer,
-  Trophy,
   Users,
   Volume2,
   VolumeX,
@@ -86,16 +82,6 @@ function plural(n: number, word: string) {
   return `${n} ${word}${n === 1 ? '' : 's'}`;
 }
 
-function PracticeEyebrow({ detail, live }: { detail?: string; live?: boolean }) {
-  return (
-    <>
-      <GraduationCap size={14} aria-hidden />
-      <span>{detail ? `Practice · ${detail}` : 'Practice'}</span>
-      {live && <span className="live-dot">LIVE</span>}
-    </>
-  );
-}
-
 export function InterviewPage() {
   const { state, dispatch } = useStore();
   const [phase, setPhase] = useState<'setup' | 'live' | 'done'>('setup');
@@ -134,7 +120,6 @@ export function InterviewPage() {
   return (
     <div className="page iv-page">
       <PageHeader
-        eyebrow={<PracticeEyebrow />}
         title="Mock interview"
         description="Practice the questions service desk hiring managers actually ask. Type or speak your answers and get feedback on each one."
       />
@@ -143,7 +128,6 @@ export function InterviewPage() {
         <section className="card iv-setup" aria-labelledby="iv-setup-title">
           <div className="card-head">
             <h2 id="iv-setup-title">
-              <SlidersHorizontal size={18} aria-hidden />
               Interview setup
             </h2>
             <span className="pill num">{plural(INTERVIEW_QUESTIONS.length, 'question')} in bank</span>
@@ -242,13 +226,11 @@ export function InterviewPage() {
           </div>
         </section>
 
-        <aside className="iv-side" aria-label="Interview record">
+        <aside className="iv-side card stat-strip stat-strip-col" aria-label="Interview record">
           <StatTile
             label="Completed"
             value={taken}
             sub={taken === 1 ? 'Mock interview' : 'Mock interviews'}
-            icon={ClipboardCheck}
-            tone={taken ? 'primary' : 'neutral'}
           />
           <StatTile
             label="Best score"
@@ -263,8 +245,6 @@ export function InterviewPage() {
               )
             }
             sub={avg !== null ? `Average ${avg}` : 'No scores yet'}
-            icon={Trophy}
-            tone={best !== null ? scoreTone(best) : 'neutral'}
           />
         </aside>
       </div>
@@ -272,7 +252,6 @@ export function InterviewPage() {
       <section className="card iv-history" aria-labelledby="iv-history-title">
         <div className="card-head">
           <h2 id="iv-history-title">
-            <History size={18} aria-hidden />
             Previous interviews
           </h2>
           {taken > 0 && <span className="pill num">{taken > 10 ? `Latest 10 of ${taken}` : `${taken} completed`}</span>}
@@ -368,7 +347,6 @@ function LiveInterview({ questions, perQ, onFinish }: { questions: InterviewQues
   return (
     <div className="page page-narrow iv-page iv-live">
       <PageHeader
-        eyebrow={<PracticeEyebrow detail="Mock interview" live />}
         title={
           <>
             Question {idx + 1} <span className="iv-of">of {questions.length}</span>
@@ -485,7 +463,6 @@ function Results({ questions, results, onAgain }: { questions: InterviewQuestion
   return (
     <div className="page iv-page">
       <PageHeader
-        eyebrow={<PracticeEyebrow detail="Mock interview" />}
         title="Interview feedback"
         description={verdict}
         actions={

@@ -570,12 +570,12 @@ export function Desktop({ work, onDisconnect }: { work: Work; onDisconnect: () =
               aria-label={def.title}
             >
               <header className="dt-win-bar" onPointerDown={(e) => startDrag(w.app, e)} onDoubleClick={() => toggleMax(w.app)} onContextMenu={(e) => showMenu(e, windowMenu(w))}>
-                <span className="dt-win-title">
+                <h2 className="dt-win-title">
                   <span className={`dt-tile mini tone-${def.tone}`}>
                     <def.icon size={12} aria-hidden />
                   </span>
                   {def.title}
-                </span>
+                </h2>
                 <span className="dt-win-ctl">
                   <button onClick={() => toggleMin(w.app)} aria-label="Minimise">
                     <Minus size={14} />

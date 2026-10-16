@@ -141,18 +141,16 @@ export function Modal({
 }
 
 /**
- * Consistent page title block. List pages: eyebrow, title, description, actions.
+ * Consistent page title block. List pages: title, description, actions.
  * Detail pages (ticket, review, call) also pass `back` (link above the header) and `meta` (chips row under the title).
  */
 export function PageHeader({
-  eyebrow,
   title,
   description,
   actions,
   back,
   meta,
 }: {
-  eyebrow?: ReactNode;
   title: ReactNode;
   description?: ReactNode;
   actions?: ReactNode;
@@ -168,13 +166,22 @@ export function PageHeader({
             {back.label}
           </Link>
         )}
-        {eyebrow && <div className="eyebrow">{eyebrow}</div>}
         <h1>{title}</h1>
         {description && <p>{description}</p>}
         {meta && <div className="meta-row">{meta}</div>}
       </div>
       {actions && <div className="page-actions">{actions}</div>}
     </header>
+  );
+}
+
+/** Marks something happening right now (a running shift, a call in progress). Static: state, not decoration. */
+export function LivePill({ label = 'Live' }: { label?: string }) {
+  return (
+    <span className="pill pill-danger">
+      <span className="status-dot bad" aria-hidden />
+      {label}
+    </span>
   );
 }
 
@@ -247,13 +254,11 @@ export function IconTile({ icon: Icon, tone = 'primary', size = 'md' }: { icon: 
   );
 }
 
-export function StatTile({ label, value, sub, icon, tone }: { label: string; value: ReactNode; sub?: ReactNode; icon?: LucideIcon; tone?: 'primary' | 'success' | 'warning' | 'danger' | 'info' | 'neutral' }) {
+export function StatTile({ label, value, sub }: { label: string; value: ReactNode; sub?: ReactNode }) {
+  // Tiles sit side by side inside one `.card.stat-strip`, divided by rules, not as separate cards.
   return (
-    <div className="card stat">
-      <div className="stat-top">
-        <span className="stat-label">{label}</span>
-        {icon && <IconTile icon={icon} tone={tone ?? 'neutral'} size="sm" />}
-      </div>
+    <div className="stat">
+      <span className="stat-label">{label}</span>
       <span className="stat-value">{value}</span>
       {sub && <span className="stat-sub">{sub}</span>}
     </div>

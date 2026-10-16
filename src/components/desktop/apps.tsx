@@ -287,7 +287,7 @@ export function ExplorerApp(p: AppProps) {
         <div className="dt-main" onClick={(e) => e.target === e.currentTarget && setSel(null)}>
           {loc === 'pc' ? (
             <>
-              <h4>Devices and drives</h4>
+              <h3 className="dt-h">Devices and drives</h3>
               {items.map((it) => {
                 const ok = it.kind !== 'net' || !folderAt(fs, it.to!).denied;
                 return (
@@ -465,7 +465,7 @@ export function BrowserApp(p: AppProps) {
           <h3>Harbor &amp; Pine intranet</h3>
           <p>Good to see you, {(sc.accountOwner?.name ?? sc.requester.name).split(' ')[0]}.</p>
         </header>
-        <h4>Quick links</h4>
+        <h3 className="dt-h">Quick links</h3>
         <div className="dt-links">
           {['timesheets.hpl.example', 'it.hpl.example', 'hr.hpl.example', 'crm.hpl.example'].map((l) => (
             <button key={l} onClick={() => go(l)}>
@@ -473,7 +473,7 @@ export function BrowserApp(p: AppProps) {
             </button>
           ))}
         </div>
-        <h4>News</h4>
+        <h3 className="dt-h">News</h3>
         <article className="dt-news">
           <strong>Depot B expansion opens next month</strong>
           <p>Forty new loading bays and a second cold-storage hall. Tours run every Thursday.</p>
@@ -492,7 +492,7 @@ export function BrowserApp(p: AppProps) {
           <h3>IT Service Portal</h3>
           <p>Service status, approved software and self-help.</p>
         </header>
-        <h4>Service status</h4>
+        <h3 className="dt-h">Service status</h3>
         <ul className="dt-status-list">
           {servers.map((s) => (
             <li key={s.id}>
@@ -502,7 +502,7 @@ export function BrowserApp(p: AppProps) {
             </li>
           ))}
         </ul>
-        <h4>Approved software</h4>
+        <h3 className="dt-h">Approved software</h3>
         <div className="dt-links">
           {['Office', 'Teams', 'VPN Client', 'DiagramStudio 3.2', 'PDF Reader'].map((s) => (
             <span key={s} className="dt-chip">
@@ -962,7 +962,7 @@ export function UpdatesApp(p: AppProps) {
           Check for updates
         </button>
       </div>
-      <h4>Updates and approved software</h4>
+      <h3 className="dt-h">Updates and approved software</h3>
       {items.map((i) => (
         <Row key={i.id} icon={i.available ? Download : CircleCheck} title={i.name} sub={p.done(i.id) ? 'Installed just now' : i.available ? `${i.status} · update available` : i.status}>
           {!p.done(i.id) && <ActionButton id={i.id} label={i.available ? 'Install' : i.status === 'Not installed' ? 'Install' : 'Reinstall'} p={p} primary={i.available} busy="Installing" />}
@@ -1004,7 +1004,7 @@ export function PrintersApp(p: AppProps) {
         </button>
       </Row>
       {testMsg && <p className={`dt-result ${stuck ? 'warn' : ''}`}>{testMsg}</p>}
-      <h4>Print queue</h4>
+      <h3 className="dt-h">Print queue</h3>
       {jobs.length || (stuck && tests.length) ? (
         <pre className="dt-pre">
           {[queueOut?.split('\n')[0] ?? 'Id  Document              Status', ...jobs, ...tests.map((_, i) => `T${i + 1}  Test page             Waiting`)].join('\n')}
@@ -1160,7 +1160,7 @@ function DisplaySection(p: AppProps) {
 
   return (
     <>
-      <h4>Arrange your displays</h4>
+      <h3 className="dt-h">Arrange your displays</h3>
       <div className="dt-monitors">
         {monitors.map((m) => (
           <button key={m.n} className={`dt-monitor ${sel === m.n ? 'on' : ''} ${identify ? 'identify' : ''}`} onClick={() => setSel(m.n)} aria-pressed={sel === m.n}>
@@ -1195,7 +1195,7 @@ function DisplaySection(p: AppProps) {
           {dock && !dockOk ? "Didn't detect another display on Dock DisplayPort 2. The dock reports firmware " + dock + '.' : 'All connected displays are detected.'}
         </p>
       )}
-      <h4>{monitors.find((m) => m.n === sel)?.name ?? 'Display'}</h4>
+      <h3 className="dt-h">{monitors.find((m) => m.n === sel)?.name ?? 'Display'}</h3>
       <Row icon={Monitor} title="Display resolution">
         <select className="dt-select" value={res} onChange={(e) => setRes(e.target.value)} aria-label="Display resolution">
           {['2560 × 1440', '1920 × 1080 (recommended)', '1600 × 900', '1280 × 720'].map((r) => (
@@ -1223,7 +1223,7 @@ function DisplaySection(p: AppProps) {
 function PersonalizeSection(p: AppProps) {
   return (
     <>
-      <h4>Background</h4>
+      <h3 className="dt-h">Background</h3>
       <div className="dt-wp-grid">
         {WALLPAPERS.map((w) => (
           <button key={w.id} className={`dt-wp ${p.prefs.wallpaper === w.id ? 'on' : ''}`} onClick={() => p.setPref('wallpaper', w.id)} aria-pressed={p.prefs.wallpaper === w.id}>
@@ -1232,13 +1232,13 @@ function PersonalizeSection(p: AppProps) {
           </button>
         ))}
       </div>
-      <h4>Accent colour</h4>
+      <h3 className="dt-h">Accent colour</h3>
       <div className="dt-swatches">
         {ACCENTS.map((c) => (
           <button key={c} className={`dt-swatch ${p.prefs.accent === c ? 'on' : ''}`} style={{ background: c }} onClick={() => p.setPref('accent', c)} aria-label={`Accent ${c}`} aria-pressed={p.prefs.accent === c} />
         ))}
       </div>
-      <h4>Desktop icons</h4>
+      <h3 className="dt-h">Desktop icons</h3>
       <Row icon={AppWindow} title="Show desktop icons">
         <Switch on={p.prefs.showIcons} onChange={(v) => p.setPref('showIcons', v)} label="Show desktop icons" />
       </Row>
@@ -1288,7 +1288,7 @@ export function SettingsApp(p: AppProps) {
       <div className="dt-main" key={sec}>
         {sec === 'system' && (
           <>
-            <h4>About this device</h4>
+            <h3 className="dt-h">About this device</h3>
             <dl className="dt-kv">
               <dt>Device name</dt>
               <dd className="mono">{d.hostname}</dd>
@@ -1303,7 +1303,7 @@ export function SettingsApp(p: AppProps) {
             </dl>
             {(d.installedNotes ?? []).length > 0 && (
               <>
-                <h4>Inventory</h4>
+                <h3 className="dt-h">Inventory</h3>
                 <ul className="dt-list">
                   {d.installedNotes!.map((n) => (
                     <li key={n}>{n}</li>
@@ -1311,7 +1311,7 @@ export function SettingsApp(p: AppProps) {
                 </ul>
               </>
             )}
-            <h4>Power</h4>
+            <h3 className="dt-h">Power</h3>
             <Row icon={Power} title="Restart this device" sub="The user loses unsaved work.">
               <ActionButton id="remote_restart" label="Restart" p={p} danger confirm="Restart the device now? The user loses any unsaved work." />
             </Row>
@@ -1322,7 +1322,7 @@ export function SettingsApp(p: AppProps) {
         {sec === 'personalize' && <PersonalizeSection {...p} />}
         {sec === 'devices' && (
           <>
-            <h4>Devices</h4>
+            <h3 className="dt-h">Devices</h3>
             <Row icon={Bluetooth} title="Bluetooth" sub={p.prefs.bluetooth ? 'On · discoverable as ' + d.hostname : 'Off'}>
               <Switch on={p.prefs.bluetooth} onChange={(v) => p.setPref('bluetooth', v)} label="Bluetooth" />
             </Row>
@@ -1344,7 +1344,7 @@ export function SettingsApp(p: AppProps) {
         )}
         {sec === 'network' && (
           <>
-            <h4>Network status</h4>
+            <h3 className="dt-h">Network status</h3>
             <div className={`dt-banner ${d.online ? 'ok' : 'bad'}`}>{d.online ? 'Connected' : 'Not connected: no network access'}</div>
             <dl className="dt-kv">
               <dt>IPv4 address</dt>
@@ -1362,7 +1362,7 @@ export function SettingsApp(p: AppProps) {
         )}
         {sec === 'storage' && (
           <>
-            <h4>Local Disk (C:)</h4>
+            <h3 className="dt-h">Local Disk (C:)</h3>
             <div className="dt-stack" aria-label={`${used.toFixed(1)} GB used of ${total} GB`}>
               {[...usage, { label: 'Other', gb: other }].map((u, i) => (
                 <i key={u.label} className={`c${i}`} style={{ width: `${(u.gb / total) * 100}%` }} title={`${u.label}: ${u.gb.toFixed(1)} GB`} />
@@ -1395,7 +1395,7 @@ export function SettingsApp(p: AppProps) {
         )}
         {sec === 'privacy' && (
           <>
-            <h4>Camera</h4>
+            <h3 className="dt-h">Camera</h3>
             <Row icon={Camera} title="Camera access" sub={cameraOff ? 'Off: apps cannot use the camera' : 'On'}>
               {cameraOff ? <ActionButton id="guide_camera_privacy" label="Turn on" p={p} primary /> : <Switch on onChange={() => undefined} label="Camera access" />}
             </Row>
@@ -1404,7 +1404,7 @@ export function SettingsApp(p: AppProps) {
         )}
         {sec === 'credentials' && (
           <>
-            <h4>Windows credentials</h4>
+            <h3 className="dt-h">Windows credentials</h3>
             {staleCreds && (
               <>
                 <Row icon={KeyRound} title="MicrosoftOffice16_Data:SSPI" sub="Last updated 41 days ago" />
@@ -1420,7 +1420,7 @@ export function SettingsApp(p: AppProps) {
         )}
         {sec === 'apps' && (
           <>
-            <h4>Office</h4>
+            <h3 className="dt-h">Office</h3>
             <Row icon={AppWindow} title="Office add-ins" sub={addinName ? `${addinName} (third-party, loads at startup)` : 'No third-party add-ins'}>
               {addinName && <ActionButton id="disable_addin" label="Disable" p={p} />}
             </Row>
@@ -1437,7 +1437,7 @@ export function SettingsApp(p: AppProps) {
         )}
         {sec === 'accounts' && (
           <>
-            <h4>Local administrators</h4>
+            <h3 className="dt-h">Local administrators</h3>
             <Row icon={UserCog} title="HPL\\Workstation Admins" sub="Managed by IT" />
             <Row icon={UserCog} title={`HPL\\${p.work.session.account.username}`} sub="Standard user">
               <ActionButton id="grant_admin" label="Make administrator" p={p} danger confirm="Give this user local admin rights for 24 hours?" />
@@ -1447,7 +1447,7 @@ export function SettingsApp(p: AppProps) {
         )}
         {sec === 'recovery' && (
           <>
-            <h4>Reset this PC</h4>
+            <h3 className="dt-h">Reset this PC</h3>
             <div className="dt-banner bad">
               <Info size={14} aria-hidden /> Reimaging wipes the device and reinstalls the standard build. Local files are lost.
             </div>

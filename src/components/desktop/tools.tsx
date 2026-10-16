@@ -306,7 +306,7 @@ export function TaskManagerApp(p: AppProps) {
 
       {tab === 'startup' && (
         <div className="dt-main">
-          <h4>Apps that start when {sc.accountOwner?.name ?? sc.requester.name} signs in</h4>
+          <h3 className="dt-h">Apps that start when {sc.accountOwner?.name ?? sc.requester.name} signs in</h3>
           {STARTUP.map((s) => {
             const on = startup[s.name] ?? true;
             return (

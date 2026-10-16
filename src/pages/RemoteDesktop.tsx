@@ -56,12 +56,6 @@ function DeviceList() {
   return (
     <div className="page ws-root wk-app">
       <PageHeader
-        eyebrow={
-          <>
-            <MonitorSmartphone size={14} aria-hidden />
-            <span>Workstation</span>
-          </>
-        }
         title="Remote desktop"
         description="Managed laptops and desktops. Connect to see health and inventory, run remote actions or open a PowerShell session."
       />
@@ -137,18 +131,13 @@ function DevicePage({ hostname }: { hostname: string }) {
     <div className="page ws-root wk-app">
       <PageHeader
         back={{ to: '/devices', label: 'Remote desktop' }}
-        eyebrow={
-          <>
-            <MonitorSmartphone size={14} aria-hidden />
-            <span>Remote desktop · {row.user}</span>
-          </>
-        }
         title={<span className="mono">{d.hostname}</span>}
         meta={
           <>
             <OnlinePill d={d} />
             <span className="pill">{d.model}</span>
             <span className="inline-icon">{d.os}</span>
+            <span className="inline-icon">Assigned to {row.user}</span>
             {editable && <span className="pill pill-info">Your open ticket</span>}
           </>
         }
@@ -208,7 +197,6 @@ function RemoteSession({ work }: { work: Work }) {
       <section className="card ws-root">
         <div className="card-head">
           <h2>
-            <SquareTerminal size={18} aria-hidden />
             Relayed PowerShell
           </h2>
           <button className="btn btn-sm" onClick={() => setPhase('idle')}>

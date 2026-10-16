@@ -9,28 +9,18 @@ import {
   CircleCheck,
   Clock,
   FileText,
-  GraduationCap,
   History,
   Hourglass,
-  Inbox,
   Info,
   Lightbulb,
-  ListChecks,
   MessageCircleQuestion,
-  MessagesSquare,
   MousePointerClick,
-  NotebookPen,
   Printer,
   RotateCcw,
-  Route,
-  ScanSearch,
   SearchX,
-  ShieldCheck,
   SquareTerminal,
-  Stethoscope,
   Timer,
   TimerOff,
-  Wrench,
   X,
   type LucideIcon,
   Sparkles,
@@ -56,16 +46,6 @@ import {
   ticketNumber,
 } from '../components/ui';
 import '../styles/queue-review.css';
-
-const SECTION_ICON: Record<ScoreSection['key'], LucideIcon> = {
-  diagnosis: Stethoscope,
-  resolution: Wrench,
-  investigation: ScanSearch,
-  process: ShieldCheck,
-  communication: MessagesSquare,
-  documentation: FileText,
-  time: Clock,
-};
 
 /** Display labels in sentence case (stored attempts keep the grader's original labels). */
 const SECTION_LABEL: Partial<Record<ScoreSection['key'], string>> = {
@@ -101,12 +81,6 @@ export function TicketReview() {
       <div className="page review-page">
         <PageHeader
           back={back}
-          eyebrow={
-            <>
-              <Inbox size={14} aria-hidden />
-              <span>Practice</span>
-            </>
-          }
           title="Review not found"
         />
         <div className="card">
@@ -149,15 +123,10 @@ export function TicketReview() {
     <div className="page review-page">
       <PageHeader
         back={back}
-        eyebrow={
-          <>
-            <Inbox size={14} aria-hidden />
-            <span>Practice · {ticketNumber(attempt.scenarioId)}</span>
-          </>
-        }
         title={attempt.title}
         meta={
           <>
+            <span className="mono meta-id">{ticketNumber(attempt.scenarioId)}</span>
             {scenario && <PriorityPill p={scenario.priority} long />}
             <CategoryPill category={attempt.category} />
             <DifficultyDots d={attempt.difficulty} showLabel />
@@ -256,7 +225,6 @@ export function TicketReview() {
       <section className="card review-breakdown" aria-labelledby="review-breakdown-h">
         <div className="card-head">
           <h2 id="review-breakdown-h">
-            <ListChecks size={18} aria-hidden />
             Score breakdown
           </h2>
           <span className="pill num">
@@ -265,14 +233,12 @@ export function TicketReview() {
         </div>
         <div className="review-sections">
           {r.sections.map((sec) => {
-            const Icon = SECTION_ICON[sec.key] ?? CircleCheck;
             const ratio = sec.max ? sec.score / sec.max : 0;
             const tone = scoreTone(ratio * 100);
             return (
               <section className="review-section" key={sec.key} aria-labelledby={`review-sec-${sec.key}`}>
                 <div className="review-section-head">
                   <h3 id={`review-sec-${sec.key}`}>
-                    <Icon size={16} aria-hidden />
                     {SECTION_LABEL[sec.key] ?? sec.label}
                   </h3>
                   <span className={`pill pill-${tone} num`}>
@@ -299,7 +265,6 @@ export function TicketReview() {
           <section className="card">
             <div className="card-head">
               <h2>
-                <Route size={18} aria-hidden />
                 Ideal path
               </h2>
               <span className="pill num">
@@ -316,7 +281,6 @@ export function TicketReview() {
           <section className="card">
             <div className="card-head">
               <h2>
-                <GraduationCap size={18} aria-hidden />
                 Why it matters
               </h2>
             </div>
@@ -347,7 +311,6 @@ export function TicketReview() {
         <section className="card">
           <div className="card-head">
             <h2>
-              <NotebookPen size={18} aria-hidden />
               Your submission
             </h2>
           </div>
@@ -366,7 +329,6 @@ export function TicketReview() {
         <section className="card">
           <div className="card-head">
             <h2>
-              <History size={18} aria-hidden />
               Timeline
             </h2>
             <span className="pill num">

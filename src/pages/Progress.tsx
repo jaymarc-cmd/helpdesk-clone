@@ -1,26 +1,17 @@
 import { Link } from 'react-router-dom';
 import {
   Activity,
-  ChartNoAxesColumn,
   CircleCheck,
   Clock,
   FileText,
-  Gauge,
-  History,
   Inbox,
-  LayoutGrid,
   Lock,
-  Medal,
   MessagesSquare,
   Printer,
   ScanSearch,
   ShieldCheck,
-  Smile,
-  Sparkles,
   Stethoscope,
   Target,
-  Ticket,
-  TrendingUp,
   Wrench,
   type LucideIcon,
   Crosshair,
@@ -97,7 +88,6 @@ export function ProgressPage() {
   const weakest = hasTickets ? [...SECTIONS].sort((a, b) => avgs[a.key] - avgs[b.key])[0] : null;
 
   const scoreState = scoreTone(stats.avgScore);
-  const csatTone = stats.avgCsat >= 4 ? 'success' : stats.avgCsat >= 3 ? 'warning' : 'danger';
   const badgeCount = state.badges.length;
   const ranksReached = RANKS.filter((r) => xp >= r.xp).length;
   const catTotals = CATEGORIES.reduce(
@@ -108,12 +98,6 @@ export function ProgressPage() {
   return (
     <div className="page pbs-page pbs-progress">
       <PageHeader
-        eyebrow={
-          <>
-            <ChartNoAxesColumn size={14} aria-hidden />
-            <span>Resources</span>
-          </>
-        }
         title="Your progress"
         description={`${state.profile?.name ? `${state.profile.name} · ` : ''}Level ${rank.level} · ${rank.current.title}`}
         actions={
@@ -124,25 +108,19 @@ export function ProgressPage() {
         }
       />
 
-      <section className="grid grid-4" aria-label="Summary">
+      <section className="card stat-strip" aria-label="Summary">
         <StatTile
           label="Total XP"
-          icon={Sparkles}
-          tone={xp ? 'primary' : 'neutral'}
           value={fmt(xp)}
           sub={rank.next ? `${fmt(rank.next.xp - xp)} XP to ${rank.next.title}` : 'Top rank reached'}
         />
         <StatTile
           label="Tickets closed"
-          icon={Ticket}
-          tone={hasTickets ? 'primary' : 'neutral'}
           value={stats.tickets}
           sub={`${catTotals.passed} of ${BUILTIN_SCENARIOS.length} scenarios passed`}
         />
         <StatTile
           label="Average score"
-          icon={Gauge}
-          tone={hasTickets ? scoreState : 'neutral'}
           value={
             hasTickets ? (
               <>
@@ -157,8 +135,6 @@ export function ProgressPage() {
         />
         <StatTile
           label="Satisfaction"
-          icon={Smile}
-          tone={hasTickets ? csatTone : 'neutral'}
           value={
             hasTickets ? (
               <span className="pbs-csat">
@@ -176,7 +152,6 @@ export function ProgressPage() {
       <section className="card" aria-labelledby="pbs-ladder-h">
         <div className="card-head">
           <h2 id="pbs-ladder-h">
-            <TrendingUp size={18} aria-hidden />
             Career ladder
           </h2>
           <span className="pill num">
@@ -218,7 +193,6 @@ export function ProgressPage() {
         <section className="card pbs-card-col" aria-labelledby="pbs-skills-h">
           <div className="card-head">
             <h2 id="pbs-skills-h">
-              <Activity size={18} aria-hidden />
               Skill breakdown
             </h2>
           </div>
@@ -263,7 +237,6 @@ export function ProgressPage() {
         <section className="card pbs-card-col" aria-labelledby="pbs-cats-h">
           <div className="card-head">
             <h2 id="pbs-cats-h">
-              <LayoutGrid size={18} aria-hidden />
               Categories
             </h2>
           </div>
@@ -322,7 +295,6 @@ export function ProgressPage() {
       <section className="card" aria-labelledby="pbs-badges-h">
         <div className="card-head">
           <h2 id="pbs-badges-h">
-            <Medal size={18} aria-hidden />
             Badges
           </h2>
           <span className="pill num">
@@ -361,7 +333,6 @@ export function ProgressPage() {
       <section className="card" aria-labelledby="pbs-history-h">
         <div className="card-head">
           <h2 id="pbs-history-h">
-            <History size={18} aria-hidden />
             Ticket history
           </h2>
           {hasTickets && <span className="pill num">{state.tickets.length}</span>}

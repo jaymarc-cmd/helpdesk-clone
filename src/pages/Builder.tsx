@@ -5,9 +5,7 @@ import {
   CircleAlert,
   CircleCheck,
   Download,
-  FileJson,
   FilePlus2,
-  FolderOpen,
   ListChecks,
   Pencil,
   Play,
@@ -18,8 +16,7 @@ import {
   TriangleAlert,
   Upload,
   Users,
-  Wrench,
-} from 'lucide-react';
+  } from 'lucide-react';
 import { ACTIONS } from '../data/actions';
 import { KB_ARTICLES } from '../data/kb';
 import { BUILTIN_SCENARIOS } from '../data/scenarios';
@@ -120,12 +117,6 @@ export function Builder() {
   return (
     <div className="page pbs-page pbs-builder">
       <PageHeader
-        eyebrow={
-          <>
-            <Wrench size={14} aria-hidden />
-            <span>Resources</span>
-          </>
-        }
         title="Scenario builder"
         description="Write your own tickets, or share packs with your class or team as JSON. Custom tickets appear in the queue and in shifts."
         actions={
@@ -159,7 +150,6 @@ export function Builder() {
           <div className="card-head pbs-flush">
             <div className="pbs-head-title">
               <h2 id="pbs-editor-h">
-                <FileJson size={18} aria-hidden />
                 {editing ? 'Editing scenario' : 'New scenario'}
               </h2>
               {editing && (
@@ -269,7 +259,6 @@ export function Builder() {
           <section className="card" aria-labelledby="pbs-yours-h">
             <div className="card-head">
               <h3 id="pbs-yours-h">
-                <FolderOpen size={16} aria-hidden />
                 Your scenarios
               </h3>
               <span className="pill num">{count}</span>

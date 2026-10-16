@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { History, PhoneCall, Volume2, VolumeX } from 'lucide-react';
+import { PhoneCall, Volume2, VolumeX } from 'lucide-react';
 import { CALLS } from '../data/calls';
 import { useStore } from '../state/store';
 import { BestScorePill, DifficultyDots, NewPill, PageHeader, initials, scoreTone, timeAgo } from '../components/ui';
@@ -19,12 +19,6 @@ export function CallsPage() {
   return (
     <div className="page sc-page">
       <PageHeader
-        eyebrow={
-          <>
-            <PhoneCall size={14} aria-hidden />
-            <span>Practice</span>
-          </>
-        }
         title="Voice calls"
         description="Live phone simulations with spoken callers. Every choice changes the caller's mood and the outcome."
         actions={
@@ -85,7 +79,6 @@ export function CallsPage() {
         <section className="card">
           <div className="card-head">
             <h2>
-              <History size={18} aria-hidden />
               Recent calls
             </h2>
             <span className="pill num">{state.calls.length} completed</span>

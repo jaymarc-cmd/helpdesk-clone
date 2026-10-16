@@ -2,7 +2,6 @@ import { useRef, useState } from 'react';
 import {
   CircleAlert,
   CircleCheck,
-  Database,
   Download,
   Gauge,
   Info,
@@ -11,9 +10,7 @@ import {
   Moon,
   Palette,
   Save,
-  Settings as SettingsIcon,
-  SlidersHorizontal,
-  Sun,
+  Settings as Sun,
   Trash2,
   Upload,
   UserRound,
@@ -66,12 +63,6 @@ export function SettingsPage() {
   return (
     <div className="page page-narrow pbs-page pbs-settings">
       <PageHeader
-        eyebrow={
-          <>
-            <SettingsIcon size={14} aria-hidden />
-            <span>Resources</span>
-          </>
-        }
         title="Settings"
         description="Everything is stored locally in this browser. Nothing is sent to a server."
       />
@@ -79,7 +70,6 @@ export function SettingsPage() {
       <section className="card" aria-labelledby="pbs-profile-h">
         <div className="card-head">
           <h2 id="pbs-profile-h">
-            <UserRound size={18} aria-hidden />
             Profile
           </h2>
         </div>
@@ -126,7 +116,6 @@ export function SettingsPage() {
       <section className="card" aria-labelledby="pbs-prefs-h">
         <div className="card-head">
           <h2 id="pbs-prefs-h">
-            <SlidersHorizontal size={18} aria-hidden />
             Preferences
           </h2>
         </div>
@@ -228,7 +217,6 @@ export function SettingsPage() {
       <section className="card" aria-labelledby="pbs-data-h">
         <div className="card-head">
           <h2 id="pbs-data-h">
-            <Database size={18} aria-hidden />
             Your data
           </h2>
         </div>

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowRight, BookOpen, Check, CircleCheck, Clock, FileText, LibraryBig, Search, SearchX, Tag, X, type LucideIcon } from 'lucide-react';
+import { ArrowRight, BookOpen, Check, CircleCheck, Clock, FileText, Search, SearchX, Tag, X, type LucideIcon } from 'lucide-react';
 import { KB_ARTICLES, KB_BY_ID } from '../data/kb';
 import { useStore } from '../state/store';
 import { CategoryPill, EmptyState, IconTile, Markdown, PageHeader, ProgressBar } from '../components/ui';
@@ -74,12 +74,6 @@ export function KnowledgeBase() {
   return (
     <div className="page kb-page">
       <PageHeader
-        eyebrow={
-          <>
-            <LibraryBig size={14} aria-hidden />
-            <span>Resources</span>
-          </>
-        }
         title="Knowledge base"
         description={`${KB_ARTICLES.length} runbooks and policies used across the service desk. Related articles also open from inside any ticket.`}
         actions={
@@ -199,7 +193,6 @@ export function KnowledgeBase() {
             <>
               <div className="card-head">
                 <h2>
-                  <LibraryBig size={18} aria-hidden />
                   Browse the library
                 </h2>
               </div>

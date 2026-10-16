@@ -10,18 +10,18 @@
   --border-strong: #c2cdcb;
   --text: #13221f;
   --text-muted: #566a67;
-  --text-faint: #647572;
+  --text-faint: #586966;
 
   /* Accent */
-  --primary: #0b7a6e;
-  --primary-strong: #07655b;
+  --primary: #0a7064;
+  --primary-strong: #075c53;
   --primary-soft: #ddf0ec;
   --on-primary: #ffffff;
 
   /* Semantic */
-  --success: #16804a;
+  --success: #137443;
   --success-soft: #e1f3e8;
-  --warning: #a35f00;
+  --warning: #955700;
   --warning-soft: #fcefd8;
   --danger: #c0392f;
   --danger-soft: #fbe7e5;
@@ -70,8 +70,8 @@
     --border: #22322f;
     --border-strong: #2e4441;
     --text: #e2ebe9;
-    --text-muted: #93a6a2;
-    --text-faint: #7a8f8b;
+    --text-muted: #a0b2ae;
+    --text-faint: #8a9e9a;
     --primary: #3fc6b3;
     --primary-strong: #6cdbcb;
     --primary-soft: #102f2b;
@@ -107,8 +107,8 @@
   --border: #22322f;
   --border-strong: #2e4441;
   --text: #e2ebe9;
-  --text-muted: #93a6a2;
-  --text-faint: #7a8f8b;
+  --text-muted: #a0b2ae;
+  --text-faint: #8a9e9a;
   --primary: #3fc6b3;
   --primary-strong: #6cdbcb;
   --primary-soft: #102f2b;
@@ -255,13 +255,11 @@ svg {
   letter-spacing: -0.01em;
   line-height: 1.1;
 }
-.brand small {
+.brand small,
+.brand-tagline {
   display: block;
-  font-family: var(--mono);
-  font-size: 0.64rem;
+  font-size: 0.75rem;
   font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   color: var(--rail-muted);
   margin-top: 2px;
 }
@@ -282,11 +280,8 @@ svg {
   gap: 1px;
 }
 .nav-section {
-  font-family: var(--mono);
-  font-size: 0.64rem;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
+  font-size: 0.75rem;
+  font-weight: 600;
   color: var(--rail-muted);
   padding: 12px 10px 6px;
 }
@@ -327,10 +322,8 @@ svg {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   font-weight: 600;
-  letter-spacing: 0.08em;
   color: var(--danger);
 }
 .live-dot::before {
@@ -339,7 +332,6 @@ svg {
   height: 7px;
   border-radius: 50%;
   background: currentColor;
-  animation: blink 1.4s ease-in-out infinite;
 }
 .sidebar .live-dot,
 .hero .live-dot {
@@ -380,8 +372,7 @@ svg {
   background: var(--rail-accent);
 }
 .sidebar-footer .xp {
-  font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   color: var(--rail-muted);
   margin-top: 6px;
   font-variant-numeric: tabular-nums;
@@ -509,26 +500,12 @@ svg {
   flex-wrap: wrap;
   align-items: center;
 }
-.eyebrow {
-  font-family: var(--mono);
-  font-size: 0.7rem;
-  font-weight: 500;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  margin-bottom: 6px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
 
 /* ---------- Primitives ---------- */
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  box-shadow: var(--shadow-sm);
   padding: 20px;
   min-width: 0;
 }
@@ -663,11 +640,8 @@ svg {
   margin-bottom: 16px;
 }
 .label {
-  font-family: var(--mono);
-  font-size: 0.68rem;
-  font-weight: 500;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 600;
   color: var(--text-muted);
 }
 .inline-icon {
@@ -772,7 +746,7 @@ svg {
   padding: 1px 8px;
   border: 1px solid transparent;
   border-radius: 999px;
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   font-weight: 600;
   line-height: 1.6;
   background: var(--surface-3);
@@ -1132,8 +1106,7 @@ label.field > span.hint,
   border-bottom-color: var(--primary);
 }
 .tab .count {
-  font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   padding: 0 6px;
   border-radius: 99px;
   background: var(--surface-3);
@@ -1189,12 +1162,9 @@ label.field > span.hint,
   background: var(--surface-2);
 }
 .table th {
-  font-family: var(--mono);
   color: var(--text-muted);
-  font-weight: 500;
-  font-size: 0.68rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-weight: 600;
+  font-size: 0.78rem;
 }
 .table td {
   font-variant-numeric: tabular-nums;
@@ -1366,10 +1336,6 @@ label.field > span.hint,
   flex-wrap: wrap;
   align-items: center;
   border: 1px solid var(--rail-line);
-  background-image: radial-gradient(120% 140% at 100% 0%, color-mix(in srgb, var(--rail-accent) 11%, transparent), transparent 60%),
-    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
-  background-size: auto, 28px 28px, 28px 28px;
 }
 .hero h1 {
   color: var(--rail-strong);
@@ -1377,9 +1343,6 @@ label.field > span.hint,
 .hero p {
   color: var(--rail-text);
   margin: 0;
-}
-.hero .eyebrow {
-  color: var(--rail-muted);
 }
 .hero .progress {
   background: rgba(255, 255, 255, 0.12);
@@ -1442,7 +1405,7 @@ label.field > span.hint,
 }
 .ticket-id {
   font-family: var(--mono);
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -1528,7 +1491,7 @@ label.field > span.hint,
 }
 .msg .who {
   display: block;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 600;
   opacity: 0.75;
   margin-bottom: 2px;
@@ -1644,7 +1607,7 @@ label.field > span.hint,
 }
 .action-btn .lock {
   color: var(--warning);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 600;
   display: inline-flex;
   align-items: center;
@@ -1700,7 +1663,7 @@ label.field > span.hint,
   border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   font-family: var(--mono);
-  font-size: 0.74rem;
+  font-size: 0.75rem;
 }
 .terminal-bar + .terminal {
   border-radius: 0 0 var(--radius-sm) var(--radius-sm);
@@ -1743,7 +1706,7 @@ label.field > span.hint,
 }
 
 .log {
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   max-height: 220px;
   overflow-y: auto;
   display: flex;
@@ -1866,8 +1829,7 @@ label.field > span.hint,
   background: var(--surface-2);
 }
 .option-key {
-  font-family: var(--mono);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 600;
   width: 22px;
   height: 22px;
@@ -2043,5 +2005,58 @@ details[open] > summary .chev {
   .card {
     box-shadow: none;
     break-inside: avoid;
+  }
+}
+
+/* ---------- Summary strip: several figures in one panel, divided by rules ---------- */
+.stat-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  padding: 0;
+  overflow: hidden;
+}
+.stat-strip > .stat {
+  min-width: 0;
+  padding: 16px 20px 18px;
+  /* Rules on the leading and top edges; the card clips the ones that fall outside it. */
+  box-shadow: -1px 0 0 var(--border), 0 -1px 0 var(--border);
+}
+.stat-strip-col {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* Identifier at the start of a detail page's meta row (ticket number, username). */
+.meta-id {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* ---------- Browser surfaces ---------- */
+::selection {
+  background: color-mix(in srgb, var(--primary) 24%, transparent);
+  color: inherit;
+}
+input,
+textarea {
+  caret-color: var(--primary);
+}
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+.card .callout-body {
+  max-width: 65ch;
+}
+
+/* Inside a card a callout is a tinted region, not a second card. */
+.card .callout {
+  border-color: transparent;
+}
+.card-head h2.srv-name {
+  font-size: 1rem;
+}
+@media (max-width: 480px) {
+  .stat-strip > .stat {
+    padding: 12px 14px 14px;
   }
 }

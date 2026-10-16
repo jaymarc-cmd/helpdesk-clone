@@ -9,11 +9,9 @@
   flex-wrap: wrap;
   padding: 8px 12px;
   margin-bottom: var(--page-gap);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--danger);
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, var(--border));
   border-radius: var(--radius);
   background: var(--surface);
-  box-shadow: var(--shadow-sm);
   font-size: 0.86rem;
 }
 .wk-bar-ticket {
@@ -177,7 +175,7 @@
   font-size: 0.88rem;
 }
 .wk-tool-sub {
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -222,7 +220,7 @@
 .avatar.wk-avatar-xs {
   width: 30px;
   height: 30px;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
 }
 .wk-inline-pill {
   margin-left: 8px;

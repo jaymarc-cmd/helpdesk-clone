@@ -4,7 +4,6 @@ import {
   Ban,
   CircleCheck,
   History,
-  IdCard,
   KeyRound,
   Lock,
   Mail,
@@ -61,12 +60,6 @@ function PeopleList() {
   return (
     <div className="page ws-root wk-app">
       <PageHeader
-        eyebrow={
-          <>
-            <IdCard size={14} aria-hidden />
-            <span>Workstation</span>
-          </>
-        }
         title="Directory"
         description="User accounts, sign-in security, group memberships and mailboxes for everyone at Harbor & Pine."
       />
@@ -178,15 +171,10 @@ function PersonPage({ username }: { username: string }) {
     <div className="page ws-root wk-app">
       <PageHeader
         back={{ to: '/directory', label: 'Directory' }}
-        eyebrow={
-          <>
-            <IdCard size={14} aria-hidden />
-            <span>Directory · {person.username}</span>
-          </>
-        }
         title={person.name}
         meta={
           <>
+            <span className="mono meta-id">{person.username}</span>
             <StatusPill status={a.status} />
             <span className="pill">{person.department}</span>
             <span className="inline-icon">{person.title}</span>

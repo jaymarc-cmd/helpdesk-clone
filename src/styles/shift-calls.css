@@ -99,11 +99,8 @@
   }
   .sc-rtable td[data-label]::before {
     content: attr(data-label);
-    font-family: var(--mono);
-    font-size: 0.64rem;
+    font-size: 0.75rem;
     font-weight: 500;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
     color: var(--text-muted);
   }
   .sc-rtable td.sc-rtable-title {
@@ -157,10 +154,7 @@
   line-height: 1;
 }
 .sc-duration-unit {
-  font-family: var(--mono);
-  font-size: 0.74rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 0.75rem;
   color: var(--text-muted);
 }
 .sc-duration-name {
@@ -180,11 +174,8 @@
   border-radius: 999px;
   background: var(--primary);
   color: var(--on-primary);
-  font-family: var(--mono);
-  font-size: 0.64rem;
+  font-size: 0.75rem;
   font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   line-height: 1.6;
 }
 .sc-duration-desc {
@@ -329,11 +320,11 @@
   border-color: var(--border-strong);
 }
 .sc-qrow.warn {
-  box-shadow: inset 3px 0 0 var(--warning);
+  border-color: color-mix(in srgb, var(--warning) 55%, var(--border));
 }
 .sc-qrow.bad {
   border-color: var(--danger);
-  box-shadow: inset 3px 0 0 var(--danger);
+  background: color-mix(in srgb, var(--danger-soft) 45%, var(--surface));
 }
 .sc-qrow-main {
   display: flex;
@@ -429,13 +420,13 @@
   padding-left: 24px;
 }
 .sc-page .sc-verdict-success {
-  box-shadow: inset 4px 0 0 var(--success), var(--shadow-sm);
+  border-color: color-mix(in srgb, var(--success) 45%, var(--border));
 }
 .sc-page .sc-verdict-warning {
-  box-shadow: inset 4px 0 0 var(--warning), var(--shadow-sm);
+  border-color: color-mix(in srgb, var(--warning) 45%, var(--border));
 }
 .sc-page .sc-verdict-danger {
-  box-shadow: inset 4px 0 0 var(--danger), var(--shadow-sm);
+  border-color: color-mix(in srgb, var(--danger) 45%, var(--border));
 }
 .sc-verdict-body {
   flex: 1 1 200px;
@@ -531,7 +522,7 @@
 }
 .sc-voice-hint {
   font-weight: 400;
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   color: var(--text-muted);
 }
 input[type='checkbox'].sc-switch {
@@ -724,13 +715,13 @@ input[type='checkbox'].sc-switch:checked::after {
   }
 }
 .sc-page .sc-outcome-success {
-  box-shadow: inset 4px 0 0 var(--success), var(--shadow-sm);
+  border-color: color-mix(in srgb, var(--success) 45%, var(--border));
 }
 .sc-page .sc-outcome-warning {
-  box-shadow: inset 4px 0 0 var(--warning), var(--shadow-sm);
+  border-color: color-mix(in srgb, var(--warning) 45%, var(--border));
 }
 .sc-page .sc-outcome-danger {
-  box-shadow: inset 4px 0 0 var(--danger), var(--shadow-sm);
+  border-color: color-mix(in srgb, var(--danger) 45%, var(--border));
 }
 .sc-outcome {
   display: flex;

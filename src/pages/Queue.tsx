@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Clock, FilterX, Inbox, LayoutGrid, List, Search, SearchX, Shuffle, Timer } from 'lucide-react';
+import { Clock, FilterX, LayoutGrid, List, Search, SearchX, Shuffle, Timer } from 'lucide-react';
 import { bestByScenario } from '../engine/progress';
 import { useStore } from '../state/store';
 import { CATEGORIES, type Category } from '../types';
@@ -103,12 +103,6 @@ export function Queue() {
   return (
     <div className="page queue-page">
       <PageHeader
-        eyebrow={
-          <>
-            <Inbox size={14} aria-hidden />
-            <span>Practice</span>
-          </>
-        }
         title="Ticket queue"
         description="Pick a ticket to work. There's no timer pressure here; use shift mode for that."
         actions={

@@ -9,17 +9,11 @@ import {
   CircleSlash,
   ClipboardList,
   Clock,
-  Gauge,
   History,
-  Hourglass,
   Inbox,
-  Info,
-  ListChecks,
   LogIn,
   LogOut,
   Printer,
-  ShieldAlert,
-  Smile,
   Sparkles,
   Ticket,
   Timer,
@@ -83,12 +77,6 @@ export function ShiftPage() {
     return (
       <div className="page sc-page">
         <PageHeader
-          eyebrow={
-            <>
-              <Timer size={14} aria-hidden />
-              <span>Practice</span>
-            </>
-          }
           title="Start a shift"
           description="Tickets arrive over time with SLA clocks running. Prioritise, work fast, and keep every ticket inside its SLA."
         />
@@ -126,7 +114,6 @@ export function ShiftPage() {
         <section className="card">
           <div className="card-head">
             <h2>
-              <Info size={18} aria-hidden />
               How shifts work
             </h2>
           </div>
@@ -191,13 +178,6 @@ export function ShiftPage() {
   return (
     <div className="page sc-page">
       <PageHeader
-        eyebrow={
-          <>
-            <Timer size={14} aria-hidden />
-            <span>Practice</span>
-            <span className="live-dot">LIVE</span>
-          </>
-        }
         title="Shift board"
         description={`${shift.durationMin}-minute shift. The queue is sorted by SLA deadline, so the most urgent ticket is on top.`}
         actions={
@@ -229,27 +209,21 @@ export function ShiftPage() {
         </div>
       )}
 
-      <section className="grid grid-4" aria-label="Shift figures">
+      <section className="card stat-strip" aria-label="Shift figures">
         <StatTile
           label="Waiting"
           value={waiting.length}
-          icon={Inbox}
-          tone={waiting.length === 0 ? 'neutral' : atRisk > 0 ? 'warning' : 'primary'}
           sub={waiting.length === 0 ? 'Queue clear' : atRisk > 0 ? <span className="sc-text-warning">{atRisk} close to breach</span> : 'None close to breach'}
         />
-        <StatTile label="Handled" value={done.length} icon={CircleCheck} tone={done.length ? 'primary' : 'neutral'} sub={`of ${totalTickets} this shift`} />
+        <StatTile label="Handled" value={done.length} sub={`of ${totalTickets} this shift`} />
         <StatTile
           label="SLA breaches"
           value={breached > 0 ? <span className="sc-text-danger">{breached}</span> : breached}
-          icon={ShieldAlert}
-          tone={breached > 0 ? 'danger' : 'neutral'}
           sub={breached > 0 ? 'Includes waiting tickets past SLA' : 'All within SLA so far'}
         />
         <StatTile
           label="Incoming"
           value={shift.pending.length}
-          icon={Hourglass}
-          tone={shift.pending.length ? 'primary' : 'neutral'}
           sub={
             shift.pending.length === 0
               ? 'All tickets delivered'
@@ -263,7 +237,6 @@ export function ShiftPage() {
       <section className="card">
         <div className="card-head">
           <h2>
-            <Inbox size={18} aria-hidden />
             Queue
           </h2>
           <span className="pill num">{waiting.length} waiting</span>
@@ -322,7 +295,6 @@ export function ShiftPage() {
         <section className="card">
           <div className="card-head">
             <h2>
-              <ListChecks size={18} aria-hidden />
               Handled this shift
             </h2>
             <span className="pill num">{done.length} handled</span>
@@ -467,16 +439,9 @@ function ReportView({ report, handled, onClose }: { report: ShiftReport; handled
   const verdict = verdictFor(report);
   const xp = 50 + report.handled * 10;
   const scoreState = scoreTone(report.avgScore);
-  const csatTone = report.avgCsat >= 4 ? 'success' : report.avgCsat >= 3 ? 'warning' : 'danger';
   return (
     <div className="page sc-page">
       <PageHeader
-        eyebrow={
-          <>
-            <Timer size={14} aria-hidden />
-            <span>Practice · Shift report</span>
-          </>
-        }
         title="Shift complete"
         description={`How your ${report.durationMin}-minute shift went.`}
         actions={
@@ -507,12 +472,10 @@ function ReportView({ report, handled, onClose }: { report: ShiftReport; handled
         </div>
       </section>
 
-      <section className="grid grid-4" aria-label="Shift figures">
+      <section className="card stat-strip" aria-label="Shift figures">
         <StatTile
           label="Tickets handled"
           value={report.handled}
-          icon={Ticket}
-          tone={report.handled ? 'primary' : 'neutral'}
           sub={report.missed > 0 ? <span className="sc-text-warning">{report.missed} missed</span> : 'None missed'}
         />
         <StatTile
@@ -527,8 +490,6 @@ function ReportView({ report, handled, onClose }: { report: ShiftReport; handled
               '–'
             )
           }
-          icon={Gauge}
-          tone={report.handled ? scoreState : 'neutral'}
           sub={report.handled ? <span className={`pill pill-${scoreState}`}>{SCORE_LABEL[scoreState]}</span> : 'No tickets yet'}
         />
         <StatTile
@@ -543,15 +504,11 @@ function ReportView({ report, handled, onClose }: { report: ShiftReport; handled
               '–'
             )
           }
-          icon={Smile}
-          tone={report.handled ? csatTone : 'neutral'}
           sub={report.handled ? 'Average rating out of 5' : 'Rated after each ticket'}
         />
         <StatTile
           label="SLA breaches"
           value={report.breaches ? <span className="sc-text-danger">{report.breaches}</span> : report.breaches}
-          icon={ShieldAlert}
-          tone={report.breaches ? 'danger' : report.handled ? 'success' : 'neutral'}
           sub={report.breaches ? 'Tickets past their SLA window' : 'No tickets past SLA'}
         />
       </section>
@@ -559,7 +516,6 @@ function ReportView({ report, handled, onClose }: { report: ShiftReport; handled
       <section className="card">
         <div className="card-head">
           <h2>
-            <ListChecks size={18} aria-hidden />
             Tickets handled
           </h2>
           {handled.length > 0 && <span className="pill num">{handled.length} handled</span>}
@@ -587,7 +543,6 @@ function ShiftHistory({ reports }: { reports: ShiftReport[] }) {
     <section className="card">
       <div className="card-head">
         <h2>
-          <History size={18} aria-hidden />
           Previous shifts
         </h2>
         {reports.length > 0 && <span className="pill num">{reports.length}</span>}

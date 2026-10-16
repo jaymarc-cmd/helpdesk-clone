@@ -4,8 +4,6 @@ import {
   ArrowLeft,
   CircleHelp,
   Clock,
-  GraduationCap,
-  MessageSquare,
   Phone,
   PhoneCall,
   PhoneIncoming,
@@ -13,7 +11,6 @@ import {
   Repeat,
   RotateCcw,
   Square,
-  Target,
   ThumbsDown,
   ThumbsUp,
   UserRound,
@@ -24,7 +21,7 @@ import { callScore, clampMood } from '../engine/calls';
 import { useStore } from '../state/store';
 import { uid } from '../state/storage';
 import type { CallAttempt, CallOption, CallScenario } from '../types';
-import { DifficultyDots, EmptyState, PageHeader, ScoreRing, formatClock, initials, useNow } from '../components/ui';
+import { DifficultyDots, EmptyState, LivePill, PageHeader, ScoreRing, formatClock, initials, useNow } from '../components/ui';
 import { useSpeaker } from '../components/speech';
 import '../styles/shift-calls.css';
 
@@ -44,12 +41,6 @@ export function CallSession() {
       <div className="page sc-page">
         <PageHeader
           back={BACK}
-          eyebrow={
-            <>
-              <PhoneCall size={14} aria-hidden />
-              <span>Practice · Voice call</span>
-            </>
-          }
           title="Call not found"
         />
         <div className="card">
@@ -206,16 +197,10 @@ function Session({ call, onRetry }: { call: CallScenario; onRetry: () => void })
     <div className="page sc-page">
       <PageHeader
         back={BACK}
-        eyebrow={
-          <>
-            <PhoneCall size={14} aria-hidden />
-            <span>Practice · Voice call</span>
-            {phase === 'live' && <span className="live-dot">LIVE</span>}
-          </>
-        }
         title={call.title}
         meta={
           <>
+            {phase === 'live' && <LivePill label="On call" />}
             <DifficultyDots d={call.difficulty} showLabel />
             <span className="inline-icon">
               <UserRound size={14} aria-hidden />
@@ -290,7 +275,6 @@ function Session({ call, onRetry }: { call: CallScenario; onRetry: () => void })
                   <div className="sc-coaching">
                     <div className="card-head">
                       <h3>
-                        <GraduationCap size={16} aria-hidden />
                         Coaching
                       </h3>
                     </div>
@@ -312,7 +296,6 @@ function Session({ call, onRetry }: { call: CallScenario; onRetry: () => void })
               <section className="card sc-transcript">
                 <div className="card-head">
                   <h2>
-                    <MessageSquare size={18} aria-hidden />
                     Transcript
                   </h2>
                 </div>
@@ -380,7 +363,6 @@ function Session({ call, onRetry }: { call: CallScenario; onRetry: () => void })
           <div className="card sc-side-card">
             <div className="card-head">
               <h3>
-                <Target size={16} aria-hidden />
                 Skills in focus
               </h3>
             </div>

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CircleCheck, History, Package, PackageCheck, Send } from 'lucide-react';
+import { CircleCheck, Package, Send } from 'lucide-react';
 import { ACTION_BY_ID, actionsForTool } from '../data/actions';
 import { useStore } from '../state/store';
 import { PageHeader } from '../components/ui';
@@ -20,12 +20,6 @@ export function Deployment() {
   return (
     <div className="page ws-root wk-app">
       <PageHeader
-        eyebrow={
-          <>
-            <PackageCheck size={14} aria-hidden />
-            <span>Workstation</span>
-          </>
-        }
         title="Deployment"
         description="Push approved software, updates and firmware to managed devices. Users don't need admin rights."
       />
@@ -35,7 +29,6 @@ export function Deployment() {
       <section className="card">
         <div className="card-head">
           <h2>
-            <Send size={18} aria-hidden />
             Target device
           </h2>
         </div>
@@ -60,7 +53,6 @@ export function Deployment() {
       <section className="card">
         <div className="card-head">
           <h2>
-            <Package size={18} aria-hidden />
             Approved packages
           </h2>
           <span className="pill num">{packages.length}</span>
@@ -96,7 +88,6 @@ export function Deployment() {
         <section className="card">
           <div className="card-head">
             <h2>
-              <History size={18} aria-hidden />
               Deployment log
             </h2>
           </div>
