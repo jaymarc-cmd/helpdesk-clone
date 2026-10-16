@@ -157,6 +157,10 @@ export const networkScenarios: Scenario[] = [
         quality: 'neutral',
       },
     ],
+    servers: {
+      'APP-TS02': { note: 'Timesheets moved here from the old server last night. New address 10.10.8.45.' },
+    },
+    toolReveals: { servers: ['migrated'] },
     terminal: {
       'ping timesheets.hpl.example': {
         output:
@@ -371,6 +375,14 @@ export const networkScenarios: Scenario[] = [
         quality: 'bad',
       },
     ],
+    servers: {
+      'SW-F3-EAST': {
+        status: 'Unreachable',
+        note: 'No response since 10:41. Last message before it went quiet: power supply input lost.',
+        uptime: 'Unknown',
+      },
+    },
+    toolReveals: { servers: ['switch_down'] },
     terminal: {
       'ping sw-f3-east': {
         output:

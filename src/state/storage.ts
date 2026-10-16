@@ -14,6 +14,7 @@ export const DEFAULT_STATE: AppState = {
   kbRead: [],
   customScenarios: [],
   activeShift: null,
+  activeWork: null,
 };
 
 export function normalizeState(raw: unknown): AppState {
@@ -32,6 +33,7 @@ export function normalizeState(raw: unknown): AppState {
     kbRead: Array.isArray(r.kbRead) ? r.kbRead : [],
     customScenarios: Array.isArray(r.customScenarios) ? r.customScenarios : [],
     activeShift: r.activeShift ?? null,
+    activeWork: r.activeWork && typeof r.activeWork === 'object' && typeof r.activeWork.scenarioId === 'string' ? r.activeWork : null,
   };
 }
 

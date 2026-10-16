@@ -3,7 +3,11 @@ import { Layout } from './components/Layout';
 import { StoreProvider } from './state/store';
 import { Dashboard } from './pages/Dashboard';
 import { Queue } from './pages/Queue';
-import { TicketWorkspace } from './pages/TicketWorkspace';
+import { TicketPage } from './pages/TicketPage';
+import { DirectoryPage } from './pages/Directory';
+import { ServerRoom } from './pages/ServerRoom';
+import { RemoteDesktop } from './pages/RemoteDesktop';
+import { Deployment } from './pages/Deployment';
 import { TicketReview } from './pages/TicketReview';
 import { ShiftPage } from './pages/Shift';
 import { CallsPage } from './pages/Calls';
@@ -22,7 +26,13 @@ export function App() {
           <Route element={<Layout />}>
             <Route index element={<Dashboard />} />
             <Route path="tickets" element={<Queue />} />
-            <Route path="ticket/:id" element={<TicketWorkspace />} />
+            <Route path="ticket/:id" element={<TicketPage />} />
+            <Route path="directory" element={<DirectoryPage />} />
+            <Route path="directory/:username" element={<DirectoryPage />} />
+            <Route path="servers" element={<ServerRoom />} />
+            <Route path="devices" element={<RemoteDesktop />} />
+            <Route path="devices/:hostname" element={<RemoteDesktop />} />
+            <Route path="deploy" element={<Deployment />} />
             <Route path="review/:attemptId" element={<TicketReview />} />
             <Route path="shift" element={<ShiftPage />} />
             <Route path="calls" element={<CallsPage />} />

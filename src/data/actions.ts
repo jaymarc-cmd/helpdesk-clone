@@ -1,4 +1,6 @@
 import type { CatalogAction, ToolId } from '../types';
+import { PRIVILEGED_GROUPS } from './directory';
+import { isDisruptiveServerAction, isKnownServerAction, parseServerAction, serverActionLabel } from './servers';
 
 /**
  * Every action is available on every ticket, just like a real service desk console.
@@ -44,13 +46,6 @@ export const ACTIONS: CatalogAction[] = [
     label: 'Revoke all sign-in sessions',
     description: 'Signs the user out of every device and invalidates refresh tokens.',
     result: 'All active sessions revoked. User will need to sign in again on every device.',
-  },
-  {
-    id: 'add_group',
-    tool: 'directory',
-    label: 'Add to requested security group',
-    description: 'Adds the user to the group named in the request.',
-    result: 'Group membership updated.',
   },
   {
     id: 'enable_archive',
@@ -112,16 +107,16 @@ export const ACTIONS: CatalogAction[] = [
   },
   {
     id: 'deploy_vpn',
-    tool: 'endpoint',
-    label: 'Deploy latest VPN client',
-    description: 'Pushes the current approved VPN client package to the device.',
+    tool: 'deploy',
+    label: 'VPN Client 5.1.3',
+    description: 'Current approved remote access client. Required since the gateway certificate renewal.',
     result: 'VPN client package deployed.',
   },
   {
     id: 'update_dock',
-    tool: 'endpoint',
-    label: 'Install dock driver & firmware',
-    description: 'Pushes the approved docking station driver and firmware bundle.',
+    tool: 'deploy',
+    label: 'USB-C Dock D3 firmware 1.2.1',
+    description: 'Approved docking station firmware with the matching display driver.',
     result: 'Dock driver and firmware bundle installed.',
   },
   {
@@ -172,6 +167,36 @@ export const ACTIONS: CatalogAction[] = [
     label: 'Reimage device',
     description: 'Wipes and reinstalls the standard build. All local data is lost.',
     result: 'Reimage scheduled. The device will be wiped at next restart.',
+  },
+
+  // ----- Software deployment packages -----
+  {
+    id: 'deploy_teams',
+    tool: 'deploy',
+    label: 'Teams desktop client (latest)',
+    description: 'Reinstalls the current Teams client for the user.',
+    result: 'Teams client reinstalled. The user signed in again.',
+  },
+  {
+    id: 'deploy_browser',
+    tool: 'deploy',
+    label: 'Browser security update',
+    description: 'Monthly browser update with the latest security fixes.',
+    result: 'Browser updated to the latest approved version.',
+  },
+  {
+    id: 'deploy_office',
+    tool: 'deploy',
+    label: 'Office monthly update',
+    description: 'Current monthly Office build. Office apps must be closed.',
+    result: 'Office updated to the current monthly build.',
+  },
+  {
+    id: 'deploy_diagram',
+    tool: 'deploy',
+    label: 'DiagramStudio 3.2',
+    description: 'Approved flowchart and process mapping tool.',
+    result: 'DiagramStudio installed.',
   },
 
   // ----- Guided steps (things you ask the user to do) -----
@@ -260,7 +285,63 @@ export const TOOL_LABELS: Record<ToolId, string> = {
   directory: 'Directory & mailbox',
   endpoint: 'Endpoint Manager',
   guide: 'Guided steps',
+  deploy: 'Deployment',
 };
+
+/** Workstation app where each kind of action is performed (used in hints and feedback). */
+export const TOOL_APP: Record<ToolId | 'servers' | 'groups', string> = {
+  directory: 'Directory',
+  endpoint: 'Remote desktop',
+  guide: 'the ticket conversation',
+  deploy: 'Deployment',
+  servers: 'Server room',
+  groups: 'Directory (Groups tab)',
+};
+
+// ---------- Dynamic action ids ----------
+// Group changes:   "grp+:<group>" adds the user to a group, "grp-:<group>" removes them.
+// Server room ops: "srv:<server>:reboot" | "srv:<server>:restart:<service>" (see data/servers.ts).
+
+export function groupActionId(op: 'add' | 'remove', group: string): string {
+  return `${op === 'add' ? 'grp+' : 'grp-'}:${group}`;
+}
+
+export function parseGroupAction(id: string): { op: 'add' | 'remove'; group: string } | null {
+  const m = id.match(/^grp([+-]):(.+)$/);
+  return m ? { op: m[1] === '+' ? 'add' : 'remove', group: m[2] } : null;
+}
+
+/** True for any action id the simulator understands (catalog, group change or server op). */
+export function isKnownAction(id: string): boolean {
+  return !!ACTION_BY_ID[id] || !!parseGroupAction(id) || isKnownServerAction(id);
+}
+
+/** Human label for any action id. */
+export function actionLabel(id: string): string {
+  const a = ACTION_BY_ID[id];
+  if (a) return a.tool === 'deploy' ? `Deploy ${a.label}` : a.label;
+  const g = parseGroupAction(id);
+  if (g) return g.op === 'add' ? `Add to group ${g.group}` : `Remove from group ${g.group}`;
+  const srv = parseServerAction(id);
+  if (srv) return serverActionLabel(srv);
+  return id;
+}
+
+/** Which app an action lives in. */
+export function actionApp(id: string): string {
+  const a = ACTION_BY_ID[id];
+  if (a) return TOOL_APP[a.tool];
+  if (parseGroupAction(id)) return TOOL_APP.groups;
+  if (parseServerAction(id)) return TOOL_APP.servers;
+  return 'the tools';
+}
+
+/** Mistakes no matter the ticket: rebooting core servers, granting privileged groups. */
+export function isInherentlyHarmful(id: string): boolean {
+  if (isDisruptiveServerAction(id)) return true;
+  const g = parseGroupAction(id);
+  return !!g && g.op === 'add' && PRIVILEGED_GROUPS.includes(g.group);
+}
 
 export function actionsForTool(tool: ToolId): CatalogAction[] {
   return ACTIONS.filter((a) => a.tool === tool);

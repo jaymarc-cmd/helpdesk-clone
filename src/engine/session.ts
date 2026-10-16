@@ -1,5 +1,6 @@
-import { ACTION_BY_ID } from '../data/actions';
-import type { AccountState, DeviceState, Question, Scenario, WorkLogEntry } from '../types';
+import { ACTION_BY_ID, actionApp, actionLabel, parseGroupAction } from '../data/actions';
+import { applyServerOp, parseServerAction, serversFor } from '../data/servers';
+import type { AccountState, DeviceState, Question, RevealTool, Scenario, ServerState, WorkLogEntry } from '../types';
 import { runCommand } from './terminal';
 
 export const VERIFY_QUESTION_ID = '__verify';
@@ -17,6 +18,8 @@ export interface TerminalLine {
 export interface SessionState {
   account: AccountState;
   device: DeviceState;
+  /** Shared infrastructure as it stands on this ticket (Server room). */
+  servers: ServerState[];
   asked: string[];
   chat: ChatMessage[];
   revealed: string[];
@@ -28,6 +31,9 @@ export interface SessionState {
   terminal: TerminalLine[];
   kbOpened: string[];
   signInLogViewed: boolean;
+  /** The requester confirmed the fix works. */
+  confirmed: boolean;
+  confirmAttempts: number;
   log: WorkLogEntry[];
   hintsUsed: number;
 }
@@ -38,15 +44,20 @@ export type SessionEvent =
   | { type: 'verify'; at: number }
   | { type: 'action'; actionId: string; at: number }
   | { type: 'command'; raw: string; at: number }
-  | { type: 'openTool'; tool: 'directory' | 'endpoint'; at: number }
+  | { type: 'openTool'; tool: RevealTool; at: number }
   | { type: 'viewSignInLog'; at: number }
   | { type: 'openKb'; id: string; at: number }
+  | { type: 'confirm'; at: number }
   | { type: 'hint'; text: string; at: number };
+
+/** Distributes Omit across the union so each event keeps its own fields. */
+export type SessionEventInput = SessionEvent extends infer E ? (E extends SessionEvent ? Omit<E, 'at'> : never) : never;
 
 export function initSession(scenario: Scenario): SessionState {
   return {
     account: structuredClone(scenario.account),
     device: structuredClone(scenario.device),
+    servers: serversFor(scenario),
     asked: [],
     chat: [{ from: 'requester', text: scenario.description }],
     revealed: [],
@@ -58,9 +69,18 @@ export function initSession(scenario: Scenario): SessionState {
     terminal: [],
     kbOpened: [],
     signInLogViewed: false,
-    log: [{ at: 0, kind: 'system', text: `Ticket opened (${scenario.channel}, ${scenario.priority})` }],
+    confirmed: false,
+    confirmAttempts: 0,
+    log: [{ at: 0, kind: 'system', text: `Ticket assigned to you (${scenario.channel}, ${scenario.priority})` }],
     hintsUsed: 0,
   };
+}
+
+/** Older saved sessions may predate newer fields; fill them in. */
+export function hydrateSession(raw: unknown, scenario: Scenario): SessionState {
+  const base = initSession(scenario);
+  if (!raw || typeof raw !== 'object') return base;
+  return { ...base, ...(raw as Partial<SessionState>) };
 }
 
 const uniq = (xs: string[]) => [...new Set(xs)];
@@ -85,6 +105,39 @@ export function isVerifyMessage(text: string): boolean {
   return /\b(verify|verification|employee id|confirm your identity|security questions?)\b/i.test(text);
 }
 
+/** True when any alternative of an "a|b" requirement was performed. */
+export function requirementMet(req: string, actions: string[]): boolean {
+  return req.split('|').some((id) => actions.includes(id));
+}
+
+export function allRequirementsMet(scenario: Scenario, actions: string[]): boolean {
+  return scenario.requiredActions.every((r) => requirementMet(r, actions));
+}
+
+/** Applies an action's built-in effect (catalog, group change or server op). Returns new state and default text. */
+function applyAction(state: SessionState, id: string): { state: SessionState; text: string } {
+  const g = parseGroupAction(id);
+  if (g) {
+    const has = state.account.groups.includes(g.group);
+    const groups = g.op === 'add' ? (has ? state.account.groups : [...state.account.groups, g.group]) : state.account.groups.filter((x) => x !== g.group);
+    const text =
+      g.op === 'add'
+        ? has
+          ? `${state.account.username} is already a member of ${g.group}.`
+          : `Added ${state.account.username} to ${g.group}. The change applies at the user's next sign-in.`
+        : has
+          ? `Removed ${state.account.username} from ${g.group}.`
+          : `${state.account.username} is not a member of ${g.group}.`;
+    return { state: { ...state, account: { ...state.account, groups } }, text };
+  }
+  const srv = parseServerAction(id);
+  if (srv) {
+    const r = applyServerOp(state.servers, srv);
+    return { state: { ...state, servers: r.servers }, text: r.result };
+  }
+  return { state, text: ACTION_BY_ID[id]?.result ?? 'Done.' };
+}
+
 export function sessionReducer(scenario: Scenario) {
   return (state: SessionState, ev: SessionEvent): SessionState => {
     const firstName = scenario.requester.name.split(' ')[0];
@@ -103,7 +156,7 @@ export function sessionReducer(scenario: Scenario) {
             {
               from: 'system',
               text: verified
-                ? `Identity verified: details match the directory record for ${scenario.requester.name}.`
+                ? `Identity verified: details match the directory record for ${scenario.accountOwner?.name ?? scenario.requester.name}.`
                 : 'Identity NOT verified: details could not be matched to the directory.',
             },
           ],
@@ -142,34 +195,35 @@ export function sessionReducer(scenario: Scenario) {
           chat: [
             ...state.chat,
             { from: 'agent', text },
-            {
-              from: 'requester',
-              text: `Sorry, I'm not sure what you mean. Could you ask that another way? (${firstName} didn't understand. Try a more specific question or pick a suggestion.)`,
-            },
+            { from: 'requester', text: `Sorry, I'm not sure what you mean. Could you ask that another way?` },
           ],
           log: [...state.log, { at: ev.at, kind: 'question', text: `Said: ${text}` }],
         };
       }
       case 'action': {
-        const a = ACTION_BY_ID[ev.actionId];
-        if (!a) return state;
-        const o = scenario.actionResults?.[a.id];
-        const text = o?.result ?? a.result;
-        const sensitiveViolation = a.sensitive && !state.verified;
-        return {
-          ...state,
-          actions: [...state.actions, a.id],
-          actionResults: [...state.actionResults, { id: a.id, text }],
-          account: o?.accountUpdate ? { ...state.account, ...o.accountUpdate } : state.account,
-          device: o?.deviceUpdate ? { ...state.device, ...o.deviceUpdate } : state.device,
-          revealed: reveal(state, o?.reveals),
-          sensitiveBeforeVerify: sensitiveViolation ? [...state.sensitiveBeforeVerify, a.id] : state.sensitiveBeforeVerify,
+        const id = ev.actionId;
+        const catalog = ACTION_BY_ID[id];
+        if (!catalog && !parseGroupAction(id) && !parseServerAction(id)) return state;
+        const applied = applyAction(state, id);
+        let next = applied.state;
+        const o = scenario.actionResults?.[id];
+        const text = o?.result ?? applied.text;
+        const sensitiveViolation = !!catalog?.sensitive && !state.verified;
+        next = {
+          ...next,
+          actions: [...next.actions, id],
+          actionResults: [...next.actionResults, { id, text }],
+          account: o?.accountUpdate ? { ...next.account, ...o.accountUpdate } : next.account,
+          device: o?.deviceUpdate ? { ...next.device, ...o.deviceUpdate } : next.device,
+          revealed: reveal(next, o?.reveals),
+          sensitiveBeforeVerify: sensitiveViolation ? [...next.sensitiveBeforeVerify, id] : next.sensitiveBeforeVerify,
           chat:
-            a.tool === 'guide'
-              ? [...state.chat, { from: 'agent', text: `[Guided step] ${a.label}` }, { from: 'requester', text }]
-              : state.chat,
-          log: [...state.log, { at: ev.at, kind: 'action', text: `${a.label}: ${text}` }],
+            catalog?.tool === 'guide'
+              ? [...next.chat, { from: 'agent', text: `[Guided step] ${catalog.label}` }, { from: 'requester', text }]
+              : next.chat,
+          log: [...next.log, { at: ev.at, kind: 'action', text: `${actionLabel(id)}: ${text}` }],
         };
+        return next;
       }
       case 'command': {
         const res = runCommand(ev.raw, scenario, state.device, state.account, state.actions);
@@ -214,6 +268,22 @@ export function sessionReducer(scenario: Scenario) {
           log: [...state.log, { at: ev.at, kind: 'kb', text: `Opened KB: ${ev.id}` }],
         };
       }
+      case 'confirm': {
+        const fixed = scenario.correctOutcome === 'resolve' && allRequirementsMet(scenario, state.actions);
+        const reply =
+          scenario.correctOutcome !== 'resolve'
+            ? `I understand. So someone else needs to look at this? Please keep me posted.`
+            : fixed
+              ? `Yes, that's working now. Thanks for your help!`
+              : `No, sorry, it's still not working on my side.`;
+        return {
+          ...state,
+          confirmed: state.confirmed || fixed,
+          confirmAttempts: state.confirmAttempts + 1,
+          chat: [...state.chat, { from: 'agent', text: `Could you check whether it's working for you now, ${firstName}?` }, { from: 'requester', text: reply }],
+          log: [...state.log, { at: ev.at, kind: 'question', text: fixed ? 'User confirmed the fix' : 'Asked user to confirm the fix (not fixed yet)' }],
+        };
+      }
       case 'hint':
         return {
           ...state,
@@ -226,11 +296,6 @@ export function sessionReducer(scenario: Scenario) {
   };
 }
 
-/** True when every alternative of a "a|b" requirement is unmet. */
-export function requirementMet(req: string, actions: string[]): boolean {
-  return req.split('|').some((id) => actions.includes(id));
-}
-
 function needsVerification(scenario: Scenario): boolean {
   return (
     !!scenario.socialEngineering ||
@@ -238,34 +303,36 @@ function needsVerification(scenario: Scenario): boolean {
   );
 }
 
-/** Suggests the next most useful step. */
+/** Suggests the next most useful step, naming the app to use. */
 export function nextHint(scenario: Scenario, s: SessionState): string {
+  const user = scenario.account.username;
+  const host = scenario.device.hostname;
   if (needsVerification(scenario) && !s.verifyAttempted) {
-    return 'This ticket may need account changes. Verify the requester\'s identity first (Conversation tab, "Verify identity").';
+    return 'This ticket may need account changes. Verify the requester first with "Verify identity" in the ticket conversation.';
   }
   for (const factId of scenario.keyFacts) {
     if (s.revealed.includes(factId)) continue;
     const q = scenario.questions.find((x) => x.reveals?.includes(factId) && !s.asked.includes(x.id));
     if (q) return `Ask the requester: "${q.text}"`;
     if (scenario.signInLog?.reveals?.includes(factId) && !s.signInLogViewed)
-      return 'Open the Directory tool and review the sign-in log.';
-    const tool = (Object.keys(scenario.toolReveals ?? {}) as ('directory' | 'endpoint')[]).find((t) =>
-      scenario.toolReveals?.[t]?.includes(factId),
-    );
-    if (tool) return `Take a close look at the ${tool === 'directory' ? 'Directory' : 'Endpoint'} tool for this user.`;
+      return `Open Directory, find ${user} and check the Sign-in log tab.`;
+    if (scenario.toolReveals?.servers?.includes(factId)) return 'Check the Server room for problems with shared infrastructure.';
+    if (scenario.toolReveals?.directory?.includes(factId)) return `Open ${user} in Directory and review the account.`;
+    if (scenario.toolReveals?.endpoint?.includes(factId)) return `Connect to ${host} in Remote desktop and check its health and inventory.`;
     const cmd = Object.entries(scenario.terminal ?? {}).find(([, o]) => o.reveals?.includes(factId));
-    if (cmd) return `Try running \`${cmd[0]}\` in the terminal.`;
+    if (cmd) return `In Remote desktop, connect to ${host} and run \`${cmd[0]}\` in the terminal.`;
     const act = Object.entries(scenario.actionResults ?? {}).find(([, o]) => o.reveals?.includes(factId));
-    if (act && ACTION_BY_ID[act[0]]) return `Try this step: ${ACTION_BY_ID[act[0]].label}.`;
+    if (act) return `Try this in ${actionApp(act[0])}: ${actionLabel(act[0])}.`;
   }
   for (const req of scenario.requiredActions) {
     if (!requirementMet(req, s.actions)) {
-      const a = ACTION_BY_ID[req.split('|')[0]];
-      if (a) return `You have enough evidence. Consider: ${a.label}.`;
+      const id = req.split('|')[0];
+      return `You have enough evidence. Next, in ${actionApp(id)}: ${actionLabel(id)}.`;
     }
   }
   if (scenario.correctOutcome === 'escalate') {
-    return 'You have the evidence. Think about whether tier 1 can fix this, or which team should own it.';
+    return 'You have the evidence. Think about whether tier 1 can fix this, or which team should own it, then resolve the ticket.';
   }
-  return 'You have what you need. Write your notes and reply, then submit the resolution.';
+  if (!s.confirmed) return 'Ask the requester to confirm the fix works ("Confirm fix" in the ticket), then resolve the ticket.';
+  return 'You have what you need. Resolve the ticket with your notes and a reply to the requester.';
 }

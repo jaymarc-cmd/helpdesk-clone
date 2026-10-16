@@ -116,6 +116,27 @@ export const KB_ARTICLES: KbArticle[] = [
 Don't send 25 people to restart their PCs. That wastes their time and destroys evidence.`,
   },
 
+  {
+    id: 'kb-server-room',
+    title: 'Checking shared infrastructure in the Server room',
+    category: 'General',
+    tags: ['server', 'outage', 'service', 'reboot', 'print server', 'switch'],
+    body: `When many people lose the same thing at once, check the shared system before touching individual PCs.
+
+## What to look at
+- **Status**: Healthy, Degraded (a service is not running), Down or Unreachable.
+- **Services**: a stopped or hung service is the usual reason for Degraded.
+- **Notes**: recent maintenance, patching or changes.
+
+## What tier 1 may do
+1. Restart a **single stopped service** on a non-critical server (for example the print spooler on PRINT01).
+2. Reboot a non-critical server only if a service restart does not help, and say so in the ticket.
+3. **Never reboot core servers** (domain controller, DNS, file server, mail, VPN) during business hours. That takes the service away from everyone. Escalate instead.
+4. Unreachable network equipment needs the **Network Team**: you cannot fix it remotely.
+
+Always confirm with an affected user afterwards, and record what you restarted.`,
+  },
+
   // ---------- Accounts ----------
   {
     id: 'kb-lockouts',

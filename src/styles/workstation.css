@@ -1,0 +1,399 @@
+/* Workstation apps: ticket page, Directory, Server room, Remote desktop, Deployment, and the active-ticket bar.
+   Builds on styles.css tokens/primitives and the scoped .ws-root rules in workspace.css (chat, terminal, actions). */
+
+/* ---------- Active ticket bar (every page while a ticket is assigned) ---------- */
+.wk-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  margin-bottom: var(--page-gap);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--danger);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  font-size: 0.86rem;
+}
+.wk-bar-ticket {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 280px;
+}
+.wk-bar-title {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.wk-bar-who {
+  color: var(--text-muted);
+}
+.wk-bar-timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+.wk-bar-timer.over {
+  color: var(--danger);
+}
+.wk-bar-open {
+  margin-left: auto;
+}
+
+/* ---------- "Recorded on ticket" banner ---------- */
+.wk-acting {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--info-soft);
+  color: var(--text);
+  font-size: 0.86rem;
+}
+.wk-acting svg {
+  color: var(--info);
+}
+
+/* ---------- Ticket page ---------- */
+.wk-ticket-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 330px;
+  gap: 16px;
+  align-items: start;
+}
+.wk-ticket-main,
+.wk-ticket-side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+@media (max-width: 980px) {
+  .wk-ticket-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.wk-request {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.wk-request .avatar {
+  width: 44px;
+  height: 44px;
+  font-size: 0.95rem;
+}
+.wk-request-body {
+  min-width: 0;
+}
+.wk-request-body p {
+  margin: 6px 0 0;
+  white-space: pre-wrap;
+  max-width: 72ch;
+}
+.wk-assign {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: flex-start;
+}
+.wk-assign h2 {
+  margin-bottom: 4px;
+}
+.wk-assign p {
+  margin: 0;
+  max-width: 64ch;
+}
+.ws-root .wk-chat {
+  max-height: 520px;
+}
+.wk-convo {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.wk-convo > .card-head {
+  margin-bottom: 0;
+}
+.wk-quick {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ws-root .suggestion.wk-confirm {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.wk-release {
+  align-self: flex-start;
+  color: var(--text-muted);
+}
+.wk-resolve .ws-causes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Tool shortcuts and related-article links in the ticket sidebar */
+.wk-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.wk-tool {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  border: 1px solid transparent;
+}
+.wk-tool:hover {
+  background: var(--surface-2);
+  border-color: var(--border);
+  text-decoration: none;
+}
+.wk-tool > svg:first-child {
+  color: var(--primary);
+}
+.wk-tool-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+.wk-tool-label {
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+.wk-tool-sub {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wk-tool-go {
+  color: var(--text-faint);
+}
+
+/* ---------- Shared app pieces (lists, tabs) ---------- */
+.wk-search {
+  margin-bottom: 14px;
+}
+.wk-table td {
+  vertical-align: middle;
+}
+.wk-person {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+}
+.wk-person:hover {
+  text-decoration: none;
+}
+.wk-person:hover .wk-person-name,
+.wk-person:hover .mono {
+  color: var(--primary);
+  text-decoration: underline;
+}
+.wk-person > span:last-child {
+  display: flex;
+  flex-direction: column;
+}
+.wk-person-name {
+  font-weight: 600;
+}
+.wk-person-title {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+.avatar.wk-avatar-xs {
+  width: 30px;
+  height: 30px;
+  font-size: 0.72rem;
+}
+.wk-inline-pill {
+  margin-left: 8px;
+}
+@media (max-width: 640px) {
+  .wk-hide-sm {
+    display: none;
+  }
+}
+.wk-tabs-card {
+  padding: 0;
+}
+.wk-tabs-card > .tabs {
+  padding: 0 12px;
+}
+.wk-tab-body {
+  padding: 18px 20px 20px;
+}
+.kv.wk-kv {
+  grid-template-columns: 140px minmax(0, 1fr);
+  max-width: 640px;
+}
+
+/* Directory groups */
+.wk-groups {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.wk-groups li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+.wk-groups li:last-child {
+  border-bottom: 0;
+}
+.wk-groups li > svg {
+  color: var(--text-muted);
+}
+.wk-group-name {
+  flex: 1;
+  min-width: 0;
+}
+.wk-add-group {
+  display: flex;
+  gap: 8px;
+  max-width: 480px;
+}
+.wk-add-group select {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ---------- Server room ---------- */
+.wk-servers {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 640px) {
+  .wk-servers {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.wk-server {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.wk-server > .card-head,
+.wk-server > .card-sub {
+  margin-bottom: 0;
+}
+.wk-server .card-sub {
+  margin-top: -6px;
+}
+.wk-server.attention {
+  border-color: var(--warning);
+}
+.wk-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 12px;
+  align-items: end;
+}
+.wk-metrics .label {
+  display: inline-flex;
+  margin-bottom: 4px;
+}
+.wk-uptime {
+  display: flex;
+  flex-direction: column;
+}
+.wk-services {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.86rem;
+}
+.wk-services li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.wk-services li > span:nth-child(2) {
+  flex: 1;
+}
+.wk-server-actions > summary {
+  font-size: 0.86rem;
+  color: var(--text-muted);
+}
+.wk-server-actions[open] > summary {
+  margin-bottom: 10px;
+}
+
+/* ---------- Deployment ---------- */
+.wk-deploy-target {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.wk-deploy-target select {
+  max-width: 320px;
+}
+.wk-packages {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.wk-packages li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.wk-packages li:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.wk-packages li > svg {
+  color: var(--text-muted);
+}
+.wk-packages li.done > svg {
+  color: var(--success);
+}
+.wk-pkg-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.wk-pkg-name {
+  font-weight: 600;
+}
+.wk-pkg-desc {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}

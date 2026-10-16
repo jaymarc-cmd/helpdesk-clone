@@ -25,7 +25,7 @@ function readingMinutes(body: string) {
 
 export function KnowledgeBase() {
   const { id } = useParams();
-  const { state, dispatch } = useStore();
+  const { state, dispatch, work } = useStore();
   const [q, setQ] = useState('');
   const [cat, setCat] = useState<Cat>('All');
   const article = id ? KB_BY_ID[id] : undefined;
@@ -34,6 +34,9 @@ export function KnowledgeBase() {
 
   useEffect(() => {
     if (article) dispatch({ type: 'kbRead', id: article.id });
+    // Reading an article while a ticket is assigned is recorded on that ticket.
+    if (article && work) work.emit({ type: 'openKb', id: article.id });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [article, dispatch]);
 
   // On a single-column layout the article sits below the list, so bring it into view when one is opened.

@@ -1,4 +1,5 @@
-import { ACTION_BY_ID } from '../data/actions';
+import { ACTION_BY_ID, isKnownAction } from '../data/actions';
+import { SERVER_BY_ID } from '../data/servers';
 import { KB_BY_ID } from '../data/kb';
 import { account as defaultAccount, device as defaultDevice } from '../data/scenarios/base';
 import { CATEGORIES, TEAMS, type Scenario } from '../types';
@@ -73,7 +74,7 @@ export function validateScenario(input: unknown, takenIds: string[] = []): Valid
     if (!isArr(ids)) return errors.push(`${where} must be an array of action ids.`);
     for (const entry of ids as string[]) {
       const parts = allowAlt ? String(entry).split('|') : [String(entry)];
-      for (const id of parts) if (!ACTION_BY_ID[id]) errors.push(`${where} references unknown action "${id}".`);
+      for (const id of parts) if (!isKnownAction(id)) errors.push(`${where} references unknown action "${id}".`);
     }
   };
   if (!isArr(s.requiredActions)) errors.push('"requiredActions" must be an array (can be empty).');
@@ -82,7 +83,7 @@ export function validateScenario(input: unknown, takenIds: string[] = []): Valid
   checkActions(s.harmfulActions, '"harmfulActions"');
   if (s.actionResults && typeof s.actionResults === 'object') {
     for (const [id, o] of Object.entries(s.actionResults as Record<string, { result?: unknown; reveals?: unknown }>)) {
-      if (!ACTION_BY_ID[id]) errors.push(`"actionResults" has unknown action "${id}".`);
+      if (!isKnownAction(id)) errors.push(`"actionResults" has unknown action "${id}".`);
       if (!isStr(o?.result)) errors.push(`actionResults.${id}.result is required.`);
       checkFacts(o?.reveals, `actionResults.${id}.reveals`);
     }
@@ -94,10 +95,17 @@ export function validateScenario(input: unknown, takenIds: string[] = []): Valid
     }
   }
   if (s.signInLog) checkFacts((s.signInLog as { reveals?: unknown }).reveals, '"signInLog.reveals"');
+  if (s.servers !== undefined) {
+    if (!s.servers || typeof s.servers !== 'object') errors.push('"servers" must be an object keyed by server id.');
+    else
+      for (const id of Object.keys(s.servers as object))
+        if (!SERVER_BY_ID[id]) errors.push(`"servers" has unknown server "${id}" (known: ${Object.keys(SERVER_BY_ID).join(', ')}).`);
+  }
   if (s.toolReveals) {
     const tr = s.toolReveals as Record<string, unknown>;
     checkFacts(tr.directory, '"toolReveals.directory"');
     checkFacts(tr.endpoint, '"toolReveals.endpoint"');
+    checkFacts(tr.servers, '"toolReveals.servers"');
   }
 
   // Resolution

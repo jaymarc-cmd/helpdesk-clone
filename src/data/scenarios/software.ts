@@ -249,11 +249,15 @@ export const softwareScenarios: Scenario[] = [
         result: 'Chloe installed DiagramStudio from Software Center in two minutes, with no admin rights needed. She is already drawing her first process map.',
         reveals: ['approved_exists'],
       },
+      deploy_diagram: {
+        result: 'DiagramStudio pushed to Chloe\'s laptop from Deployment. She can start mapping, though she still doesn\'t know about Software Center for next time.',
+        reveals: ['approved_exists'],
+      },
       grant_admin: {
         result: 'Chloe now has local admin and has started installing "FreeFlowDiagram" from an unverified download site, which bundles adware.',
       },
     },
-    requiredActions: ['guide_software_center'],
+    requiredActions: ['guide_software_center|deploy_diagram'],
     helpfulActions: [],
     harmfulActions: ['grant_admin'],
     rootCauses: [

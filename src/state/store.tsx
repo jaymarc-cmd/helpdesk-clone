@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useReducer,
 import { allScenarios, findScenario } from '../data/scenarios';
 import { BADGES, newlyEarned } from '../engine/progress';
 import { buildShiftReport, completeShiftTicket, createShift, tickShift } from '../engine/shift';
+import { hydrateSession, initSession, sessionReducer, type SessionEventInput, type SessionState } from '../engine/session';
 import type { AppState, CallAttempt, InterviewAttempt, Scenario, Settings, ShiftReport, TicketAttempt } from '../types';
 import { DEFAULT_STATE, loadState, normalizeState, saveState } from './storage';
 
@@ -18,6 +19,9 @@ type Action =
   | { type: 'tickShift'; now: number }
   | { type: 'endShift'; report: ShiftReport }
   | { type: 'abandonShift' }
+  | { type: 'startWork'; scenarioId: string; mode: 'practice' | 'shift'; now: number }
+  | { type: 'workEvent'; event: SessionEventInput; now: number }
+  | { type: 'releaseWork' }
   | { type: 'import'; state: AppState }
   | { type: 'reset' };
 
@@ -40,8 +44,25 @@ function reducer(state: AppState, action: Action): AppState {
         const sc = findScenario(action.attempt.scenarioId, state.customScenarios);
         if (sc) activeShift = completeShiftTicket(activeShift, sc, action.attempt);
       }
-      return withBadges({ ...state, tickets: [...state.tickets, action.attempt], activeShift });
+      const activeWork = state.activeWork?.scenarioId === action.attempt.scenarioId ? null : state.activeWork;
+      return withBadges({ ...state, tickets: [...state.tickets, action.attempt], activeShift, activeWork });
     }
+    case 'startWork': {
+      const sc = findScenario(action.scenarioId, state.customScenarios);
+      if (!sc) return state;
+      return { ...state, activeWork: { scenarioId: sc.id, mode: action.mode, startedAt: action.now, session: initSession(sc) } };
+    }
+    case 'workEvent': {
+      const w = state.activeWork;
+      if (!w) return state;
+      const sc = findScenario(w.scenarioId, state.customScenarios);
+      if (!sc) return { ...state, activeWork: null };
+      const at = Math.max(0, Math.round((action.now - w.startedAt) / 1000));
+      const session = sessionReducer(sc)(hydrateSession(w.session, sc), { ...action.event, at } as Parameters<ReturnType<typeof sessionReducer>>[1]);
+      return { ...state, activeWork: { ...w, session } };
+    }
+    case 'releaseWork':
+      return { ...state, activeWork: null };
     case 'addCall':
       return withBadges({ ...state, calls: [...state.calls, action.attempt] });
     case 'addInterview':
@@ -75,8 +96,19 @@ function reducer(state: AppState, action: Action): AppState {
   }
 }
 
+export interface Work {
+  scenario: Scenario;
+  session: SessionState;
+  mode: 'practice' | 'shift';
+  startedAt: number;
+  /** Sends an event to the active ticket's session; the timestamp is added for you. */
+  emit: (event: SessionEventInput) => void;
+}
+
 interface Store {
   state: AppState;
+  /** The ticket currently assigned to the analyst, or null. */
+  work: Work | null;
   dispatch: (a: Action) => void;
   scenarios: Scenario[];
   getScenario: (id: string) => Scenario | undefined;
@@ -134,9 +166,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return report;
   }, [state.activeShift, state.tickets, getScenario]);
 
+  const work = useMemo<Work | null>(() => {
+    const w = state.activeWork;
+    if (!w) return null;
+    const scenario = findScenario(w.scenarioId, state.customScenarios);
+    if (!scenario) return null;
+    return {
+      scenario,
+      session: hydrateSession(w.session, scenario),
+      mode: w.mode,
+      startedAt: w.startedAt,
+      emit: (event) => dispatch({ type: 'workEvent', event, now: Date.now() }),
+    };
+  }, [state.activeWork, state.customScenarios]);
+
   const value = useMemo<Store>(
-    () => ({ state, dispatch, scenarios, getScenario, finishShift, toast, dismissToast: () => setToast(null) }),
-    [state, scenarios, getScenario, finishShift, toast],
+    () => ({ state, work, dispatch, scenarios, getScenario, finishShift, toast, dismissToast: () => setToast(null) }),
+    [state, work, scenarios, getScenario, finishShift, toast],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

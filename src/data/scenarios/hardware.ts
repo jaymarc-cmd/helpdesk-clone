@@ -3,6 +3,112 @@ import { account, device, person, scenario } from './base';
 
 export const hardwareScenarios: Scenario[] = [
   scenario({
+    id: 'hw-print-server',
+    title: 'Nothing prints anywhere in the building',
+    category: 'Hardware',
+    difficulty: 2,
+    priority: 'P2',
+    channel: 'phone',
+    targetMinutes: 6,
+    requester: person('Kwame Asante', 'Office Coordinator', 'Facilities', 'HQ, Ground floor'),
+    description:
+      "Since first thing this morning nothing prints, from anyone's computer, on any printer. Jobs just sit in the queue. The printers themselves look fine and people can still photocopy. Board packs are due out at noon.",
+    account: account('kwame.asante'),
+    device: device('HPL-DT-0140', { model: 'Standard Desktop D7' }),
+    servers: {
+      PRINT01: {
+        status: 'Degraded',
+        uptime: '7 hours',
+        note: 'Patched and restarted at 02:10 during the maintenance window.',
+        services: [
+          { name: 'Print Spooler', status: 'Stopped' },
+          { name: 'Print Web Management', status: 'Running' },
+        ],
+      },
+    },
+    facts: [
+      { id: 'everyone', label: 'Every user and every printer in the building is affected' },
+      { id: 'printers_ok', label: 'Printers still copy and scan, so the devices are fine' },
+      { id: 'server_unavailable', label: 'Print queues report the print server as unavailable' },
+      { id: 'patched', label: 'PRINT01 was patched and restarted overnight' },
+      { id: 'spooler_stopped', label: 'The Print Spooler service on PRINT01 is stopped' },
+    ],
+    keyFacts: ['everyone', 'server_unavailable', 'spooler_stopped'],
+    questions: [
+      {
+        id: 'q_scope',
+        text: 'Is it just you, or are other people affected too?',
+        reply: 'Everyone. I walked round three floors and nobody can print to anything.',
+        keywords: ['others', 'everyone', 'just you', 'anyone else', 'colleagues', 'scope'],
+        reveals: ['everyone'],
+      },
+      {
+        id: 'q_copy',
+        text: 'Can the printers still copy or scan?',
+        reply: 'Yes, copying works fine. It is only printing from computers.',
+        keywords: ['copy', 'scan', 'photocopy', 'printer itself'],
+        reveals: ['printers_ok'],
+      },
+      {
+        id: 'q_queue',
+        text: 'What does the print queue on your PC say about the stuck jobs?',
+        reply: 'It says "Printer server unavailable" next to every job.',
+        keywords: ['queue', 'error', 'status', 'say', 'message'],
+        reveals: ['server_unavailable'],
+      },
+      {
+        id: 'q_restart',
+        text: 'Have you tried restarting your computer?',
+        reply: 'I did, and so did half the office. No difference.',
+        keywords: ['restart', 'reboot'],
+        quality: 'neutral',
+      },
+      {
+        id: 'q_unplug',
+        text: 'Has someone unplugged all the printers?',
+        reply: 'All of them? On every floor? No.',
+        keywords: ['unplug', 'unplugged'],
+        quality: 'bad',
+      },
+    ],
+    toolReveals: { servers: ['patched', 'spooler_stopped'] },
+    actionResults: {
+      'srv:PRINT01:restart:Print Spooler': {
+        result: 'Print Spooler started on PRINT01. Jobs queued across the building begin printing within a minute.',
+        reveals: ['spooler_stopped'],
+      },
+      'srv:PRINT01:reboot': {
+        result: 'PRINT01 rebooted (about four minutes without printing). Print Spooler started this time and the backlog is printing.',
+        reveals: ['spooler_stopped'],
+      },
+      restart_spooler: { result: "Restarted the spooler on Kwame's own PC. Jobs still fail: the print server is unavailable." },
+      clear_print_queue: { result: "Cleared Kwame's local queue. He resent one page and it is stuck again with \"Printer server unavailable\"." },
+    },
+    requiredActions: ['srv:PRINT01:restart:Print Spooler|srv:PRINT01:reboot'],
+    helpfulActions: [],
+    harmfulActions: ['reimage'],
+    rootCauses: [
+      { id: 'spooler', label: 'Print Spooler on the print server did not start after overnight patching' },
+      { id: 'network', label: 'Building network outage' },
+      { id: 'drivers', label: 'Corrupted printer drivers on every PC' },
+      { id: 'consumables', label: 'Printers out of paper or toner' },
+    ],
+    correctRootCause: 'spooler',
+    correctOutcome: 'resolve',
+    noteKeywords: ['print01', 'spooler', 'service', 'patch', 'building', 'started'],
+    replyKeywords: ['print', 'server', 'working'],
+    kb: ['kb-server-room', 'kb-printing'],
+    solution: [
+      'Scope it: everyone, every printer, and copying still works. Think shared infrastructure, not PCs.',
+      'Open the Server room: PRINT01 is degraded after last night\'s patching.',
+      'Start the stopped Print Spooler service on PRINT01 (a reboot also works but costs downtime).',
+      'Confirm with the requester that printing works, then resolve and note the cause for the patching team.',
+    ],
+    debrief:
+      'When everyone loses the same service at once, the cause is almost never on individual PCs. Check the shared server first. A service that fails to start after patching is common; restarting just that service is faster and less disruptive than rebooting the whole server.',
+  }),
+
+  scenario({
     id: 'hw-print-queue',
     title: "Printer says 'Printing' but nothing comes out",
     category: 'Hardware',

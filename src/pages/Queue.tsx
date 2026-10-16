@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Clock, FilterX, Inbox, LayoutGrid, Search, SearchX, Shuffle } from 'lucide-react';
+import { Clock, FilterX, Inbox, LayoutGrid, Search, SearchX, Shuffle, Timer } from 'lucide-react';
 import { bestByScenario } from '../engine/progress';
 import { useStore } from '../state/store';
 import { CATEGORIES, type Category } from '../types';
@@ -39,7 +39,7 @@ function useScrollEdges<T extends HTMLElement>() {
 }
 
 export function Queue() {
-  const { state, scenarios } = useStore();
+  const { state, scenarios, work } = useStore();
   const navigate = useNavigate();
   const best = bestByScenario(state);
   const [cat, setCat] = useState<Category | 'All'>('All');
@@ -198,7 +198,16 @@ export function Queue() {
                       <CategoryPill category={s.category} />
                       {s.custom && <span className="pill pill-info">Custom</span>}
                     </div>
-                    {b !== undefined ? <BestScorePill score={b} /> : <NewPill />}
+                    {work?.scenario.id === s.id ? (
+                      <span className="pill pill-info">
+                        <Timer aria-hidden />
+                        In progress
+                      </span>
+                    ) : b !== undefined ? (
+                      <BestScorePill score={b} />
+                    ) : (
+                      <NewPill />
+                    )}
                   </div>
 
                   <div className="title">{s.title}</div>

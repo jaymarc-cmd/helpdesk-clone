@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ACTION_BY_ID } from '../data/actions';
+import { isInherentlyHarmful, isKnownAction } from '../data/actions';
 import { CALLS } from '../data/calls';
 import { INTERVIEW_QUESTIONS } from '../data/interview';
 import { KB_BY_ID } from '../data/kb';
@@ -23,6 +23,7 @@ function playIdeal(sc: Scenario): SessionState {
   for (const q of sc.questions) if (q.quality !== 'bad') s = step(s, { type: 'ask', questionId: q.id, at: 2 });
   s = step(s, { type: 'openTool', tool: 'directory', at: 3 });
   s = step(s, { type: 'openTool', tool: 'endpoint', at: 3 });
+  s = step(s, { type: 'openTool', tool: 'servers', at: 3 });
   s = step(s, { type: 'viewSignInLog', at: 3 });
   for (const cmd of Object.keys(sc.terminal ?? {})) s = step(s, { type: 'command', raw: cmd, at: 4 });
   for (const req of sc.requiredActions) s = step(s, { type: 'action', actionId: req.split('|')[0], at: 5 });
@@ -37,6 +38,7 @@ function playIdeal(sc: Scenario): SessionState {
       s = step(s, { type: 'action', actionId: id, at: 6 });
     }
   }
+  s = step(s, { type: 'confirm', at: 7 });
   return s;
 }
 
@@ -76,7 +78,7 @@ describe('built-in content', () => {
     for (const sc of BUILTIN_SCENARIOS) {
       for (const k of sc.kb) expect(KB_BY_ID[k], `${sc.id} kb ${k}`).toBeDefined();
       for (const a of [...sc.requiredActions.flatMap((r) => r.split('|')), ...(sc.harmfulActions ?? [])]) {
-        expect(ACTION_BY_ID[a], `${sc.id} action ${a}`).toBeDefined();
+        expect(isKnownAction(a), `${sc.id} action ${a}`).toBe(true);
       }
     }
   });
@@ -194,6 +196,58 @@ describe('session & terminal', () => {
     expect(nextHint(lockout, s)).toMatch(/verify/i);
     s = step(s, { type: 'verify', at: 1 });
     expect(nextHint(lockout, s)).toMatch(/phone|tablet/i);
+  });
+});
+
+describe('workstation tools', () => {
+  const printServer = BUILTIN_SCENARIOS.find((s) => s.id === 'hw-print-server')!;
+  const access = BUILTIN_SCENARIOS.find((s) => s.id === 'acc-group-access')!;
+
+  it('restarting a stopped service in the Server room fixes the server', () => {
+    const step = sessionReducer(printServer);
+    let s = initSession(printServer);
+    expect(s.servers.find((x) => x.id === 'PRINT01')!.status).toBe('Degraded');
+    s = step(s, { type: 'action', actionId: 'srv:PRINT01:restart:Print Spooler', at: 5 });
+    const p = s.servers.find((x) => x.id === 'PRINT01')!;
+    expect(p.status).toBe('Healthy');
+    expect(p.services.every((x) => x.status === 'Running')).toBe(true);
+  });
+
+  it('cannot reboot an unreachable switch, and core server reboots count as harmful', () => {
+    const outage = BUILTIN_SCENARIOS.find((s) => s.id === 'net-floor-outage')!;
+    const step = sessionReducer(outage);
+    let s = initSession(outage);
+    s = step(s, { type: 'action', actionId: 'srv:SW-F3-EAST:reboot', at: 5 });
+    expect(s.actionResults[0].text).toMatch(/not responding/);
+    expect(isInherentlyHarmful('srv:DC01:reboot')).toBe(true);
+    expect(isInherentlyHarmful('srv:PRINT01:reboot')).toBe(false);
+    s = step(s, { type: 'action', actionId: 'srv:DC01:reboot', at: 6 });
+    const r = gradeTicket(outage, s, idealSubmission(outage), 60);
+    expect(r.sections.find((x) => x.key === 'process')!.items.some((i) => !i.ok && i.text.includes('Reboot DC01'))).toBe(true);
+  });
+
+  it('group changes update membership; privileged groups are harmful', () => {
+    const step = sessionReducer(access);
+    let s = initSession(access);
+    s = step(s, { type: 'action', actionId: 'grp+:FIN-Reports-RW', at: 5 });
+    expect(s.account.groups).toContain('FIN-Reports-RW');
+    s = step(s, { type: 'action', actionId: 'grp-:Finance - Read', at: 6 });
+    expect(s.account.groups).not.toContain('Finance - Read');
+    expect(isInherentlyHarmful('grp+:Domain Admins')).toBe(true);
+  });
+
+  it('the user only confirms once the fix is actually done, and resolving unconfirmed costs points', () => {
+    const step = sessionReducer(printServer);
+    let s = initSession(printServer);
+    s = step(s, { type: 'confirm', at: 2 });
+    expect(s.confirmed).toBe(false);
+    s = step(s, { type: 'action', actionId: 'srv:PRINT01:restart:Print Spooler', at: 3 });
+    const unconfirmed = gradeTicket(printServer, s, idealSubmission(printServer), 30);
+    s = step(s, { type: 'confirm', at: 4 });
+    expect(s.confirmed).toBe(true);
+    const confirmed = gradeTicket(printServer, s, idealSubmission(printServer), 30);
+    const proc = (r: typeof confirmed) => r.sections.find((x) => x.key === 'process')!.score;
+    expect(proc(confirmed) - proc(unconfirmed)).toBe(3);
   });
 });
 

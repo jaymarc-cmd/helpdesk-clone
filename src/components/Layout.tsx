@@ -8,6 +8,10 @@ import {
   GraduationCap,
   HardDrive,
   Headset,
+  IdCard,
+  MonitorSmartphone,
+  PackageCheck,
+  Server,
   Inbox,
   LayoutDashboard,
   LibraryBig,
@@ -24,19 +28,24 @@ import { rankFor, totalXp } from '../engine/progress';
 import { useStore } from '../state/store';
 import { BadgeGlyph } from './icons';
 import { IconTile, Modal, ProgressBar, initials } from './ui';
+import { ActiveTicketBar } from './work';
 import '../styles/shell-dashboard.css';
 
 type NavItem = { section: string } | { to: string; icon: LucideIcon; label: string; end?: boolean };
 
 const NAV: NavItem[] = [
-  { section: 'Practice' },
   { to: '/', icon: LayoutDashboard, label: 'Dashboard', end: true },
-  { to: '/tickets', icon: Inbox, label: 'Ticket queue' },
-  { to: '/shift', icon: Timer, label: 'Shift mode' },
-  { to: '/calls', icon: PhoneCall, label: 'Voice calls' },
-  { to: '/interview', icon: GraduationCap, label: 'Mock interview' },
-  { section: 'Resources' },
+  { section: 'Workstation' },
+  { to: '/tickets', icon: Inbox, label: 'Ticketing' },
+  { to: '/directory', icon: IdCard, label: 'Directory' },
+  { to: '/servers', icon: Server, label: 'Server room' },
+  { to: '/devices', icon: MonitorSmartphone, label: 'Remote desktop' },
+  { to: '/deploy', icon: PackageCheck, label: 'Deployment' },
   { to: '/kb', icon: LibraryBig, label: 'Knowledge base' },
+  { to: '/calls', icon: PhoneCall, label: 'Phone' },
+  { section: 'Training' },
+  { to: '/shift', icon: Timer, label: 'Shift mode' },
+  { to: '/interview', icon: GraduationCap, label: 'Mock interview' },
   { to: '/progress', icon: ChartNoAxesColumn, label: 'Progress' },
   { to: '/builder', icon: Wrench, label: 'Scenario builder' },
   { to: '/settings', icon: Settings, label: 'Settings' },
@@ -45,8 +54,8 @@ const NAV: NavItem[] = [
 const WELCOME_POINTS: { icon: LucideIcon; title: string; text: string }[] = [
   {
     icon: ScanSearch,
-    title: 'Investigate like a Tier 1 analyst',
-    text: 'Work each ticket with chat, directory, endpoint and terminal tools.',
+    title: 'Work like a Tier 1 analyst',
+    text: 'Pick up tickets, then fix them in real tools: Directory, Server room, Remote desktop and Deployment.',
   },
   {
     icon: ClipboardCheck,
@@ -136,6 +145,7 @@ export function Layout() {
 
       <main className="main">
         <div className="main-inner">
+          <ActiveTicketBar />
           <Outlet />
         </div>
       </main>

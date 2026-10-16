@@ -8,8 +8,8 @@ Everything runs locally in the browser. No account or backend is needed, and pro
 
 | Area | What you get |
 | --- | --- |
-| 🎫 **Ticket workspace** | 21 scenarios across Accounts, Network, Hardware, Software, Email and Security. Investigate with a **chat** (suggested questions *or* free-typed messages), a **Directory** tool (account status, groups, MFA, mailbox, sign-in log), an **Endpoint** manager (device health, remote actions), a **remote terminal** (`ipconfig`, `ping`, `nslookup`, `cmdkey`, `Get-PrintJob`, …) and **guided steps** you ask the user to do. Actions change state: fix the cable and `ipconfig` shows a real address. |
-| 🧮 **Detailed grading** | Seven-part score (Diagnosis, Resolution, Investigation, Process & Security, Communication, Documentation, Handling Time), letter grade, customer-satisfaction stars, an ideal-path walkthrough and a "why it matters" debrief. |
+| 🖥️ **Workstation flow** | Work tickets the way a real service desk does, across separate apps. **Ticketing**: pick a ticket from the queue, assign it to yourself, talk to the requester (suggested or free-typed replies, identity verification, "ask the user to…" steps), confirm the fix, then resolve with a root cause, notes and a closing message. **Directory**: search people, then Overview, Authentication (unlock, reset password, MFA, sessions), Groups (add/remove), Mailbox and Sign-in log. **Server room**: live status of shared servers and switches; restart a stopped service or reboot. **Remote desktop**: connect to a device for health, inventory, remote actions and a PowerShell terminal (`ipconfig`, `ping`, `nslookup`, `cmdkey`, …). **Deployment**: push approved packages. A bar at the top keeps the active ticket one click away while you switch apps. 22 scenarios across Accounts, Network, Hardware, Software, Email and Security. |
+| 🧮 **Detailed grading** | The ticket only scores well if the fix was actually done in the right tool and confirmed with the user. Seven-part score (Diagnosis, Resolution, Investigation, Process & Security, Communication, Documentation, Handling Time), letter grade, customer-satisfaction stars, an ideal-path walkthrough and a "why it matters" debrief. |
 | 🔐 **Security realism** | Identity verification policy, social-engineering (vishing) and phishing scenarios. Making sensitive changes for unverified callers is caught and penalised. |
 | ⏱️ **Shift mode** | Tickets arrive over 15/25/40 minutes with per-priority SLA clocks; end-of-shift report with breaches and misses. |
 | 📞 **Voice calls** | Six branching phone calls with **spoken callers** (Web Speech API), a live mood meter and per-choice coaching. |
@@ -49,8 +49,8 @@ src/
   data/            Content: scenarios/, actions catalog, calls, interview questions, KB articles
   engine/          Pure logic: session reducer, terminal simulator, grading, hints, shifts, progress, validation
   state/           App store (React context + reducer) and localStorage persistence
-  pages/           Dashboard, Queue, TicketWorkspace, TicketReview, Shift, Calls, CallSession, Interview, KB, Progress, Builder, Settings
-  components/      Layout, UI primitives, speech (text-to-speech / dictation) hooks
+  pages/           Dashboard, Queue, TicketPage, Directory, ServerRoom, RemoteDesktop, Deployment, TicketReview, Shift, Calls, CallSession, Interview, KB, Progress, Builder, Settings
+  components/      Layout, UI primitives, workstation pieces (active ticket bar, action lists, terminal), speech hooks
 ```
 
 ## Writing scenarios

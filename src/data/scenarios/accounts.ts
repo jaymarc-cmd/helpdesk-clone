@@ -312,17 +312,16 @@ export const accountScenarios: Scenario[] = [
     },
     toolReveals: { directory: ['missing_group'] },
     actionResults: {
-      add_group: {
+      'grp+:FIN-Reports-RW': {
         result:
           'Added aisha.kamara to FIN-Reports-RW (approval reference attached). Her current sign-in token will not include the new group until she signs out and back in.',
         reveals: ['token'],
-        accountUpdate: { groups: ['All Staff', 'Finance - Read', 'FIN-Reports-RW', 'VPN Users'] },
       },
       guide_restart: {
         result: 'Aisha signed out and back in. The F: drive opens and she saved a test file.',
       },
     },
-    requiredActions: ['add_group', 'guide_restart'],
+    requiredActions: ['grp+:FIN-Reports-RW', 'guide_restart'],
     helpfulActions: [],
     harmfulActions: ['grant_admin', 'reimage'],
     rootCauses: [

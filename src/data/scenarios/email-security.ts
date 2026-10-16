@@ -206,6 +206,7 @@ export const securityScenarios: Scenario[] = [
     channel: 'phone',
     targetMinutes: 6,
     socialEngineering: true,
+    accountOwner: { name: 'Elaine Moreau', title: 'Chief Financial Officer', department: 'Office of the CFO' },
     requester: person('Jordan Pike', 'Executive Assistant to the CFO (claimed)', 'Office of the CFO (unverified)', 'Calling from an external mobile number'),
     description:
       'Phone call transcript: the caller says they are the new executive assistant to the CFO, Elaine Moreau. Elaine is traveling, locked out, and needs her password reset and MFA removed immediately so she can join an investor call in 10 minutes. The caller asks for the temporary password to be read out over the phone.',

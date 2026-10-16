@@ -1,4 +1,4 @@
-import { ACTION_BY_ID } from '../data/actions';
+import { ACTION_BY_ID, actionLabel, isInherentlyHarmful } from '../data/actions';
 import type { Scenario, ScoreItem, ScoreSection, TicketResult, TicketSubmission } from '../types';
 import { requirementMet, type SessionState } from './session';
 
@@ -31,7 +31,9 @@ export function gradeTicket(
   elapsedSec: number,
 ): TicketResult {
   const sections: ScoreSection[] = [];
-  const harmfulDone = s.actions.filter((a) => scenario.harmfulActions?.includes(a));
+  const relevantIds = new Set([...scenario.requiredActions.flatMap((r) => r.split('|')), ...(scenario.helpfulActions ?? [])]);
+  // Harmful: listed by the scenario, or harmful on any ticket (core server reboots, privileged groups) unless the ticket needs it.
+  const harmfulDone = s.actions.filter((a) => scenario.harmfulActions?.includes(a) || (isInherentlyHarmful(a) && !relevantIds.has(a)));
   const uniqueHarmful = [...new Set(harmfulDone)];
 
   // ---- Diagnosis (20)
@@ -82,7 +84,7 @@ export function gradeTicket(
       for (const r of req) {
         const label = r
           .split('|')
-          .map((id) => ACTION_BY_ID[id]?.label ?? id)
+          .map((id) => actionLabel(id))
           .join(' or ');
         items.push(requirementMet(r, s.actions) ? { ok: true, text: `Performed: ${label}` } : { ok: false, text: `Missing step: ${label}` });
       }
@@ -116,7 +118,7 @@ export function gradeTicket(
       score -= 8;
       items.push({
         ok: false,
-        text: `Sensitive change before verifying identity: ${[...new Set(s.sensitiveBeforeVerify)].map((a) => ACTION_BY_ID[a]?.label).join(', ')}`,
+        text: `Sensitive change before verifying identity: ${[...new Set(s.sensitiveBeforeVerify)].map((a) => actionLabel(a)).join(', ')}`,
       });
     } else if (sensitiveUsed) {
       items.push({ ok: true, text: 'Verified identity before making sensitive changes' });
@@ -131,23 +133,30 @@ export function gradeTicket(
     }
     for (const h of uniqueHarmful) {
       score -= 10;
-      items.push({ ok: false, text: `Harmful action: ${ACTION_BY_ID[h]?.label ?? h}` });
+      items.push({ ok: false, text: `Harmful action: ${actionLabel(h)}` });
     }
     const relevant = new Set([
       ...scenario.requiredActions.flatMap((r) => r.split('|')),
       ...(scenario.helpfulActions ?? []),
       ...(scenario.harmfulActions ?? []),
     ]);
-    const unnecessary = [...new Set(s.actions.filter((a) => !relevant.has(a)))];
+    const unnecessary = [...new Set(s.actions.filter((a) => !relevant.has(a) && !uniqueHarmful.includes(a)))];
     if (unnecessary.length > 1) {
       const pen = Math.min(6, (unnecessary.length - 1) * 2);
       score -= pen;
       items.push({
         ok: false,
-        text: `Unnecessary actions (shotgun troubleshooting): ${unnecessary.map((a) => ACTION_BY_ID[a]?.label ?? a).join(', ')}`,
+        text: `Unnecessary actions (shotgun troubleshooting): ${unnecessary.map((a) => actionLabel(a)).join(', ')}`,
       });
     } else if (!uniqueHarmful.length) {
       items.push({ ok: true, text: 'Targeted troubleshooting, with no shotgun changes' });
+    }
+    if (scenario.correctOutcome === 'resolve' && sub.outcome === 'resolve') {
+      if (s.confirmed) items.push({ ok: true, text: 'Confirmed the fix with the user before resolving' });
+      else {
+        score -= 3;
+        items.push({ ok: false, text: 'Resolved without confirming the fix with the user' });
+      }
     }
     sections.push({ key: 'process', label: 'Process & security', score: round1(clamp(score, 0, 15)), max: 15, items });
   }

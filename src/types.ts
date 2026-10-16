@@ -27,7 +27,38 @@ export const TEAMS: Team[] = [
 
 export type Outcome = 'resolve' | 'escalate' | 'pending';
 
-export type ToolId = 'directory' | 'endpoint' | 'guide';
+export type ToolId = 'directory' | 'endpoint' | 'guide' | 'deploy';
+
+/** Workstation apps that can reveal facts just by being opened on the ticket's user/device. */
+export type RevealTool = 'directory' | 'endpoint' | 'servers';
+
+export type ServerStatus = 'Healthy' | 'Degraded' | 'Down' | 'Unreachable';
+
+export interface ServerService {
+  name: string;
+  status: 'Running' | 'Stopped' | 'Hung';
+}
+
+export interface ServerState {
+  id: string;
+  name: string;
+  role: string;
+  kind: 'server' | 'network';
+  ip: string;
+  location: string;
+  status: ServerStatus;
+  cpu: number;
+  memory: number;
+  uptime: string;
+  note?: string;
+  services: ServerService[];
+  /** Rebooting this during business hours takes a core service away from everyone. */
+  critical?: boolean;
+}
+
+export type ServerOverride = Partial<Pick<ServerState, 'status' | 'note' | 'cpu' | 'memory' | 'uptime'>> & {
+  services?: ServerService[];
+};
 
 export interface CatalogAction {
   id: string;
@@ -141,7 +172,11 @@ export interface Scenario {
   /** Sign-in / audit log shown in the Directory tool. */
   signInLog?: { lines: string[]; reveals?: string[] };
   /** Facts revealed just by opening a tool panel. */
-  toolReveals?: Partial<Record<'directory' | 'endpoint', string[]>>;
+  toolReveals?: Partial<Record<RevealTool, string[]>>;
+  /** Per-ticket state of shared infrastructure shown in the Server room (ids from data/servers.ts). */
+  servers?: Record<string, ServerOverride>;
+  /** Owner of `account` when it is not the requester (e.g. someone calling on another person's behalf). */
+  accountOwner?: { name: string; title: string; department: string };
   /** Actions the ideal path performs. Use "a|b" when either action is acceptable. */
   requiredActions: string[];
   /** Reasonable but optional actions (no penalty). */
@@ -345,4 +380,14 @@ export interface AppState {
   kbRead: string[];
   customScenarios: Scenario[];
   activeShift: ActiveShift | null;
+  /** The ticket currently assigned to the analyst; tools act on its user, device and servers. */
+  activeWork: ActiveWork | null;
+}
+
+export interface ActiveWork {
+  scenarioId: string;
+  mode: 'practice' | 'shift';
+  startedAt: number;
+  /** Engine session (engine/session.ts SessionState); stored as plain data so it survives reloads. */
+  session: unknown;
 }
