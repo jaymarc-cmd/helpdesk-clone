@@ -1,12 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { CircleDot, Laptop, ListChecks, MonitorSmartphone, Search, SearchX, SquareTerminal, Wrench, type LucideIcon } from 'lucide-react';
-import { actionsForTool } from '../data/actions';
+import { Laptop, MonitorSmartphone, RotateCcw, Search, SearchX, SquareTerminal } from 'lucide-react';
 import { directoryPeople } from '../data/directory';
-import { useStore } from '../state/store';
+import { useStore, type Work } from '../state/store';
 import type { DeviceState } from '../types';
 import { EmptyState, PageHeader } from '../components/ui';
-import { ActingFor, ActionList, NoTicketNotice, TerminalPane } from '../components/work';
+import { ActingFor, NoTicketNotice, TerminalPane } from '../components/work';
+import { Desktop } from '../components/desktop/Desktop';
 import '../styles/workspace.css';
 import '../styles/workstation.css';
 
@@ -15,9 +15,6 @@ interface DeviceRow {
   user: string;
   username: string;
 }
-
-/** Disruptive endpoint actions ask for confirmation first. */
-const DESTRUCTIVE = new Set(['reimage', 'remote_restart', 'isolate_device', 'repair_office']);
 
 function useDevices(): DeviceRow[] {
   const { scenarios, work } = useStore();
@@ -114,24 +111,11 @@ function DeviceList() {
   );
 }
 
-type Tab = 'overview' | 'actions' | 'terminal';
-const TABS: { id: Tab; label: string; icon: LucideIcon }[] = [
-  { id: 'overview', label: 'Overview', icon: ListChecks },
-  { id: 'actions', label: 'Remote actions', icon: Wrench },
-  { id: 'terminal', label: 'Terminal', icon: SquareTerminal },
-];
-
 function DevicePage({ hostname }: { hostname: string }) {
   const rows = useDevices();
   const { work } = useStore();
-  const [tab, setTab] = useState<Tab>('overview');
   const row = rows.find((r) => r.device.hostname === hostname);
   const editable = !!work && work.scenario.device.hostname === hostname;
-
-  useEffect(() => {
-    if (editable) work.emit({ type: 'openTool', tool: 'endpoint' });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editable]);
 
   if (!row) {
     return (
@@ -148,13 +132,6 @@ function DevicePage({ hostname }: { hostname: string }) {
     );
   }
   const d = row.device;
-  const items = actionsForTool('endpoint').map((a) => ({
-    id: a.id,
-    label: a.label,
-    description: a.description,
-    sensitive: a.sensitive,
-    destructive: DESTRUCTIVE.has(a.id),
-  }));
 
   return (
     <div className="page ws-root wk-app">
@@ -195,59 +172,103 @@ function DevicePage({ hostname }: { hostname: string }) {
         </NoTicketNotice>
       )}
 
-      <section className="card wk-tabs-card">
-        <div className="tabs" role="tablist" aria-label="Device sections">
-          {TABS.map(({ id, label, icon: Icon }) => (
-            <button key={id} role="tab" aria-selected={tab === id} className={`tab ${tab === id ? 'active' : ''}`} onClick={() => setTab(id)}>
-              <Icon size={16} aria-hidden />
-              {label}
-            </button>
-          ))}
+      {editable ? (
+        <RemoteSession work={work} />
+      ) : (
+        <section className="card">
+          <div className="dt-connect">
+            <span className="dt-tile tone-slate">
+              <MonitorSmartphone size={28} aria-hidden />
+            </span>
+            <h2>Remote session unavailable</h2>
+            <p>Connecting to {d.hostname} needs an open ticket for this device.</p>
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
+/** Connect screen, then the simulated desktop. Offline devices fall back to a relayed PowerShell session. */
+function RemoteSession({ work }: { work: Work }) {
+  const d = work.session.device;
+  const [phase, setPhase] = useState<'idle' | 'connecting' | 'connected' | 'failed' | 'relay'>('idle');
+  const poweredOff = !d.online && d.ip === '';
+
+  const connect = () => {
+    setPhase('connecting');
+    work.emit({ type: 'openTool', tool: 'endpoint' });
+    setTimeout(() => setPhase(d.online ? 'connected' : 'failed'), 900);
+  };
+
+  if (phase === 'connected') return <Desktop work={work} onDisconnect={() => setPhase('idle')} />;
+
+  if (phase === 'relay')
+    return (
+      <section className="card ws-root">
+        <div className="card-head">
+          <h2>
+            <SquareTerminal size={18} aria-hidden />
+            Relayed PowerShell
+          </h2>
+          <button className="btn btn-sm" onClick={() => setPhase('idle')}>
+            End session
+          </button>
         </div>
-        <div className="wk-tab-body">
-          {tab === 'overview' && (
-            <div className="stack">
-              <dl className="kv wk-kv">
-                <dt>Signed-in user</dt>
-                <dd className="mono">{row.username}</dd>
-                <dt>IP address</dt>
-                <dd className="mono">{d.ip || '–'}</dd>
-                <dt>Disk free</dt>
-                <dd>{d.diskFree}</dd>
-                <dt>Uptime</dt>
-                <dd>{d.uptime}</dd>
-                <dt>Last patch</dt>
-                <dd>{d.lastPatch}</dd>
-              </dl>
-              {d.installedNotes && d.installedNotes.length > 0 && (
-                <div>
-                  <div className="label ws-label-row">
-                    <ListChecks size={14} aria-hidden />
-                    Inventory and health
-                  </div>
-                  <ul className="ws-inventory">
-                    {d.installedNotes.map((n) => (
-                      <li key={n}>
-                        <CircleDot size={12} aria-hidden />
-                        <span>{n}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+        <TerminalPane work={work} />
+      </section>
+    );
+
+  return (
+    <section className="card">
+      <div className="dt-connect">
+        <span className="dt-tile tone-teal">
+          <MonitorSmartphone size={28} aria-hidden />
+        </span>
+        {phase === 'connecting' ? (
+          <>
+            <h2>Connecting to {d.hostname}</h2>
+            <span className="dt-connecting" aria-label="Connecting">
+              <i />
+              <i />
+              <i />
+            </span>
+          </>
+        ) : phase === 'failed' ? (
+          <>
+            <h2>Couldn't connect to {d.hostname}</h2>
+            <p>
+              {poweredOff
+                ? 'The device is powered off or has no network connection, so a remote session is not possible.'
+                : 'The device is not reachable on the network. You can still ask the user to run commands and read you the results.'}
+            </p>
+            <div className="row">
+              <button className="btn" onClick={connect}>
+                <RotateCcw size={16} aria-hidden />
+                Try again
+              </button>
+              {!poweredOff && (
+                <button className="btn btn-primary" onClick={() => setPhase('relay')}>
+                  <SquareTerminal size={16} aria-hidden />
+                  Relayed PowerShell
+                </button>
               )}
             </div>
-          )}
-          {tab === 'actions' && (
-            <ActionList items={items} session={editable ? work.session : null} onRun={(id) => work?.emit({ type: 'action', actionId: id })} disabled={!editable} />
-          )}
-          {tab === 'terminal' &&
-            (editable ? (
-              <TerminalPane work={work} />
-            ) : (
-              <p className="ws-empty-hint">A remote PowerShell session needs an open ticket for this device.</p>
-            ))}
-        </div>
-      </section>
-    </div>
+          </>
+        ) : (
+          <>
+            <h2>Remote desktop to {d.hostname}</h2>
+            <p>
+              Take control of {work.scenario.accountOwner?.name ?? work.scenario.requester.name}'s {d.model.toLowerCase()} to check settings, run updates, clear queues or open
+              PowerShell. Everything you do is recorded on the ticket.
+            </p>
+            <button className="btn btn-primary btn-lg" onClick={connect}>
+              <MonitorSmartphone size={16} aria-hidden />
+              Connect
+            </button>
+          </>
+        )}
+      </div>
+    </section>
   );
 }

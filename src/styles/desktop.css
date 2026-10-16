@@ -1,0 +1,879 @@
+/* Simulated remote desktop. The screen is its own little OS, so it keeps one look in both app themes. */
+.dt-frame {
+  --dt-ink: #0b1716;
+  --dt-glass: rgba(250, 252, 252, 0.94);
+  --dt-text: #142321;
+  --dt-muted: #5c6e6b;
+  --dt-line: #dbe3e2;
+  --dt-accent: #0b7a6e;
+  --dt-danger: #c0392f;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--dt-ink);
+  box-shadow: var(--shadow);
+  color: var(--dt-text);
+  font-size: 13px;
+  color-scheme: light;
+}
+.dt-frame.full {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  border-radius: 0;
+  border: 0;
+}
+
+.dt-titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 12px;
+  background: var(--surface);
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.8rem;
+}
+.dt-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.dt-title-sep {
+  color: var(--text-faint);
+}
+.dt-title-actions {
+  display: inline-flex;
+  gap: 4px;
+}
+.dt-plain {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.dt-plain:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.dt-disconnect {
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+}
+
+/* ---------- Screen and wallpaper ---------- */
+.dt-screen {
+  position: relative;
+  height: 600px;
+  overflow: hidden;
+  user-select: none;
+}
+.dt-frame.full .dt-screen {
+  flex: 1;
+  height: auto;
+}
+/* Original wallpaper: dusk over a harbour, drawn with gradients. */
+.dt-wallpaper {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(60% 45% at 78% 30%, rgba(255, 196, 120, 0.55), transparent 70%),
+    radial-gradient(90% 60% at 20% 110%, rgba(16, 120, 108, 0.85), transparent 70%),
+    radial-gradient(70% 50% at 100% 100%, rgba(30, 64, 110, 0.9), transparent 70%),
+    repeating-linear-gradient(178deg, transparent 0 22px, rgba(255, 255, 255, 0.035) 22px 23px),
+    linear-gradient(180deg, #1d3550 0%, #2e5f78 38%, #c98b6a 62%, #13403f 63%, #0d2b2f 100%);
+}
+.dt-wallpaper::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 52%;
+  height: 12%;
+  background: linear-gradient(90deg, transparent 0 8%, rgba(10, 20, 28, 0.55) 8% 9%, transparent 9% 14%, rgba(10, 20, 28, 0.5) 14% 14.6%,
+      transparent 14.6% 70%, rgba(10, 20, 28, 0.45) 70% 71%, transparent 71%);
+  clip-path: polygon(0 100%, 6% 40%, 9% 40%, 10% 0, 11% 40%, 30% 55%, 52% 70%, 70% 35%, 71% 10%, 72% 35%, 85% 60%, 100% 100%);
+  opacity: 0.6;
+}
+
+.dt-icons {
+  position: absolute;
+  inset: 14px auto 14px 10px;
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(5, 104px);
+  gap: 4px 8px;
+}
+.dt-icon {
+  width: 92px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 4px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+.dt-icon:hover,
+.dt-icon:focus-visible {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+.dt-icon-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+
+/* App tiles */
+.dt-tile {
+  display: grid;
+  place-items: center;
+  width: 50px;
+  height: 50px;
+  border-radius: 13px;
+  color: #fff;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+.dt-tile.small {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+.dt-tile.mini {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  box-shadow: none;
+}
+.tone-amber { background: linear-gradient(160deg, #f8c64b, #e69a17); }
+.tone-teal { background: linear-gradient(160deg, #2fc6b2, #0b7a6e); }
+.tone-indigo { background: linear-gradient(160deg, #6a7cf0, #3b49b8); }
+.tone-sky { background: linear-gradient(160deg, #5ab6f6, #2272c9); }
+.tone-coral { background: linear-gradient(160deg, #f37b62, #c8412e); }
+.tone-slate { background: linear-gradient(160deg, #8a9bab, #4e5f70); }
+.tone-green { background: linear-gradient(160deg, #4fd18c, #168a50); }
+.tone-ink { background: linear-gradient(160deg, #2b3b44, #0c1517); }
+.tone-graphite { background: linear-gradient(160deg, #7b8487, #3d4548); }
+.tone-glass { background: linear-gradient(160deg, rgba(200, 230, 245, 0.85), rgba(110, 160, 190, 0.85)); }
+
+/* ---------- Windows ---------- */
+.dt-win {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  max-width: calc(100% - 16px);
+  max-height: calc(100% - 16px);
+  background: var(--dt-glass);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 10px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  backdrop-filter: blur(14px);
+}
+.dt-win.active {
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.45);
+}
+.dt-win.max {
+  left: 0 !important;
+  top: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none;
+  max-height: none;
+  border-radius: 0;
+}
+.dt-win-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 34px;
+  padding-left: 10px;
+  background: rgba(240, 244, 244, 0.95);
+  border-bottom: 1px solid var(--dt-line);
+  cursor: grab;
+  flex-shrink: 0;
+}
+.dt-win-bar:active {
+  cursor: grabbing;
+}
+.dt-win-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 0.78rem;
+}
+.dt-win-ctl {
+  display: flex;
+  height: 100%;
+}
+.dt-win-ctl button {
+  width: 42px;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--dt-text);
+  cursor: pointer;
+}
+.dt-win-ctl button:hover {
+  background: rgba(0, 0, 0, 0.07);
+}
+.dt-win-ctl button.close:hover {
+  background: #d93a2f;
+  color: #fff;
+}
+.dt-win-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  user-select: text;
+}
+.dt-term {
+  padding: 10px;
+}
+.dt-term .terminal {
+  height: 300px;
+}
+
+/* ---------- Start menu, toast, taskbar ---------- */
+.dt-start {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  width: min(460px, calc(100% - 20px));
+  z-index: 9000;
+  background: var(--dt-glass);
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.dt-start-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid var(--dt-line);
+  color: var(--dt-muted);
+}
+.dt-start-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+.dt-start-grid button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  padding: 8px 2px;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 0.68rem;
+  color: var(--dt-text);
+  cursor: pointer;
+  text-align: center;
+}
+.dt-start-grid button:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+.dt-start-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid var(--dt-line);
+  padding-top: 10px;
+  font-size: 0.75rem;
+}
+.dt-start-foot button {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: var(--dt-accent);
+  font-weight: 600;
+  cursor: pointer;
+}
+.dt-toast {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 9500;
+  width: min(340px, calc(100% - 24px));
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  background: var(--dt-glass);
+  border-radius: 10px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.4);
+  font-size: 0.8rem;
+  cursor: pointer;
+  animation: toast-in 0.25s ease;
+}
+.dt-taskbar {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  height: 48px;
+  padding: 0 10px;
+  background: rgba(238, 242, 243, 0.97);
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+.dt-task-center {
+  display: flex;
+  gap: 4px;
+}
+.dt-task {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+}
+.dt-task:hover,
+.dt-task.on {
+  background: rgba(0, 0, 0, 0.07);
+}
+.dt-task.running::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  width: 6px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--dt-muted);
+}
+.dt-task.on::after {
+  width: 16px;
+  background: var(--dt-accent);
+}
+.dt-start-logo {
+  display: grid;
+  grid-template-columns: 9px 9px;
+  gap: 2px;
+}
+.dt-start-logo i {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: var(--dt-accent);
+}
+.dt-tray {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--dt-text);
+}
+.dt-clock {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 0.7rem;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- App contents ---------- */
+.dt-app {
+  height: 100%;
+  font-size: 0.82rem;
+  color: var(--dt-text);
+}
+.dt-app.pad {
+  padding: 16px 18px;
+}
+.dt-app.center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--dt-muted);
+}
+.dt-app.col {
+  display: flex;
+  flex-direction: column;
+}
+.dt-app.split {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+}
+.dt-app h4 {
+  margin: 14px 0 8px;
+  font-size: 0.78rem;
+  font-family: var(--font);
+  font-weight: 700;
+  color: var(--dt-muted);
+}
+.dt-app h4:first-child {
+  margin-top: 0;
+}
+.dt-side {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 8px;
+  background: rgba(0, 0, 0, 0.03);
+  border-right: 1px solid var(--dt-line);
+}
+.dt-side > * {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font: inherit;
+  color: var(--dt-text);
+  text-align: left;
+  cursor: pointer;
+}
+.dt-side > *:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+.dt-side .on {
+  background: rgba(11, 122, 110, 0.12);
+  color: var(--dt-accent);
+  font-weight: 600;
+}
+.dt-main {
+  padding: 16px 18px;
+  min-width: 0;
+  overflow: auto;
+}
+.dt-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  background: #fff;
+  border: 1px solid var(--dt-line);
+  border-radius: 8px;
+}
+.dt-row-icon {
+  color: var(--dt-muted);
+  flex-shrink: 0;
+}
+.dt-row-text {
+  flex: 1;
+  min-width: 0;
+}
+.dt-row-title {
+  font-weight: 600;
+}
+.dt-row-sub {
+  font-size: 0.74rem;
+  color: var(--dt-muted);
+}
+.dt-row-sub.bad {
+  color: var(--dt-danger);
+}
+.dt-row-act {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.dt-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid #c4cfce;
+  background: #fff;
+  color: var(--dt-text);
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.dt-btn:hover {
+  background: #f1f5f5;
+}
+.dt-btn.primary {
+  background: var(--dt-accent);
+  border-color: var(--dt-accent);
+  color: #fff;
+}
+.dt-btn.danger {
+  color: var(--dt-danger);
+  border-color: var(--dt-danger);
+}
+.dt-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.dt-result {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border-left: 3px solid var(--dt-accent);
+  background: rgba(11, 122, 110, 0.08);
+  border-radius: 4px;
+  font-size: 0.78rem;
+}
+.dt-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  font-weight: 600;
+  font-size: 0.78rem;
+}
+.dt-banner.ok {
+  background: #e1f3e8;
+  color: #16804a;
+}
+.dt-banner.bad {
+  background: #fbe7e5;
+  color: var(--dt-danger);
+}
+.dt-app.col > .dt-banner {
+  margin: 10px 12px 0;
+}
+.dt-kv {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr);
+  gap: 6px 12px;
+  margin: 0 0 6px;
+}
+.dt-kv dt {
+  color: var(--dt-muted);
+}
+.dt-kv dd {
+  margin: 0;
+}
+.dt-list {
+  margin: 0;
+  padding-left: 18px;
+}
+.dt-pre {
+  margin: 0;
+  padding: 10px;
+  background: #0c1715;
+  color: #d2e2de;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  overflow-x: auto;
+}
+.dt-drive {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  background: #fff;
+  border: 1px solid var(--dt-line);
+  border-radius: 8px;
+}
+.dt-drive > svg {
+  color: var(--dt-muted);
+}
+.dt-drive > div {
+  flex: 1;
+}
+.dt-bar {
+  height: 6px;
+  margin: 4px 0;
+  border-radius: 3px;
+  background: #e2e8e7;
+  overflow: hidden;
+}
+.dt-bar i {
+  display: block;
+  height: 100%;
+  background: #2272c9;
+}
+.dt-bar i.low {
+  background: var(--dt-danger);
+}
+
+/* Browser */
+.dt-urlbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--dt-line);
+  background: #f4f7f7;
+}
+.dt-urlbar button {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+}
+.dt-urlbar button:hover {
+  background: rgba(0, 0, 0, 0.07);
+}
+.dt-url {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  height: 30px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid var(--dt-line);
+  color: var(--dt-muted);
+}
+.dt-url input {
+  border: 0;
+  outline: none;
+  padding: 0;
+  width: 100%;
+  font: inherit;
+  font-size: 0.78rem;
+  background: transparent;
+  color: var(--dt-text);
+}
+.dt-page {
+  flex: 1;
+  overflow: auto;
+  background: #fff;
+}
+.dt-error,
+.dt-intranet {
+  padding: 40px 32px;
+  color: var(--dt-muted);
+}
+.dt-error h3,
+.dt-intranet h3 {
+  color: var(--dt-text);
+  margin: 10px 0 6px;
+}
+.dt-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.dt-links button {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--dt-line);
+  background: #f6f9f9;
+  font: inherit;
+  color: var(--dt-accent);
+  cursor: pointer;
+}
+.dt-scam {
+  min-height: 100%;
+  padding: 36px 28px;
+  background: #b5161b;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+.dt-scam h3 {
+  color: #fff;
+  font-size: 1.4rem;
+  margin: 0;
+}
+.dt-scam .dt-row-sub {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* VPN and security */
+.dt-vpn-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.dt-vpn-head svg {
+  color: #3b49b8;
+}
+.dt-vpn-head svg.ok {
+  color: #16804a;
+}
+.dt-vpn-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+.dt-vpn-status {
+  padding: 12px;
+  border-radius: 8px;
+  background: #eef2f2;
+  font-weight: 600;
+}
+.dt-vpn-status.ok {
+  background: #e1f3e8;
+  color: #16804a;
+}
+.dt-vpn-status.fail {
+  background: #fbe7e5;
+  color: var(--dt-danger);
+}
+
+/* Mail */
+.dt-mail {
+  flex: 1;
+  overflow: auto;
+  padding: 8px 12px;
+}
+.dt-mail-row {
+  display: grid;
+  grid-template-columns: minmax(0, 220px) minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--dt-line);
+}
+.dt-mail-row.flag .dt-mail-subj {
+  font-weight: 700;
+}
+.dt-mail-from {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dt-mail-subj {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.dt-foot {
+  margin: 0;
+  padding: 8px 14px;
+  border-top: 1px solid var(--dt-line);
+  color: var(--dt-muted);
+  font-size: 0.74rem;
+}
+
+/* ---------- Connect screen ---------- */
+.dt-connect {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 360px;
+  padding: 32px 16px;
+  text-align: center;
+}
+.dt-connect .dt-tile {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+}
+.dt-connect p {
+  margin: 0;
+  max-width: 52ch;
+  color: var(--text-muted);
+}
+.dt-connecting {
+  display: inline-flex;
+  gap: 6px;
+}
+.dt-connecting i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary);
+  animation: typing 1s infinite ease-in-out;
+}
+.dt-connecting i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.dt-connecting i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+/* ---------- Small screens: windows fill the desktop, icons get smaller ---------- */
+@media (max-width: 760px) {
+  .dt-screen {
+    height: 560px;
+  }
+  .dt-icons {
+    grid-auto-flow: row;
+    grid-template-rows: none;
+    grid-template-columns: repeat(4, 1fr);
+    inset: 10px 6px auto 6px;
+  }
+  .dt-icon {
+    width: auto;
+  }
+  .dt-tile {
+    width: 42px;
+    height: 42px;
+  }
+  .dt-win {
+    left: 6px !important;
+    top: 6px !important;
+    width: calc(100% - 12px) !important;
+    height: calc(100% - 12px) !important;
+  }
+  .dt-app.split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .dt-side {
+    flex-direction: row;
+    overflow-x: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--dt-line);
+  }
+  .dt-side > * {
+    white-space: nowrap;
+  }
+  .dt-task-center .dt-task:nth-child(n + 5) {
+    display: none;
+  }
+  .dt-tray > svg {
+    display: none;
+  }
+  .dt-mail-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .dt-mail-from {
+    display: none;
+  }
+}
