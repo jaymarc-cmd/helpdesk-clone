@@ -707,3 +707,23 @@
   overflow: visible;
   padding: 4px 0;
 }
+
+/* Ticket details (triage) */
+.wk-details-kv {
+  align-items: center;
+}
+.wk-details-kv select {
+  width: 100%;
+  min-width: 0;
+  padding: 5px 8px;
+  font-size: 0.86rem;
+}
+.wk-details-kv label {
+  font-weight: inherit;
+}
+.wk-details-prio {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}

@@ -7,6 +7,7 @@ import { CATEGORIES, type Category } from '../types';
 import { BestScorePill, CategoryPill, DifficultyDots, EmptyState, NewPill, PageHeader, PriorityPill, ticketNumber } from '../components/ui';
 import { CHANNEL_LABEL, CategoryIcon, ChannelIcon } from '../components/icons';
 import '../styles/queue-review.css';
+import { loggedPriority } from '../engine/triage';
 
 /** Best score at or above this counts as passed (matches the status filter). */
 const PASS_MARK = 70;
@@ -235,7 +236,7 @@ export function Queue() {
                           </Link>
                         </td>
                         <td>
-                          <PriorityPill p={s.priority} />
+                          <PriorityPill p={loggedPriority(s)} />
                         </td>
                         <td className="ql-hide-md">
                           <CategoryPill category={s.category} />
@@ -278,7 +279,7 @@ export function Queue() {
                   <div className="queue-card-top">
                     <span className="ticket-id">{ticketNumber(s.id)}</span>
                     <div className="queue-card-tags">
-                      <PriorityPill p={s.priority} />
+                      <PriorityPill p={loggedPriority(s)} />
                       <CategoryPill category={s.category} />
                       {s.custom && <span className="pill pill-info">Custom</span>}
                     </div>

@@ -4,7 +4,8 @@ import { CALLS } from '../data/calls';
 import { INTERVIEW_QUESTIONS } from '../data/interview';
 import { KB_BY_ID } from '../data/kb';
 import { BUILTIN_SCENARIOS } from '../data/scenarios';
-import type { Scenario, TicketSubmission } from '../types';
+import type { Level, Priority, Scenario, TicketSubmission } from '../types';
+import { loggedPriority, priorityFor } from './triage';
 import { callScore, maxCallPoints, validateCall } from './calls';
 import { scoreAnswer } from './interview';
 import { BADGES, newlyEarned, rankFor } from './progress';
@@ -15,11 +16,19 @@ import { runCommand } from './terminal';
 import { SCENARIO_TEMPLATE, validateScenario } from './validate';
 import { DEFAULT_STATE } from '../state/storage';
 
+const IDEAL_LEVELS: Record<Priority, { impact: Level; urgency: Level }> = {
+  P1: { impact: 'High', urgency: 'High' },
+  P2: { impact: 'High', urgency: 'Medium' },
+  P3: { impact: 'Medium', urgency: 'Medium' },
+  P4: { impact: 'Low', urgency: 'Low' },
+};
+
 /** Plays the ideal path through a scenario. */
 function playIdeal(sc: Scenario): SessionState {
   const step = sessionReducer(sc);
   let s = initSession(sc);
   s = step(s, { type: 'verify', at: 1 });
+  s = step(s, { type: 'triage', patch: { category: sc.category, ...IDEAL_LEVELS[sc.priority] }, at: 1 });
   for (const q of sc.questions) if (q.quality !== 'bad') s = step(s, { type: 'ask', questionId: q.id, at: 2 });
   s = step(s, { type: 'openTool', tool: 'directory', at: 3 });
   s = step(s, { type: 'say', text: "I'm going to start a remote session on your computer now, is that okay?", at: 3 });
@@ -206,6 +215,8 @@ describe('session & terminal', () => {
     let s = initSession(lockout);
     expect(nextHint(lockout, s)).toMatch(/verify/i);
     s = step(s, { type: 'verify', at: 1 });
+    expect(nextHint(lockout, s)).toMatch(/triage/i);
+    s = step(s, { type: 'triage', patch: { category: 'Accounts', impact: 'Medium', urgency: 'Medium' }, at: 2 });
     expect(nextHint(lockout, s)).toMatch(/phone|tablet/i);
   });
 });
@@ -259,6 +270,25 @@ describe('workstation tools', () => {
     const confirmed = gradeTicket(printServer, s, idealSubmission(printServer), 30);
     const proc = (r: typeof confirmed) => r.sections.find((x) => x.key === 'process')!.score;
     expect(proc(confirmed) - proc(unconfirmed)).toBe(3);
+  });
+});
+
+describe('triage', () => {
+  it('maps impact and urgency to priority', () => {
+    for (const [p, l] of Object.entries(IDEAL_LEVELS)) expect(priorityFor(l.impact, l.urgency)).toBe(p);
+    expect(priorityFor('Low', 'High')).toBe('P3');
+  });
+
+  it('expects mis-logged tickets to be re-prioritised', () => {
+    const sc = BUILTIN_SCENARIOS.find((x) => x.id === 'net-floor-outage')!;
+    expect(loggedPriority(sc)).toBe('P3');
+    const step = sessionReducer(sc);
+    const doc = (st: SessionState) => gradeTicket(sc, st, idealSubmission(sc), 30).sections.find((x) => x.key === 'documentation')!;
+    const asLogged = step(initSession(sc), { type: 'triage', patch: { category: 'Network', impact: 'Medium', urgency: 'Medium' }, at: 1 });
+    const corrected = step(initSession(sc), { type: 'triage', patch: { category: 'Network', impact: 'High', urgency: 'High' }, at: 1 });
+    expect(doc(corrected).score - doc(asLogged).score).toBe(2);
+    expect(doc(asLogged).items.find((i) => i.text.startsWith('Priority'))!.ok).toBe(false);
+    expect(doc(initSession(sc)).items.some((i) => /Set the ticket category/.test(i.text))).toBe(true);
   });
 });
 

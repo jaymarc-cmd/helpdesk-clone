@@ -43,6 +43,7 @@ import {
 } from '../components/ui';
 import { CategoryIcon } from '../components/icons';
 import '../styles/shift-calls.css';
+import { loggedPriority } from '../engine/triage';
 
 const SCORE_LABEL: Record<'success' | 'warning' | 'danger', string> = {
   success: 'On target',
@@ -157,12 +158,12 @@ export function ShiftPage() {
     .filter((t) => t.status === 'waiting')
     .map((t) => ({ t, sc: getScenario(t.scenarioId)! }))
     .filter((x) => x.sc)
-    .sort((a, b) => slaDeadline(a.t.arrivedAt, a.sc.priority) - slaDeadline(b.t.arrivedAt, b.sc.priority));
+    .sort((a, b) => slaDeadline(a.t.arrivedAt, loggedPriority(a.sc)) - slaDeadline(b.t.arrivedAt, loggedPriority(b.sc)));
   const done = shift.tickets.filter((t) => t.status === 'done');
-  const breached = done.filter((t) => t.slaBreached).length + waiting.filter((x) => now > slaDeadline(x.t.arrivedAt, x.sc.priority)).length;
+  const breached = done.filter((t) => t.slaBreached).length + waiting.filter((x) => now > slaDeadline(x.t.arrivedAt, loggedPriority(x.sc))).length;
   const totalTickets = shift.tickets.length + shift.pending.length;
   const atRisk = waiting.filter((x) => {
-    const deadline = slaDeadline(x.t.arrivedAt, x.sc.priority);
+    const deadline = slaDeadline(x.t.arrivedAt, loggedPriority(x.sc));
     const left = deadline - now;
     return left > 0 && left / (deadline - x.t.arrivedAt) < 0.35;
   }).length;
@@ -248,7 +249,7 @@ export function ShiftPage() {
         ) : (
           <ul className="sc-queue">
             {waiting.map(({ t, sc }) => {
-              const deadline = slaDeadline(t.arrivedAt, sc.priority);
+              const deadline = slaDeadline(t.arrivedAt, loggedPriority(sc));
               const total = deadline - t.arrivedAt;
               const left = deadline - now;
               const frac = Math.max(0, left / total);
@@ -263,7 +264,7 @@ export function ShiftPage() {
                       <div className="sc-qrow-text">
                         <span className="sc-qrow-title">{sc.title}</span>
                         <div className="sc-qrow-meta">
-                          <PriorityPill p={sc.priority} />
+                          <PriorityPill p={loggedPriority(sc)} />
                           <span className="ticket-id">{ticketNumber(sc.id)}</span>
                           <CategoryPill category={sc.category} />
                           <DifficultyDots d={sc.difficulty} />

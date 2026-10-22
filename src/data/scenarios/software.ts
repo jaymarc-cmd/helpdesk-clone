@@ -201,6 +201,8 @@ export const softwareScenarios: Scenario[] = [
     category: 'Software',
     difficulty: 1,
     priority: 'P4',
+    reportedPriority: 'P2',
+    triageNote: 'The requester marked it urgent, but a software request for one person with no outage is low impact and low urgency.',
     channel: 'email',
     targetMinutes: 4,
     requester: person('Chloe Martin', 'Business Analyst', 'Digital', 'HQ, Floor 5'),

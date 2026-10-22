@@ -1,4 +1,5 @@
 import type { ActiveShift, Priority, Scenario, ShiftReport, TicketAttempt } from '../types';
+import { loggedPriority } from './triage';
 
 /** Minutes until a shift ticket breaches SLA, by priority. */
 export const SHIFT_SLA_MIN: Record<Priority, number> = { P1: 8, P2: 12, P3: 16, P4: 20 };
@@ -56,7 +57,7 @@ export function completeShiftTicket(shift: ActiveShift, scenario: Scenario, atte
     ...shift,
     tickets: shift.tickets.map((t) =>
       t.scenarioId === scenario.id && t.status === 'waiting'
-        ? { ...t, status: 'done', attemptId: attempt.id, slaBreached: now > slaDeadline(t.arrivedAt, scenario.priority) }
+        ? { ...t, status: 'done', attemptId: attempt.id, slaBreached: now > slaDeadline(t.arrivedAt, loggedPriority(scenario)) }
         : t,
     ),
   };
@@ -73,7 +74,7 @@ export function buildShiftReport(
   const doneAttempts = done.map((t) => attempts.find((a) => a.id === t.attemptId)).filter(Boolean) as TicketAttempt[];
   const breachedWaiting = waiting.filter((t) => {
     const sc = findScenario(t.scenarioId);
-    return sc ? now > slaDeadline(t.arrivedAt, sc.priority) : false;
+    return sc ? now > slaDeadline(t.arrivedAt, loggedPriority(sc)) : false;
   });
   const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
   return {

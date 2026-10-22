@@ -8,6 +8,10 @@ export type Priority = 'P1' | 'P2' | 'P3' | 'P4';
 export type Difficulty = 1 | 2 | 3;
 export type Channel = 'email' | 'portal' | 'phone' | 'chat';
 
+/** ITIL-style triage levels; impact x urgency gives the priority. */
+export type Level = 'High' | 'Medium' | 'Low';
+export const LEVELS: Level[] = ['High', 'Medium', 'Low'];
+
 export type Team =
   | 'Tier 2 Desktop'
   | 'Network Team'
@@ -154,7 +158,12 @@ export interface Scenario {
   title: string;
   category: Category;
   difficulty: Difficulty;
+  /** The correct priority once the ticket is triaged. */
   priority: Priority;
+  /** What the ticket was logged as, when that is wrong (a user marking a routine request "urgent"). The analyst should correct it. */
+  reportedPriority?: Priority;
+  /** Why the correct priority is what it is, shown in the review. */
+  triageNote?: string;
   channel: Channel;
   /** Target handling time in real minutes. */
   targetMinutes: number;

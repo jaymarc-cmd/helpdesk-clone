@@ -45,7 +45,7 @@ import { FIRST_RESPONSE_SEC, HINT_PENALTY, gradeTicket } from '../engine/scoring
 import { nextHint, type ChatMessage, type SessionState } from '../engine/session';
 import { useStore, type Work } from '../state/store';
 import { uid } from '../state/storage';
-import { TEAMS, type Outcome, type Scenario, type Team, type TicketAttempt, type WorkLogEntry } from '../types';
+import { CATEGORIES, LEVELS, TEAMS, type Category, type Level, type Outcome, type Scenario, type Team, type TicketAttempt, type WorkLogEntry } from '../types';
 import {
   BestScorePill,
   CategoryPill,
@@ -64,6 +64,7 @@ import { ActionList, useElapsed } from '../components/work';
 import { moodLabel } from '../engine/chat';
 import '../styles/workspace.css';
 import '../styles/workstation.css';
+import { IMPACT_HELP, URGENCY_HELP, currentPriority, loggedPriority, triagedPriority, type Triage } from '../engine/triage';
 
 const LOG_ICON: Record<WorkLogEntry['kind'], LucideIcon> = {
   question: MessageCircleQuestion,
@@ -109,10 +110,10 @@ export function TicketPage() {
   return <UnassignedTicket key={scenario.id} scenario={scenario} />;
 }
 
-function TicketMeta({ scenario, mode }: { scenario: Scenario; mode?: 'practice' | 'shift' }) {
+function TicketMeta({ scenario, mode, triage }: { scenario: Scenario; mode?: 'practice' | 'shift'; triage?: Triage }) {
   return (
     <>
-      <PriorityPill p={scenario.priority} long />
+      <PriorityPill p={currentPriority(scenario, triage)} long />
       <CategoryPill category={scenario.category} />
       <span className="pill">
         <ChannelIcon channel={scenario.channel} />
@@ -311,7 +312,7 @@ function AssignedTicket({ work }: { work: Work }) {
               <Timer aria-hidden />
               In progress
             </span>
-            <TicketMeta scenario={sc} mode={work.mode} />
+            <TicketMeta scenario={sc} mode={work.mode} triage={s.triage} />
           </>
         }
         actions={
@@ -351,6 +352,7 @@ function AssignedTicket({ work }: { work: Work }) {
           <Conversation work={work} />
         </div>
         <aside className="wk-ticket-side">
+          <TicketDetailsCard work={work} />
           <ToolsCard work={work} />
           <RequesterCard scenario={sc} s={s} />
           <FindingsCard scenario={sc} s={s} />
@@ -387,6 +389,73 @@ function AssignedTicket({ work }: { work: Work }) {
         </Modal>
       )}
     </div>
+  );
+}
+
+/** The ticket record's fields. Triage is part of the job: category, impact and urgency set the priority. */
+function TicketDetailsCard({ work }: { work: Work }) {
+  const sc = work.scenario;
+  const t = work.session.triage ?? {};
+  const ids = useId();
+  const p = triagedPriority(t);
+  const logged = loggedPriority(sc);
+  const set = (patch: Triage) => work.emit({ type: 'triage', patch });
+  const untriaged = !t.category || !p;
+  return (
+    <section className="card wk-details" aria-labelledby={`${ids}-h`}>
+      <div className="card-head">
+        <h3 id={`${ids}-h`}>Ticket details</h3>
+        {untriaged ? <span className="pill pill-warning">Needs triage</span> : <span className="pill pill-success">Triaged</span>}
+      </div>
+      <dl className="kv wk-details-kv">
+        <dt>Number</dt>
+        <dd className="mono">{ticketNumber(sc.id)}</dd>
+        <dt>State</dt>
+        <dd>In progress</dd>
+        <dt>
+          <label htmlFor={`${ids}-cat`}>Category</label>
+        </dt>
+        <dd>
+          <select id={`${ids}-cat`} value={t.category ?? ''} onChange={(e) => set({ category: e.target.value as Category })}>
+            <option value="">Select…</option>
+            {CATEGORIES.map((c) => (
+              <option key={c}>{c}</option>
+            ))}
+          </select>
+        </dd>
+        <dt>
+          <label htmlFor={`${ids}-imp`}>Impact</label>
+        </dt>
+        <dd>
+          <select id={`${ids}-imp`} value={t.impact ?? ''} onChange={(e) => set({ impact: e.target.value as Level })} title={t.impact ? IMPACT_HELP[t.impact] : undefined}>
+            <option value="">Select…</option>
+            {LEVELS.map((l) => (
+              <option key={l} value={l}>
+                {l}: {IMPACT_HELP[l]}
+              </option>
+            ))}
+          </select>
+        </dd>
+        <dt>
+          <label htmlFor={`${ids}-urg`}>Urgency</label>
+        </dt>
+        <dd>
+          <select id={`${ids}-urg`} value={t.urgency ?? ''} onChange={(e) => set({ urgency: e.target.value as Level })} title={t.urgency ? URGENCY_HELP[t.urgency] : undefined}>
+            <option value="">Select…</option>
+            {LEVELS.map((l) => (
+              <option key={l} value={l}>
+                {l}: {URGENCY_HELP[l]}
+              </option>
+            ))}
+          </select>
+        </dd>
+        <dt>Priority</dt>
+        <dd className="wk-details-prio">
+          <PriorityPill p={p ?? logged} long />
+          <span className="tiny muted">{p ? (p !== logged ? `Logged as ${logged}` : 'From impact x urgency') : `As logged; set impact and urgency`}</span>
+        </dd>
+      </dl>
+    </section>
   );
 }
 
@@ -931,6 +1000,12 @@ function ResolveForm({
         <div className="callout info small">
           <Info size={16} aria-hidden />
           <div className="callout-body">You haven't confirmed the fix with {firstName} yet.</div>
+        </div>
+      )}
+      {(!s.triage?.category || !triagedPriority(s.triage)) && (
+        <div className="callout warning small">
+          <CircleAlert size={16} aria-hidden />
+          <div className="callout-body">Set the category, impact and urgency in Ticket details first. Triage is part of the grade.</div>
         </div>
       )}
       <fieldset className={`ws-fieldset ${invalid('rootCause')}`}>

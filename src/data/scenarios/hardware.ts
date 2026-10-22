@@ -8,6 +8,8 @@ export const hardwareScenarios: Scenario[] = [
     category: 'Hardware',
     difficulty: 2,
     priority: 'P2',
+    reportedPriority: 'P3',
+    triageNote: 'Printing is down for the whole building, so impact is high even though people can still work.',
     channel: 'phone',
     targetMinutes: 6,
     requester: person('Kwame Asante', 'Office Coordinator', 'Facilities', 'HQ, Ground floor'),

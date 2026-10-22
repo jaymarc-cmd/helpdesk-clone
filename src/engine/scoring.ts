@@ -1,4 +1,5 @@
 import { ACTION_BY_ID, actionLabel, isInherentlyHarmful } from '../data/actions';
+import { triagedPriority } from './triage';
 import type { Scenario, ScoreItem, ScoreSection, TicketResult, TicketSubmission } from '../types';
 import { requirementMet, type SessionState } from './session';
 
@@ -236,30 +237,51 @@ export function gradeTicket(
     sections.push({ key: 'communication', label: 'Communication', score: round1(clamp(score, 0, 15)), max: 15, items });
   }
 
-  // ---- Documentation (10)
+  // ---- Documentation (10): 7 for the notes, 3 for the ticket fields
   {
     const items: ScoreItem[] = [];
     const note = sub.note.trim();
     let score = 0;
     if (note.length >= 80) {
-      score += 3;
+      score += 2;
       items.push({ ok: true, text: 'Detailed work notes' });
     } else items.push({ ok: false, text: 'Work notes are too thin (aim for: symptom, findings, actions, result)' });
 
     const kw = includesAny(note, scenario.noteKeywords);
     const need = Math.max(1, Math.ceil(scenario.noteKeywords.length / 2));
-    const kwScore = Math.min(1, kw.length / need) * 5;
+    const kwScore = Math.min(1, kw.length / need) * 4;
     score += kwScore;
     items.push(
-      kwScore >= 5
+      kwScore >= 4
         ? { ok: true, text: 'Captured the key technical details' }
         : { ok: false, text: `Include key details (e.g. ${scenario.noteKeywords.slice(0, 4).join(', ')})` },
     );
 
     if (/(resolv|escalat|confirm|verif|tested|works|working|fixed|unlock|reset|clear|enabled|added|deployed|declin|refus)/i.test(note)) {
-      score += 2;
+      score += 1;
       items.push({ ok: true, text: 'Documented actions and result' });
     } else items.push({ ok: false, text: 'State what you did and how you confirmed it' });
+
+    const t = s.triage ?? {};
+    if (t.category === scenario.category) {
+      score += 1;
+      items.push({ ok: true, text: `Category set to ${scenario.category}` });
+    } else
+      items.push({ ok: false, text: t.category ? `Category set to ${t.category}; this is a ${scenario.category} ticket` : 'Set the ticket category' });
+    const p = triagedPriority(t);
+    if (p === scenario.priority) {
+      score += 2;
+      items.push({
+        ok: true,
+        text: `Priority ${p} (impact ${t.impact}, urgency ${t.urgency})${scenario.reportedPriority && scenario.reportedPriority !== p ? `, corrected from ${scenario.reportedPriority}` : ''}`,
+      });
+    } else
+      items.push({
+        ok: false,
+        text: p
+          ? `Priority set to ${p}; it should be ${scenario.priority}.${scenario.triageNote ? ` ${scenario.triageNote}` : ''}`
+          : `Set impact and urgency so the ticket gets the right priority (${scenario.priority})${scenario.reportedPriority && scenario.reportedPriority !== scenario.priority ? `, not the ${scenario.reportedPriority} it was logged as` : ''}.`,
+      });
     sections.push({ key: 'documentation', label: 'Documentation', score: round1(clamp(score, 0, 10)), max: 10, items });
   }
 

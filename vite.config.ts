@@ -10,5 +10,7 @@ export default defineConfig({
   build: { chunkSizeWarningLimit: 800 },
   test: {
     environment: 'node',
+    // Agent worktrees live under .claude/; they are separate checkouts with their own tests.
+    exclude: ['**/node_modules/**', '**/dist/**', '.claude/**'],
   },
 });

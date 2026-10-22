@@ -29,6 +29,8 @@ export function validateScenario(input: unknown, takenIds: string[] = []): Valid
   if (!CATEGORIES.includes(s.category as never)) errors.push(`"category" must be one of: ${CATEGORIES.join(', ')}.`);
   if (![1, 2, 3].includes(s.difficulty as number)) errors.push('"difficulty" must be 1, 2 or 3.');
   if (!['P1', 'P2', 'P3', 'P4'].includes(s.priority as string)) errors.push('"priority" must be P1, P2, P3 or P4.');
+  if (s.reportedPriority !== undefined && !['P1', 'P2', 'P3', 'P4'].includes(s.reportedPriority as string))
+    errors.push('"reportedPriority" must be P1, P2, P3 or P4 when set.');
   if (!['email', 'portal', 'phone', 'chat'].includes(s.channel as string)) errors.push('"channel" must be email, portal, phone or chat.');
   if (typeof s.targetMinutes !== 'number' || s.targetMinutes <= 0) errors.push('"targetMinutes" must be a positive number.');
 

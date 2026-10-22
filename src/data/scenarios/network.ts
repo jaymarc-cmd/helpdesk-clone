@@ -323,6 +323,8 @@ export const networkScenarios: Scenario[] = [
     category: 'Network',
     difficulty: 2,
     priority: 'P1',
+    reportedPriority: 'P3',
+    triageNote: 'One caller logged it as their own connection, but a whole floor is down: high impact, high urgency.',
     channel: 'phone',
     targetMinutes: 5,
     requester: person('Samuel Achebe', 'Operations Team Lead', 'Operations', 'HQ, Floor 3 (east)'),

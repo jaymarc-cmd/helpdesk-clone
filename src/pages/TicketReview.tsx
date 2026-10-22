@@ -47,6 +47,7 @@ import {
 } from '../components/ui';
 import '../styles/queue-review.css';
 import '../styles/workstation.css';
+import { loggedPriority } from '../engine/triage';
 
 /** Display labels in sentence case (stored attempts keep the grader's original labels). */
 const SECTION_LABEL: Partial<Record<ScoreSection['key'], string>> = {
@@ -218,7 +219,7 @@ export function TicketReview() {
             {shiftTicket && scenario && (
               <span className={`pill ${shiftTicket.slaBreached ? 'pill-danger' : 'pill-success'}`}>
                 {shiftTicket.slaBreached ? <TimerOff aria-hidden /> : <Timer aria-hidden />}
-                SLA {shiftTicket.slaBreached ? 'breached' : 'met'} ({formatClock((slaDeadline(shiftTicket.arrivedAt, scenario.priority) - shiftTicket.arrivedAt) / 1000)})
+                SLA {shiftTicket.slaBreached ? 'breached' : 'met'} ({formatClock((slaDeadline(shiftTicket.arrivedAt, loggedPriority(scenario)) - shiftTicket.arrivedAt) / 1000)})
               </span>
             )}
           </div>

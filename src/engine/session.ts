@@ -2,6 +2,7 @@ import { ACTION_BY_ID, actionApp, actionLabel, parseGroupAction } from '../data/
 import { applyServerOp, parseServerAction, serversFor } from '../data/servers';
 import type { AccountState, DeviceState, Question, RevealTool, Scenario, ServerState, WorkLogEntry } from '../types';
 import { runCommand } from './terminal';
+import { triagedPriority, type Triage } from './triage';
 import { HOLD_GRACE_SEC, MAX_NUDGES, NUDGE_AFTER_SEC, intentsOf, line, nudgeLine, startingPatience, toneFor, type Intent } from './chat';
 
 export const VERIFY_QUESTION_ID = '__verify';
@@ -54,6 +55,8 @@ export interface SessionState {
   empathyShown: number;
   /** The requester has seen the remote-session notice on their screen. */
   remoteNoticed: boolean;
+  /** Category, impact and urgency set by the analyst. */
+  triage: Triage;
 }
 
 export type SessionEvent =
@@ -70,7 +73,9 @@ export type SessionEvent =
   /** Time passing: the requester may chase if they have been left waiting. */
   | { type: 'nudge'; at: number }
   /** An internal work note. */
-  | { type: 'note'; text: string; at: number };
+  | { type: 'note'; text: string; at: number }
+  /** Ticket fields: category, impact, urgency. */
+  | { type: 'triage'; patch: Triage; at: number };
 
 /** Distributes Omit across the union so each event keeps its own fields. */
 export type SessionEventInput = SessionEvent extends infer E ? (E extends SessionEvent ? Omit<E, 'at'> : never) : never;
@@ -103,6 +108,7 @@ export function initSession(scenario: Scenario): SessionState {
     greeted: false,
     empathyShown: 0,
     remoteNoticed: false,
+    triage: {},
   };
 }
 
@@ -296,6 +302,14 @@ function innerReducer(scenario: Scenario) {
           log: [...state.log, { at: ev.at, kind: 'note', text: `Work note: ${text}` }],
         };
       }
+      case 'triage': {
+        const triage = { ...state.triage, ...ev.patch };
+        const changed = (Object.keys(ev.patch) as (keyof Triage)[]).filter((k) => ev.patch[k] !== state.triage[k]);
+        if (!changed.length) return state;
+        const p = triagedPriority(triage);
+        const text = changed.map((k) => `${k[0].toUpperCase()}${k.slice(1)}: ${triage[k]}`).join(', ') + (p && (changed.includes('impact') || changed.includes('urgency')) ? ` (priority ${p})` : '');
+        return { ...state, triage, log: [...state.log, { at: ev.at, kind: 'system', text: `Ticket updated. ${text}` }] };
+      }
       case 'nudge': {
         if (state.nudges >= MAX_NUDGES || state.confirmed) return state;
         if (ev.at - lastChatAt(state) < quietAllowance(state)) return state;
@@ -488,6 +502,9 @@ export function nextHint(scenario: Scenario, s: SessionState): string {
   const host = scenario.device.hostname;
   if (needsVerification(scenario) && !s.verifyAttempted) {
     return 'This ticket may need account changes. Verify the requester first with "Verify identity" in the ticket conversation.';
+  }
+  if (!s.triage?.category || !triagedPriority(s.triage)) {
+    return `Triage the ticket: set its category, impact and urgency in Ticket details.${scenario.reportedPriority ? ' Check whether it was logged at the right priority.' : ''}`;
   }
   for (const factId of scenario.keyFacts) {
     if (s.revealed.includes(factId)) continue;

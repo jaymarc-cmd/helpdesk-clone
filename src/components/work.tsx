@@ -7,6 +7,7 @@ import { lastChatAt, quietAllowance, type SessionState } from '../engine/session
 import { MAX_NUDGES } from '../engine/chat';
 import { useStore, type Work } from '../state/store';
 import { Modal, PriorityPill, formatClock, ticketNumber, useNow } from './ui';
+import { currentPriority } from '../engine/triage';
 
 /** Seconds since the active ticket was assigned. */
 export function useElapsed(startedAt: number | undefined): number {
@@ -50,7 +51,7 @@ export function ActiveTicketBar() {
       </span>
       <span className="wk-bar-ticket">
         <span className="mono">{ticketNumber(sc.id)}</span>
-        <PriorityPill p={sc.priority} />
+        <PriorityPill p={currentPriority(sc, s.triage)} />
         <span className="wk-bar-title">{sc.title}</span>
       </span>
       {latest ? (
