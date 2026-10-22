@@ -43,17 +43,20 @@ export function DirectoryPage() {
 }
 
 function usePeople(): DirectoryPerson[] {
-  const { scenarios, work } = useStore();
+  const { scenarios, works } = useStore();
   return useMemo(() => {
     const people = directoryPeople(scenarios);
-    if (!work) return people;
-    return people.map((p) => (p.username === work.scenario.account.username ? { ...p, account: work.session.account } : p));
-  }, [scenarios, work]);
+    // Accounts on your open tickets show their live state.
+    return people.map((p) => {
+      const w = works.find((x) => x.scenario.account.username === p.username);
+      return w ? { ...p, account: w.session.account } : p;
+    });
+  }, [scenarios, works]);
 }
 
 function PeopleList() {
   const people = usePeople();
-  const { work } = useStore();
+  const { works } = useStore();
   const [q, setQ] = useState('');
   const list = people.filter((p) => !q || `${p.name} ${p.username} ${p.department} ${p.title}`.toLowerCase().includes(q.toLowerCase()));
 
@@ -99,7 +102,7 @@ function PeopleList() {
                     </td>
                     <td className="mono small">
                       {p.username}
-                      {work?.scenario.account.username === p.username && <span className="pill pill-info wk-inline-pill">Your ticket</span>}
+                      {works.some((w) => w.scenario.account.username === p.username) && <span className="pill pill-info wk-inline-pill">Your ticket</span>}
                     </td>
                     <td className="wk-hide-sm">{p.department}</td>
                     <td>
@@ -137,7 +140,9 @@ function catalogItems(ids: string[]): ActionItem[] {
 
 function PersonPage({ username }: { username: string }) {
   const people = usePeople();
-  const { work } = useStore();
+  const { works, work: focused } = useStore();
+  // Act for whichever open ticket this account belongs to.
+  const work = works.find((w) => w.scenario.account.username === username) ?? focused;
   const [tab, setTab] = useState<Tab>('overview');
   const person = people.find((p) => p.username === username);
   const editable = !!work && work.scenario.account.username === username;

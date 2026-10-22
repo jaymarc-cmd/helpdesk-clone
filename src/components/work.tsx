@@ -15,43 +15,68 @@ export function useElapsed(startedAt: number | undefined): number {
   return startedAt ? Math.max(0, (now - startedAt) / 1000) : 0;
 }
 
-/**
- * Strip across the top of every app while a ticket is assigned, so you can switch tools and come back.
- * It also keeps the conversation alive: the requester chases when left waiting, and new messages show here.
- */
-export function ActiveTicketBar() {
-  const { work } = useStore();
-  const { pathname } = useLocation();
-  const elapsed = useElapsed(work?.startedAt);
-  const [seen, setSeen] = useState(work?.session.chat.length ?? 0);
-  const sc = work?.scenario;
-  const s = work?.session;
-  const onTicket = !!sc && pathname === `/ticket/${sc.id}`;
-  const chatLength = s?.chat.length ?? 0;
-
-  useEffect(() => {
-    if (onTicket) setSeen(chatLength);
-  }, [onTicket, chatLength]);
-
-  // Time passing: the reducer decides whether the requester has waited long enough to chase.
+/** Keeps time moving for one open ticket: the requester chases when left waiting. Renders nothing. */
+function WorkClock({ work }: { work: Work }) {
+  const elapsed = useElapsed(work.startedAt);
+  const s = work.session;
   const sec = Math.floor(elapsed);
   useEffect(() => {
-    if (!work || !s || s.confirmed || (s.nudges ?? 0) >= MAX_NUDGES) return;
+    if (work.hold || s.confirmed || (s.nudges ?? 0) >= MAX_NUDGES) return;
     if (sec - lastChatAt(s) >= quietAllowance(s)) work.emit({ type: 'nudge' });
   }, [sec, work, s]);
+  return null;
+}
 
-  if (!work || !sc || !s) return null;
+/** Requester messages that have arrived (async replies count once their time comes). */
+function arrived(w: Work, elapsedSec: number) {
+  return w.session.chat.filter((m) => m.from === 'requester' && (!w.session.async || (m.at ?? 0) <= elapsedSec));
+}
+
+/**
+ * Strip across the top of every app while tickets are assigned: the focused ticket, tabs for the others,
+ * and new messages from requesters while you work elsewhere.
+ */
+export function ActiveTicketBar() {
+  const { works, work } = useStore();
+  const { pathname } = useLocation();
+  const now = useNow();
+  const [seen, setSeen] = useState<Record<string, number>>({});
+  const onTicketId = pathname.startsWith('/ticket/') ? pathname.slice('/ticket/'.length) : null;
+  const counts = works.map((w) => [w.scenario.id, arrived(w, (now - w.startedAt) / 1000).length] as const);
+  const countKey = counts.map((c) => c.join(':')).join(',');
+
+  // Whatever is on screen counts as read.
+  useEffect(() => {
+    if (!onTicketId) return;
+    const c = counts.find(([id]) => id === onTicketId);
+    if (c && seen[onTicketId] !== c[1]) setSeen((m) => ({ ...m, [onTicketId]: c[1] }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onTicketId, countKey]);
+
+  if (!work) return null;
+  const unreadOf = (w: Work) => {
+    const msgs = arrived(w, (now - w.startedAt) / 1000);
+    // A ticket you have never opened since assigning starts with its first message read.
+    const read = seen[w.scenario.id] ?? 1;
+    return onTicketId === w.scenario.id ? [] : msgs.slice(read);
+  };
+  const sc = work.scenario;
+  const elapsed = Math.max(0, (now - work.startedAt) / 1000);
   const over = elapsed > sc.targetMinutes * 60;
-  const unread = onTicket ? [] : s.chat.slice(seen).filter((m) => m.from === 'requester');
+  const unread = unreadOf(work);
   const latest = unread[unread.length - 1];
+  const others = works.filter((w) => w !== work);
   return (
-    <div className={`wk-bar ${unread.length ? 'has-unread' : ''}`} role="status" aria-label="Ticket in progress">
+    <div className={`wk-bar ${unread.length ? 'has-unread' : ''}`} role="status" aria-label="Tickets in progress">
+      {works.map((w) => (
+        <WorkClock key={w.scenario.id} work={w} />
+      ))}
       <span className="wk-bar-label">
-        <span className="live-dot">Working</span>
+        <span className="live-dot">{work.hold ? 'On hold' : 'Working'}</span>
       </span>
       <span className="wk-bar-ticket">
         <span className="mono">{ticketNumber(sc.id)}</span>
-        <PriorityPill p={currentPriority(sc, s.triage)} />
+        <PriorityPill p={currentPriority(sc, work.session.triage)} />
         <span className="wk-bar-title">{sc.title}</span>
       </span>
       {latest ? (
@@ -67,13 +92,28 @@ export function ActiveTicketBar() {
       )}
       <span className={`wk-bar-timer ${over ? 'over' : ''}`}>
         <Timer size={14} aria-hidden />
-        {formatClock(elapsed)}
+        {work.hold ? 'Paused' : formatClock(elapsed)}
       </span>
-      {!onTicket && (
+      {onTicketId !== sc.id && (
         <Link to={`/ticket/${sc.id}`} className="btn btn-sm wk-bar-open">
           Back to ticket
           <ArrowRight size={14} aria-hidden />
         </Link>
+      )}
+      {others.length > 0 && (
+        <nav className="wk-bar-tabs" aria-label="Other open tickets">
+          <span className="wk-bar-tabs-label">Also open</span>
+          {others.map((w) => {
+            const n = unreadOf(w).length;
+            return (
+              <Link key={w.scenario.id} to={`/ticket/${w.scenario.id}`} className={`wk-bar-tab ${n ? 'unread' : ''}`} title={w.scenario.title}>
+                <span className="mono">{ticketNumber(w.scenario.id)}</span>
+                <span>{w.scenario.requester.name.split(' ')[0]}</span>
+                {w.hold ? <span className="pill pill-outline">On hold</span> : n > 0 && <span className="wk-bar-count num">{n}</span>}
+              </Link>
+            );
+          })}
+        </nav>
       )}
     </div>
   );

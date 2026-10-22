@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, BookOpen, CircleCheck, CircleDashed, RotateCcw, Star, StarHalf, Target, Timer, X, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, BookOpen, CircleCheck, CircleDashed, RotateCcw, Star, StarHalf, Target, Timer, X, type LucideIcon, Award } from 'lucide-react';
 import { CATEGORY_ICON } from './icons';
 import type { Category, Difficulty, Priority } from '../types';
 
@@ -197,7 +197,14 @@ export function CategoryPill({ category }: { category: Category | 'General' }) {
 }
 
 /** Practice vs shift tag for a completed ticket. */
-export function ModePill({ mode }: { mode: 'practice' | 'shift' }) {
+export function ModePill({ mode }: { mode: 'practice' | 'shift' | 'exam' }) {
+  if (mode === 'exam')
+    return (
+      <span className="pill pill-warning">
+        <Award aria-hidden />
+        Exam
+      </span>
+    );
   return mode === 'shift' ? (
     <span className="pill pill-info">
       <Timer aria-hidden />

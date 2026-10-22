@@ -3,8 +3,11 @@ import { triagedPriority } from './triage';
 import type { Scenario, ScoreItem, ScoreSection, TicketResult, TicketSubmission } from '../types';
 import { requirementMet, type SessionState } from './session';
 
-/** Live-chat first-response target, in seconds. */
+/** First-response target, in seconds: live chat and phone expect an answer within a minute, email and portal within three. */
 export const FIRST_RESPONSE_SEC = 60;
+export function firstResponseTarget(sc: Scenario): number {
+  return sc.channel === 'email' || sc.channel === 'portal' ? 180 : FIRST_RESPONSE_SEC;
+}
 
 export const HINT_PENALTY = 3;
 
@@ -294,7 +297,8 @@ export function gradeTicket(
     const firstReply = s.chat.find((m) => m.from === 'agent');
     // Sessions saved before messages were timestamped count as prompt.
     const firstAt = firstReply ? (firstReply.at ?? 0) : Infinity;
-    const prompt = firstAt <= FIRST_RESPONSE_SEC;
+    const target1 = firstResponseTarget(scenario);
+    const prompt = firstAt <= target1;
     sections.push({
       key: 'time',
       label: 'Handling time',
@@ -304,7 +308,7 @@ export function gradeTicket(
         {
           ok: prompt,
           text: firstReply
-            ? `First response after ${mm(firstAt)} (target under ${mm(FIRST_RESPONSE_SEC)})`
+            ? `First response after ${mm(firstAt)} (target under ${mm(target1)})`
             : `You never replied to ${scenario.requester.name.split(' ')[0]} in the conversation`,
         },
         {

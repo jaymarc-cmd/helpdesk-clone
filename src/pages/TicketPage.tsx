@@ -25,6 +25,7 @@ import {
   MessageSquareText,
   MonitorSmartphone,
   PackageCheck,
+  Pause,
   Play,
   SearchX,
   Send,
@@ -41,11 +42,11 @@ import {
 } from 'lucide-react';
 import { actionsForTool } from '../data/actions';
 import { KB_BY_ID } from '../data/kb';
-import { FIRST_RESPONSE_SEC, HINT_PENALTY, gradeTicket } from '../engine/scoring';
+import { HINT_PENALTY, firstResponseTarget, gradeTicket } from '../engine/scoring';
 import { nextHint, type ChatMessage, type SessionState } from '../engine/session';
-import { useStore, type Work } from '../state/store';
+import { MAX_OPEN_TICKETS, useStore, type Work } from '../state/store';
 import { uid } from '../state/storage';
-import { CATEGORIES, LEVELS, TEAMS, type Category, type Level, type Outcome, type Scenario, type Team, type TicketAttempt, type WorkLogEntry } from '../types';
+import { CATEGORIES, HOLD_REASONS, LEVELS, TEAMS, type Category, type HoldReason, type Level, type Outcome, type Scenario, type Team, type TicketAttempt, type WorkLogEntry } from '../types';
 import {
   BestScorePill,
   CategoryPill,
@@ -86,8 +87,13 @@ const GUIDED_PREFIX = '[Guided step] ';
 
 export function TicketPage() {
   const { id = '' } = useParams();
-  const { getScenario, work } = useStore();
+  const { getScenario, works, state, dispatch } = useStore();
   const scenario = getScenario(id);
+  const assigned = works.find((w) => w.scenario.id === id);
+  // Opening one of your tickets makes it the one the workstation apps act on.
+  useEffect(() => {
+    if (assigned && state.focusedWork !== id) dispatch({ type: 'focusWork', scenarioId: id });
+  }, [assigned, id, state.focusedWork, dispatch]);
   if (!scenario) {
     return (
       <div className="page ws-root">
@@ -106,11 +112,11 @@ export function TicketPage() {
       </div>
     );
   }
-  if (work?.scenario.id === scenario.id) return <AssignedTicket key={scenario.id} work={work} />;
+  if (assigned) return <AssignedTicket key={scenario.id} work={assigned} />;
   return <UnassignedTicket key={scenario.id} scenario={scenario} />;
 }
 
-function TicketMeta({ scenario, mode, triage }: { scenario: Scenario; mode?: 'practice' | 'shift'; triage?: Triage }) {
+function TicketMeta({ scenario, mode, triage }: { scenario: Scenario; mode?: 'practice' | 'shift' | 'exam'; triage?: Triage }) {
   return (
     <>
       <PriorityPill p={currentPriority(scenario, triage)} long />
@@ -120,7 +126,7 @@ function TicketMeta({ scenario, mode, triage }: { scenario: Scenario; mode?: 'pr
         {CHANNEL_LABEL[scenario.channel]}
       </span>
       <DifficultyDots d={scenario.difficulty} showLabel />
-      {mode === 'shift' && <ModePill mode="shift" />}
+      {mode && mode !== 'practice' && <ModePill mode={mode} />}
     </>
   );
 }
@@ -128,9 +134,9 @@ function TicketMeta({ scenario, mode, triage }: { scenario: Scenario; mode?: 'pr
 // ---------------- Not yet assigned ----------------
 
 function UnassignedTicket({ scenario }: { scenario: Scenario }) {
-  const { state, work, dispatch } = useStore();
+  const { state, works, dispatch } = useStore();
   const [params] = useSearchParams();
-  const [confirmSwitch, setConfirmSwitch] = useState(false);
+  const full = works.length >= MAX_OPEN_TICKETS;
   const inShift =
     params.get('mode') === 'shift' && !!state.activeShift?.tickets.some((t) => t.scenarioId === scenario.id && t.status === 'waiting');
   const best = state.tickets.filter((t) => t.scenarioId === scenario.id).reduce<number | null>((m, t) => Math.max(m ?? 0, t.result.total), null);
@@ -138,7 +144,6 @@ function UnassignedTicket({ scenario }: { scenario: Scenario }) {
 
   const assign = () => {
     dispatch({ type: 'startWork', scenarioId: scenario.id, mode: inShift ? 'shift' : 'practice', now: Date.now() });
-    setConfirmSwitch(false);
   };
 
   return (
@@ -185,23 +190,21 @@ function UnassignedTicket({ scenario }: { scenario: Scenario }) {
           </section>
 
           <section className="card wk-assign">
-            {work ? (
+            {full ? (
               <>
                 <div className="callout warning">
                   <Info size={18} aria-hidden />
                   <div className="callout-body">
-                    You are working <Link to={`/ticket/${work.scenario.id}`}>{ticketNumber(work.scenario.id)}</Link> ({work.scenario.title}). Finish
-                    it or release it before you take this one.
+                    You already have {MAX_OPEN_TICKETS} open tickets. Resolve one, or release it back to the queue, before taking another.
                   </div>
                 </div>
                 <div className="row">
-                  <Link className="btn" to={`/ticket/${work.scenario.id}`}>
-                    <ArrowLeft size={16} aria-hidden />
-                    Back to {ticketNumber(work.scenario.id)}
-                  </Link>
-                  <button className="btn btn-danger" onClick={() => setConfirmSwitch(true)}>
-                    Release it and take this ticket
-                  </button>
+                  {works.map((w) => (
+                    <Link key={w.scenario.id} className="btn" to={`/ticket/${w.scenario.id}`}>
+                      {ticketNumber(w.scenario.id)}
+                      {w.hold ? ' (on hold)' : ''}
+                    </Link>
+                  ))}
                 </div>
               </>
             ) : (
@@ -211,6 +214,8 @@ function UnassignedTicket({ scenario }: { scenario: Scenario }) {
                   <p className="muted">
                     Assigning it to yourself starts the clock (target {scenario.targetMinutes} min). Work it from the conversation and the
                     workstation apps: Directory, Server room, Remote desktop and Deployment. Resolve it when the fix is confirmed.
+                    {works.length > 0 &&
+                      ` You have ${works.length} other open ticket${works.length > 1 ? 's' : ''}; their requesters keep waiting while you work this one, so put them on hold if you need to.`}
                   </p>
                 </div>
                 <button className="btn btn-primary btn-lg" onClick={assign}>
@@ -227,27 +232,6 @@ function UnassignedTicket({ scenario }: { scenario: Scenario }) {
         </aside>
       </div>
 
-      {confirmSwitch && work && (
-        <Modal title="Release your current ticket?" onClose={() => setConfirmSwitch(false)}>
-          <p>
-            Your progress on {ticketNumber(work.scenario.id)} will be discarded and it goes back to the queue unscored.
-          </p>
-          <div className="modal-actions">
-            <button className="btn" onClick={() => setConfirmSwitch(false)} autoFocus>
-              Keep working it
-            </button>
-            <button
-              className="btn btn-danger"
-              onClick={() => {
-                dispatch({ type: 'releaseWork' });
-                assign();
-              }}
-            >
-              Release and take this one
-            </button>
-          </div>
-        </Modal>
-      )}
     </div>
   );
 }
@@ -263,6 +247,8 @@ function AssignedTicket({ work }: { work: Work }) {
   const [hint, setHint] = useState<string | null>(null);
   const [resolving, setResolving] = useState(false);
   const [releasing, setReleasing] = useState(false);
+  const [holding, setHolding] = useState(false);
+  const [holdReason, setHoldReason] = useState<HoldReason>('Awaiting user');
   const over = elapsed > sc.targetMinutes * 60;
 
   const showHint = () => {
@@ -323,9 +309,20 @@ function AssignedTicket({ work }: { work: Work }) {
                 Hint (−{HINT_PENALTY})
               </button>
             )}
+            {work.hold ? (
+              <button className="btn" onClick={() => dispatch({ type: 'resumeWork', scenarioId: sc.id, now: Date.now() })}>
+                <Play size={16} aria-hidden />
+                Resume
+              </button>
+            ) : (
+              <button className="btn" onClick={() => setHolding(true)} title="Pause the clock while you wait on someone">
+                <Pause size={16} aria-hidden />
+                On hold
+              </button>
+            )}
             <span className={`timer ${over ? 'over' : ''}`} title={`Target: ${sc.targetMinutes} min`} role="timer">
               <Timer size={16} aria-hidden />
-              {formatClock(elapsed)}
+              {work.hold ? 'Paused' : formatClock(elapsed)}
             </span>
             <button className="btn btn-primary" onClick={() => setResolving(true)}>
               <ClipboardCheck size={16} aria-hidden />
@@ -334,6 +331,18 @@ function AssignedTicket({ work }: { work: Work }) {
           </>
         }
       />
+
+      {work.hold && (
+        <div className="callout info" role="status">
+          <Pause size={18} aria-hidden />
+          <div className="callout-body">
+            <strong>On hold: {work.hold.reason}.</strong> The clock is paused.{' '}
+            {work.hold.reason === 'Awaiting user'
+              ? `${sc.requester.name.split(' ')[0]} will reply when they're back, and the ticket comes back to you then.`
+              : 'Resume when you have what you were waiting for.'}
+          </div>
+        </div>
+      )}
 
       {hint && (
         <div className="callout warning" role="status">
@@ -369,6 +378,41 @@ function AssignedTicket({ work }: { work: Work }) {
           <ResolveForm scenario={sc} s={s} onSubmit={submit} />
         </Modal>
       )}
+      {holding && (
+        <Modal title={`Put ${ticketNumber(sc.id)} on hold`} onClose={() => setHolding(false)}>
+          <p className="muted">The handling clock pauses while the ticket is on hold. Tell {sc.requester.name.split(' ')[0]} what you are waiting for first.</p>
+          <fieldset className="ws-fieldset">
+            <legend className="ws-legend">Reason</legend>
+            {HOLD_REASONS.map((r) => (
+              <label key={r} className="radio-row">
+                <input type="radio" name="hold-reason" checked={holdReason === r} onChange={() => setHoldReason(r)} />
+                <span>
+                  {r}
+                  <span className="tiny muted">
+                    {' · '}
+                    {r === 'Awaiting user' ? 'they need to do or check something; they will reply' : r === 'Awaiting approval' ? 'a manager or data owner must approve' : 'a supplier or another team is involved'}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
+          <div className="modal-actions">
+            <button className="btn" onClick={() => setHolding(false)}>
+              Cancel
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={() => {
+                dispatch({ type: 'holdWork', scenarioId: sc.id, reason: holdReason, now: Date.now() });
+                setHolding(false);
+              }}
+            >
+              <Pause size={16} aria-hidden />
+              Put on hold
+            </button>
+          </div>
+        </Modal>
+      )}
       {releasing && (
         <Modal title="Release this ticket?" onClose={() => setReleasing(false)}>
           <p>Your progress is discarded and the ticket goes back to the queue unscored.</p>
@@ -379,7 +423,7 @@ function AssignedTicket({ work }: { work: Work }) {
             <button
               className="btn btn-danger"
               onClick={() => {
-                dispatch({ type: 'releaseWork' });
+                dispatch({ type: 'releaseWork', scenarioId: sc.id });
                 navigate(work.mode === 'shift' ? '/shift' : '/tickets');
               }}
             >
@@ -787,8 +831,17 @@ function Conversation({ work }: { work: Work }) {
   s.chat.forEach((m, i) => {
     if (m.from !== 'requester') lastNonRequester = i;
   });
-  const shown = s.chat.slice(0, Math.max(visible, lastNonRequester + 1));
-  const typing = shown.length < s.chat.length;
+  const elapsedNow = useElapsed(work.startedAt);
+  // Email and portal: replies show up when their time comes, in time order. Live chat: one at a time, with typing.
+  const shown = s.async
+    ? s.chat
+        .map((m, i) => ({ m, i }))
+        .filter(({ m }) => m.from !== 'requester' || (m.at ?? 0) <= elapsedNow)
+        .sort((a, b) => (a.m.at ?? 0) - (b.m.at ?? 0) || a.i - b.i)
+        .map(({ m }) => m)
+    : s.chat.slice(0, Math.max(visible, lastNonRequester + 1));
+  const typing = !s.async && shown.length < s.chat.length;
+  const awaiting = s.async && shown.length < s.chat.length;
   const lastAgent = shown.map((m) => m.from).lastIndexOf('agent');
   const available = sc.questions.filter((q) => !s.asked.includes(q.id) && (q.requires ?? []).every((f) => s.revealed.includes(f)));
   const guided = actionsForTool('guide').map((a) => ({ id: a.id, label: a.label, description: a.description }));
@@ -796,10 +849,11 @@ function Conversation({ work }: { work: Work }) {
   const elapsed = useElapsed(work.startedAt);
   const firstReply = s.chat.find((m) => m.from === 'agent');
   const mmss = (n: number) => `${Math.floor(n / 60)}:${String(Math.floor(n % 60)).padStart(2, '0')}`;
+  const target = firstResponseTarget(sc);
   const sla = firstReply
-    ? { tone: (firstReply.at ?? 0) <= FIRST_RESPONSE_SEC ? 'success' : 'danger', text: `First reply in ${mmss(firstReply.at ?? 0)}` }
-    : elapsed < FIRST_RESPONSE_SEC
-      ? { tone: 'warning', text: `Reply within ${mmss(FIRST_RESPONSE_SEC - elapsed)}` }
+    ? { tone: (firstReply.at ?? 0) <= target ? 'success' : 'danger', text: `First reply in ${mmss(firstReply.at ?? 0)}` }
+    : elapsed < target
+      ? { tone: 'warning', text: `Reply within ${mmss(target - elapsed)}` }
       : { tone: 'danger', text: 'First reply overdue' };
 
   const send = () => {
@@ -825,11 +879,11 @@ function Conversation({ work }: { work: Work }) {
         <div className="wk-chat-who">
           <h2>{sc.requester.name}</h2>
           <span className="wk-presence">
-            <span className="status-dot ok" aria-hidden />
-            {typing ? `${firstName} is typing…` : `Online · ${CHANNEL_VERB[sc.channel] ?? 'Conversation'}`}
+            <span className={`status-dot ${s.async ? 'warn' : 'ok'}`} aria-hidden />
+            {typing ? `${firstName} is typing…` : s.async ? `${CHANNEL_VERB[sc.channel]} · replies when they check it` : `Online · ${CHANNEL_VERB[sc.channel] ?? 'Conversation'}`}
           </span>
         </div>
-        <span className={`pill pill-${sla.tone} num`} title={`Live chat target: first reply within ${mmss(FIRST_RESPONSE_SEC)}`}>
+        <span className={`pill pill-${sla.tone} num`} title={`First reply target for ${CHANNEL_LABEL[sc.channel].toLowerCase()}: ${mmss(target)}`}>
           <Timer aria-hidden />
           {sla.text}
         </span>
@@ -861,6 +915,12 @@ function Conversation({ work }: { work: Work }) {
                   <i />
                 </span>
               </div>
+            </div>
+          )}
+          {awaiting && (
+            <div className="wk-awaiting" role="status">
+              <Hourglass size={14} aria-hidden />
+              Waiting for {firstName} to reply by {sc.channel === 'email' ? 'email' : 'the portal'}…
             </div>
           )}
           <div ref={endRef} />

@@ -1,9 +1,9 @@
 import { ACTION_BY_ID, actionApp, actionLabel, parseGroupAction } from '../data/actions';
 import { applyServerOp, parseServerAction, serversFor } from '../data/servers';
-import type { AccountState, DeviceState, Question, RevealTool, Scenario, ServerState, WorkLogEntry } from '../types';
+import type { AccountState, Channel, DeviceState, HoldReason, Question, RevealTool, Scenario, ServerState, WorkLogEntry } from '../types';
 import { runCommand } from './terminal';
 import { triagedPriority, type Triage } from './triage';
-import { HOLD_GRACE_SEC, MAX_NUDGES, NUDGE_AFTER_SEC, intentsOf, line, nudgeLine, startingPatience, toneFor, type Intent } from './chat';
+import { ASYNC_NUDGE_AFTER_SEC, HOLD_GRACE_SEC, MAX_NUDGES, NUDGE_AFTER_SEC, intentsOf, line, nudgeLine, pick, startingPatience, toneFor, type Intent } from './chat';
 
 export const VERIFY_QUESTION_ID = '__verify';
 
@@ -57,6 +57,8 @@ export interface SessionState {
   remoteNoticed: boolean;
   /** Category, impact and urgency set by the analyst. */
   triage: Triage;
+  /** Email and portal requesters answer later, not in real time. */
+  async: boolean;
 }
 
 export type SessionEvent =
@@ -75,7 +77,10 @@ export type SessionEvent =
   /** An internal work note. */
   | { type: 'note'; text: string; at: number }
   /** Ticket fields: category, impact, urgency. */
-  | { type: 'triage'; patch: Triage; at: number };
+  | { type: 'triage'; patch: Triage; at: number }
+  | { type: 'hold'; reason: HoldReason; at: number }
+  /** Back in progress; `byUser` when the requester replied to a ticket on hold for them. */
+  | { type: 'resume'; reason: HoldReason; byUser: boolean; at: number };
 
 /** Distributes Omit across the union so each event keeps its own fields. */
 export type SessionEventInput = SessionEvent extends infer E ? (E extends SessionEvent ? Omit<E, 'at'> : never) : never;
@@ -109,6 +114,7 @@ export function initSession(scenario: Scenario): SessionState {
     empathyShown: 0,
     remoteNoticed: false,
     triage: {},
+    async: isAsyncChannel(scenario.channel),
   };
 }
 
@@ -174,6 +180,16 @@ function applyAction(state: SessionState, id: string): { state: SessionState; te
   return { state, text: ACTION_BY_ID[id]?.result ?? 'Done.' };
 }
 
+export const isAsyncChannel = (c: Channel) => c === 'email' || c === 'portal';
+
+/** Simulated time an email or portal requester takes to answer, in seconds (deterministic). */
+export function asyncReplyDelay(seed: number): number {
+  return 20 + ((seed * 13) % 25);
+}
+
+/** Events the requester answers, as opposed to things they write on their own. */
+const ANSWERED: SessionEvent['type'][] = ['say', 'ask', 'verify', 'confirm', 'action', 'openTool'];
+
 const clampPatience = (n: number) => Math.max(0, Math.min(100, n));
 
 /** When the conversation last moved (agent or requester), in seconds. */
@@ -188,7 +204,8 @@ export function lastChatAt(s: SessionState): number {
 /** Seconds of quiet the requester tolerates from `lastChatAt` before chasing. */
 export function quietAllowance(s: SessionState): number {
   const last = lastChatAt(s);
-  return s.holdUntil > last ? Math.max(NUDGE_AFTER_SEC, s.holdUntil - last) : NUDGE_AFTER_SEC;
+  const base = s.async ? ASYNC_NUDGE_AFTER_SEC : NUDGE_AFTER_SEC;
+  return s.holdUntil > last ? Math.max(base, s.holdUntil - last) : base;
 }
 
 export function sessionReducer(scenario: Scenario) {
@@ -196,7 +213,11 @@ export function sessionReducer(scenario: Scenario) {
   return (state: SessionState, ev: SessionEvent): SessionState => {
     const next = inner(state, ev);
     if (next === state || next.chat.length <= state.chat.length) return next;
-    const chat = next.chat.map((m, i) => (i >= state.chat.length && m.at === undefined ? { ...m, at: ev.at } : m));
+    // Email and portal replies arrive a little later; the UI shows them once their time comes.
+    const delay = next.async && ANSWERED.includes(ev.type) ? asyncReplyDelay(state.chat.length) : 0;
+    const chat = next.chat.map((m, i) =>
+      i >= state.chat.length && m.at === undefined ? { ...m, at: m.from === 'requester' ? ev.at + delay : ev.at } : m,
+    );
     return { ...next, chat };
   };
 }
@@ -309,6 +330,24 @@ function innerReducer(scenario: Scenario) {
         const p = triagedPriority(triage);
         const text = changed.map((k) => `${k[0].toUpperCase()}${k.slice(1)}: ${triage[k]}`).join(', ') + (p && (changed.includes('impact') || changed.includes('urgency')) ? ` (priority ${p})` : '');
         return { ...state, triage, log: [...state.log, { at: ev.at, kind: 'system', text: `Ticket updated. ${text}` }] };
+      }
+      case 'hold':
+        return {
+          ...state,
+          chat: [...state.chat, { from: 'system', text: `Ticket on hold: ${ev.reason}` }],
+          log: [...state.log, { at: ev.at, kind: 'system', text: `Put on hold: ${ev.reason}` }],
+        };
+      case 'resume': {
+        const back: ChatMessage[] = ev.byUser
+          ? [{ from: 'requester', text: pick(["Hi, I'm back at my desk now. Did you need anything else from me?", "Sorry, I was in a meeting. I'm here now.", 'Hi, just got your message. What do you need me to do?'], state.chat.length) }]
+          : [];
+        return {
+          ...state,
+          // The clock starts again; the requester does not chase straight away.
+          holdUntil: ev.at + HOLD_GRACE_SEC,
+          chat: [...state.chat, { from: 'system', text: ev.byUser ? `${firstName} replied. Ticket back in progress.` : 'Ticket back in progress' }, ...back],
+          log: [...state.log, { at: ev.at, kind: 'system', text: ev.byUser ? `${firstName} replied; taken off hold` : `Taken off hold (${ev.reason})` }],
+        };
       }
       case 'nudge': {
         if (state.nudges >= MAX_NUDGES || state.confirmed) return state;

@@ -727,3 +727,47 @@
   align-items: center;
   gap: 4px 8px;
 }
+
+/* Other open tickets in the ticket bar */
+.wk-bar-tabs {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+.wk-bar-tabs-label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-right: 2px;
+}
+.wk-bar-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text);
+  font-size: 0.82rem;
+  text-decoration: none;
+}
+.wk-bar-tab:hover {
+  background: var(--surface-2);
+  text-decoration: none;
+}
+.wk-bar-tab.unread {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+.wk-awaiting {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}

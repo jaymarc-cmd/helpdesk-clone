@@ -1,4 +1,4 @@
-import type { AppState } from '../types';
+import type { ActiveWork, AppState } from '../types';
 
 const KEY = 'tierone-state-v1';
 
@@ -14,12 +14,22 @@ export const DEFAULT_STATE: AppState = {
   kbRead: [],
   customScenarios: [],
   activeShift: null,
-  activeWork: null,
+  works: [],
+  focusedWork: null,
 };
+
+const isWork = (w: unknown): w is ActiveWork => !!w && typeof w === 'object' && typeof (w as ActiveWork).scenarioId === 'string';
+
+/** Older saves had a single `activeWork`. */
+function normalizeWorks(r: Partial<AppState> & { activeWork?: unknown }): Pick<AppState, 'works' | 'focusedWork'> {
+  const works = Array.isArray(r.works) ? r.works.filter(isWork) : isWork(r.activeWork) ? [r.activeWork] : [];
+  const focusedWork = works.some((w) => w.scenarioId === r.focusedWork) ? r.focusedWork! : (works[0]?.scenarioId ?? null);
+  return { works, focusedWork };
+}
 
 export function normalizeState(raw: unknown): AppState {
   if (!raw || typeof raw !== 'object') return DEFAULT_STATE;
-  const r = raw as Partial<AppState>;
+  const r = raw as Partial<AppState> & { activeWork?: unknown };
   return {
     ...DEFAULT_STATE,
     ...r,
@@ -33,7 +43,7 @@ export function normalizeState(raw: unknown): AppState {
     kbRead: Array.isArray(r.kbRead) ? r.kbRead : [],
     customScenarios: Array.isArray(r.customScenarios) ? r.customScenarios : [],
     activeShift: r.activeShift ?? null,
-    activeWork: r.activeWork && typeof r.activeWork === 'object' && typeof r.activeWork.scenarioId === 'string' ? r.activeWork : null,
+    ...normalizeWorks(r),
   };
 }
 

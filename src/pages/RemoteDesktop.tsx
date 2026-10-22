@@ -17,20 +17,20 @@ interface DeviceRow {
 }
 
 function useDevices(): DeviceRow[] {
-  const { scenarios, work } = useStore();
+  const { scenarios, works } = useStore();
   return useMemo(() => {
     const people = new Map(directoryPeople(scenarios).map((p) => [p.username, p.name]));
     const rows = new Map<string, DeviceRow>();
     for (const sc of scenarios) {
       if (rows.has(sc.device.hostname)) continue;
       rows.set(sc.device.hostname, {
-        device: work?.scenario.device.hostname === sc.device.hostname ? work.session.device : sc.device,
+        device: works.find((w) => w.scenario.device.hostname === sc.device.hostname)?.session.device ?? sc.device,
         user: people.get(sc.account.username) ?? sc.requester.name,
         username: sc.account.username,
       });
     }
     return [...rows.values()].sort((a, b) => a.device.hostname.localeCompare(b.device.hostname));
-  }, [scenarios, work]);
+  }, [scenarios, works]);
 }
 
 function OnlinePill({ d }: { d: DeviceState }) {
@@ -50,7 +50,7 @@ export function RemoteDesktop() {
 
 function DeviceList() {
   const rows = useDevices();
-  const { work } = useStore();
+  const { works } = useStore();
   const [q, setQ] = useState('');
   const list = rows.filter((r) => !q || `${r.device.hostname} ${r.user} ${r.username} ${r.device.model}`.toLowerCase().includes(q.toLowerCase()));
   return (
@@ -87,7 +87,7 @@ function DeviceList() {
                         <Laptop size={16} aria-hidden />
                         <span className="mono">{r.device.hostname}</span>
                       </Link>
-                      {work?.scenario.device.hostname === r.device.hostname && <span className="pill pill-info wk-inline-pill">Your ticket</span>}
+                      {works.some((w) => w.scenario.device.hostname === r.device.hostname) && <span className="pill pill-info wk-inline-pill">Your ticket</span>}
                     </td>
                     <td>{r.user}</td>
                     <td className="wk-hide-sm">{r.device.model}</td>
@@ -107,7 +107,8 @@ function DeviceList() {
 
 function DevicePage({ hostname }: { hostname: string }) {
   const rows = useDevices();
-  const { work } = useStore();
+  const { works, work: focused } = useStore();
+  const work = works.find((w) => w.scenario.device.hostname === hostname) ?? focused;
   const row = rows.find((r) => r.device.hostname === hostname);
   const editable = !!work && work.scenario.device.hostname === hostname;
 

@@ -132,5 +132,7 @@ export function nudgeLine(sc: Scenario, nudges: number, tone: Tone): string {
 
 /** Seconds of silence before the requester chases. Longer when the analyst said they were checking something. */
 export const NUDGE_AFTER_SEC = 90;
+/** Email and portal users follow up less often. */
+export const ASYNC_NUDGE_AFTER_SEC = 300;
 export const HOLD_GRACE_SEC = 180;
 export const MAX_NUDGES = 3;

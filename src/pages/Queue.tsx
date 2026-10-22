@@ -42,7 +42,7 @@ function useScrollEdges<T extends HTMLElement>() {
 const VIEW_KEY = 'tierone-queue-view';
 
 export function Queue() {
-  const { state, scenarios, work } = useStore();
+  const { state, scenarios, works } = useStore();
   const navigate = useNavigate();
   const best = bestByScenario(state);
   const [cat, setCat] = useState<Category | 'All'>('All');
@@ -252,7 +252,7 @@ export function Queue() {
                           <DifficultyDots d={s.difficulty} />
                         </td>
                         <td>
-                          {work?.scenario.id === s.id ? (
+                          {works.some((w) => w.scenario.id === s.id) ? (
                             <span className="pill pill-info">
                               <Timer aria-hidden />
                               In progress
@@ -283,7 +283,7 @@ export function Queue() {
                       <CategoryPill category={s.category} />
                       {s.custom && <span className="pill pill-info">Custom</span>}
                     </div>
-                    {work?.scenario.id === s.id ? (
+                    {works.some((w) => w.scenario.id === s.id) ? (
                       <span className="pill pill-info">
                         <Timer aria-hidden />
                         In progress

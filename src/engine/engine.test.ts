@@ -293,7 +293,7 @@ describe('triage', () => {
 });
 
 describe('live chat', () => {
-  const sc = BUILTIN_SCENARIOS.find((x) => x.id === 'hw-slow-disk')!;
+  const sc = BUILTIN_SCENARIOS.find((x) => x.id === 'sw-teams-camera')!;
   const step = sessionReducer(sc);
   const last = (s: SessionState) => s.chat[s.chat.length - 1];
 
@@ -341,6 +341,23 @@ describe('live chat', () => {
     const s = step(initSession(sc), { type: 'say', text: 'Could you restart your laptop for me?', at: 8 });
     expect(s.actions).toContain('guide_restart');
     expect(s.chat.filter((m) => m.text.startsWith('[Guided step]'))).toEqual([]);
+  });
+
+  it('email and portal requesters answer later; live chat answers now', () => {
+    const portal = BUILTIN_SCENARIOS.find((x) => x.id === 'hw-slow-disk')!;
+    const p = sessionReducer(portal)(initSession(portal), { type: 'say', text: 'Hi Rafael, looking into this now.', at: 10 });
+    expect(p.async).toBe(true);
+    expect(last(p).at).toBeGreaterThan(10 + 15);
+    const live = step(initSession(sc), { type: 'say', text: 'Hi, looking into this now.', at: 10 });
+    expect(last(live).at).toBe(10);
+  });
+
+  it('on hold for the user: they reply when they come back, and do not chase straight away', () => {
+    let s = step(initSession(sc), { type: 'hold', reason: 'Awaiting user', at: 20 });
+    expect(last(s)).toMatchObject({ from: 'system', text: 'Ticket on hold: Awaiting user' });
+    s = step(s, { type: 'resume', reason: 'Awaiting user', byUser: true, at: 300 });
+    expect(last(s).from).toBe('requester');
+    expect(step(s, { type: 'nudge', at: 400 }).nudges).toBe(0);
   });
 
   it('work notes stay internal', () => {

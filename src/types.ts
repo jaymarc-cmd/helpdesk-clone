@@ -257,7 +257,7 @@ export interface TicketAttempt {
   title: string;
   category: Category;
   difficulty: Difficulty;
-  mode: 'practice' | 'shift';
+  mode: 'practice' | 'shift' | 'exam';
   completedAt: string;
   durationSec: number;
   result: TicketResult;
@@ -400,13 +400,23 @@ export interface AppState {
   customScenarios: Scenario[];
   activeShift: ActiveShift | null;
   /** The ticket currently assigned to the analyst; tools act on its user, device and servers. */
-  activeWork: ActiveWork | null;
+  /** Tickets assigned to the analyst (up to MAX_OPEN_TICKETS). */
+  works: ActiveWork[];
+  /** The ticket the workstation apps act on. */
+  focusedWork: string | null;
 }
+
+export type HoldReason = 'Awaiting user' | 'Awaiting approval' | 'Awaiting vendor';
+export const HOLD_REASONS: HoldReason[] = ['Awaiting user', 'Awaiting approval', 'Awaiting vendor'];
 
 export interface ActiveWork {
   scenarioId: string;
-  mode: 'practice' | 'shift';
+  mode: 'practice' | 'shift' | 'exam';
   startedAt: number;
   /** Engine session (engine/session.ts SessionState); stored as plain data so it survives reloads. */
   session: unknown;
+  /** Time spent on hold, which does not count towards handling time. */
+  pausedMs?: number;
+  /** Set while the ticket is on hold. `replyAt`: when the user comes back (Awaiting user). */
+  hold?: { reason: HoldReason; since: number; replyAt?: number };
 }
