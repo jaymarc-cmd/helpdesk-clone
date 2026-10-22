@@ -176,7 +176,7 @@ function UnassignedTicket({ scenario }: { scenario: Scenario }) {
               <CircleDot aria-hidden />
               New
             </span>
-            <TicketMeta scenario={scenario} mode={inShift ? 'shift' : undefined} />
+            <TicketMeta scenario={scenario} mode={inExam ? 'exam' : inShift ? 'shift' : undefined} />
             {best !== null && <BestScorePill score={best} />}
           </>
         }

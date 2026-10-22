@@ -423,12 +423,17 @@ export function SignInLog({ lines }: { lines: string[] }) {
 export function ShiftAlerts() {
   const { state, getScenario } = useStore();
   const tickets = state.activeShift?.tickets ?? [];
-  const [seen, setSeen] = useState(tickets.length);
+  const [seen, setSeen] = useState(state.activeShift ? tickets.length : -1);
   const [alerts, setAlerts] = useState<{ id: string; scenarioId: string; title: string; text: string; urgent: boolean }[]>([]);
 
   useEffect(() => {
     if (!state.activeShift) {
-      setSeen(0);
+      setSeen(-1);
+      return;
+    }
+    // The opening batch is on the board when you clock in; only later arrivals interrupt.
+    if (seen === -1) {
+      setSeen(tickets.length);
       return;
     }
     if (tickets.length <= seen) return;

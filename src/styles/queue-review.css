@@ -559,3 +559,15 @@
 .queue-reopened-row:hover strong {
   color: var(--primary);
 }
+
+/* Write a KB article from the review */
+.card.review-kb {
+  padding: 20px;
+}
+.review-kb .row {
+  justify-content: space-between;
+}
+.review-kb p {
+  margin: 0;
+  max-width: 60ch;
+}
