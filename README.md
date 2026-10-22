@@ -16,7 +16,7 @@ Everything runs locally in the browser. No account or backend is needed, and pro
 | 🎓 **Coach & certification** | A step-by-step coach on tickets (can be hidden). A five-ticket **certification exam** across five categories, without hints, earns a printable certificate. The recommended ticket adapts to your recent scores. |
 | 📞 **Voice calls** | Six branching phone calls with **spoken callers** (Web Speech API), a live mood meter and per-choice coaching. Phone-channel tickets also read the caller's replies aloud. |
 | 💼 **Mock interviews** | 23 service desk interview questions, timed, with optional **speech dictation**; feedback on covered key points plus sample answers. |
-| 📖 **Knowledge base** | 34 original runbooks and policies, searchable and linked from each ticket, plus the articles you write. |
+| 📖 **Knowledge base** | 35 original runbooks and policies, searchable and linked from each ticket, plus the articles you write. |
 | 📈 **Progress** | XP, a seven-rank career ladder, 18 badges, skill breakdown with a focus recommendation, history, and a printable training record. |
 | 🛠️ **Scenario builder** | Author your own tickets as JSON with live validation; import/export packs to share with a class or team. |
 | 💡 **Hints** | A hint engine suggests your next best step (−3 points each, can be turned off). |
