@@ -50,6 +50,7 @@ const NAV: NavItem[] = [
   { section: 'Training' },
   { to: '/shift', icon: Timer, label: 'Shift mode' },
   { to: '/interview', icon: GraduationCap, label: 'Mock interview' },
+  { to: '/certification', icon: Award, label: 'Certification' },
   { to: '/progress', icon: ChartNoAxesColumn, label: 'Progress' },
   { to: '/builder', icon: Wrench, label: 'Scenario builder' },
   { to: '/settings', icon: Settings, label: 'Settings' },

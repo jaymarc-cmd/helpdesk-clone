@@ -432,6 +432,23 @@ export interface Settings {
   voice: boolean;
   voiceRate: number;
   hints: boolean;
+  /** Step-by-step coach on tickets (on until you turn it off). */
+  coach: boolean;
+}
+
+export interface ExamState {
+  id: string;
+  startedAt: string;
+  scenarioIds: string[];
+  /** scenarioId -> attempt id, as each exam ticket is resolved. */
+  attempts: Record<string, string>;
+}
+
+export interface Certificate {
+  id: string;
+  passedAt: string;
+  avg: number;
+  scores: number[];
 }
 
 export interface AppState {
@@ -455,6 +472,8 @@ export interface AppState {
   reopens: Reopen[];
   /** Knowledge base articles the analyst wrote after a ticket. */
   customKb: KbArticle[];
+  exam: ExamState | null;
+  certificates: Certificate[];
 }
 
 export type HoldReason = 'Awaiting user' | 'Awaiting approval' | 'Awaiting vendor';

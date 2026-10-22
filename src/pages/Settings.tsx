@@ -6,6 +6,8 @@ import {
   Gauge,
   Info,
   Lightbulb,
+  ListChecks,
+  type LucideIcon,
   Monitor,
   Moon,
   Palette,
@@ -15,7 +17,6 @@ import {
   Upload,
   UserRound,
   Volume2,
-  type LucideIcon,
 } from 'lucide-react';
 import { useStore } from '../state/store';
 import { downloadJson, normalizeState } from '../state/storage';
@@ -208,6 +209,23 @@ export function SettingsPage() {
                 className="pbs-switch"
                 checked={s.hints}
                 onChange={(e) => dispatch({ type: 'settings', patch: { hints: e.target.checked } })}
+              />
+            </span>
+          </label>
+
+          <label className="pbs-pref">
+            <IconTile icon={ListChecks} tone={s.coach ? 'primary' : 'neutral'} size="sm" />
+            <span className="pbs-pref-text">
+              <span className="pbs-pref-title">Show the coach on tickets</span>
+              <span className="pbs-pref-desc">A step-by-step checklist of what to do next. Never shown during the certification exam.</span>
+            </span>
+            <span className="pbs-pref-control">
+              <input
+                type="checkbox"
+                role="switch"
+                className="pbs-switch"
+                checked={s.coach}
+                onChange={(e) => dispatch({ type: 'settings', patch: { coach: e.target.checked } })}
               />
             </span>
           </label>

@@ -5,7 +5,7 @@ const KEY = 'tierone-state-v1';
 export const DEFAULT_STATE: AppState = {
   version: 1,
   profile: null,
-  settings: { theme: 'system', voice: true, voiceRate: 1, hints: true },
+  settings: { theme: 'system', voice: true, voiceRate: 1, hints: true, coach: true },
   tickets: [],
   calls: [],
   interviews: [],
@@ -18,6 +18,8 @@ export const DEFAULT_STATE: AppState = {
   focusedWork: null,
   reopens: [],
   customKb: [],
+  exam: null,
+  certificates: [],
 };
 
 const isWork = (w: unknown): w is ActiveWork => !!w && typeof w === 'object' && typeof (w as ActiveWork).scenarioId === 'string';
@@ -48,6 +50,8 @@ export function normalizeState(raw: unknown): AppState {
     ...normalizeWorks(r),
     reopens: Array.isArray(r.reopens) ? r.reopens : [],
     customKb: Array.isArray(r.customKb) ? r.customKb : [],
+    exam: r.exam && typeof r.exam === 'object' && Array.isArray(r.exam.scenarioIds) ? r.exam : null,
+    certificates: Array.isArray(r.certificates) ? r.certificates : [],
   };
 }
 

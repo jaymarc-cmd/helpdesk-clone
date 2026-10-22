@@ -85,7 +85,12 @@ export function TicketReview() {
   const scenario = attempt ? getScenario(attempt.scenarioId) : undefined;
   const handoff = attempt && scenario ? handoffVerdict(scenario, attempt) : undefined;
   const requesterName = scenario?.requester.name.split(' ')[0] ?? 'Requester';
-  const back = state.activeShift ? { to: '/shift', label: 'Shift board' } : { to: '/tickets', label: 'Ticket queue' };
+  const back =
+    attempt?.mode === 'exam'
+      ? { to: '/certification', label: 'Certification' }
+      : state.activeShift
+        ? { to: '/shift', label: 'Shift board' }
+        : { to: '/tickets', label: 'Ticket queue' };
 
   if (!attempt) {
     return (

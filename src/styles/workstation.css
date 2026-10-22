@@ -885,3 +885,146 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Coach */
+.wk-coach {
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+}
+.wk-coach-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.wk-coach-steps li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+}
+.wk-coach-steps li.next {
+  color: var(--text);
+  font-weight: 600;
+}
+.wk-coach-steps li.done {
+  color: var(--text-faint);
+  text-decoration: line-through;
+}
+.wk-coach-mark {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+.wk-coach-steps li.next .wk-coach-mark {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.wk-coach-steps li.done .wk-coach-mark {
+  background: var(--success);
+  border-color: var(--success);
+  color: #fff;
+}
+.wk-coach-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.wk-coach-text .small {
+  font-weight: 400;
+}
+
+/* Certification */
+.cert-start {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.cert-start h2 {
+  margin: 0 0 4px;
+}
+.cert-start p {
+  margin: 0;
+  max-width: 65ch;
+}
+.cert-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.cert-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+.cert-list li:first-child {
+  border-top: 0;
+}
+.cert-ticket {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.cert-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.cert-actions {
+  margin-top: 12px;
+}
+.cert-paper {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 48px 40px;
+  text-align: center;
+  border: 2px solid var(--primary);
+}
+.cert-paper p {
+  max-width: 56ch;
+  margin: 12px auto;
+  line-height: 1.6;
+}
+.cert-seal {
+  color: var(--primary);
+}
+.cert-kicker {
+  color: var(--text-muted);
+}
+.cert-name {
+  font-size: 2rem;
+  margin: 8px 0;
+}
+.cert-scores,
+.cert-id {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+@media print {
+  .sidebar,
+  .wk-bar,
+  .page-head,
+  .wk-alerts {
+    display: none !important;
+  }
+  .cert-paper {
+    border-width: 3px;
+    box-shadow: none;
+  }
+}

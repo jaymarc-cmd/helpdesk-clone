@@ -4,7 +4,7 @@ import { BADGES, newlyEarned } from '../engine/progress';
 import { REOPEN_AFTER_MS } from '../engine/followup';
 import { buildShiftReport, completeShiftTicket, createShift, tickShift } from '../engine/shift';
 import { hydrateSession, initSession, sessionReducer, type SessionEventInput, type SessionState } from '../engine/session';
-import type { ActiveWork, AppState, CallAttempt, HoldReason, KbArticle, InterviewAttempt, Scenario, Settings, ShiftReport, TicketAttempt } from '../types';
+import type { ActiveWork, AppState, CallAttempt, Certificate, HoldReason, KbArticle, InterviewAttempt, Scenario, Settings, ShiftReport, TicketAttempt } from '../types';
 import { DEFAULT_STATE, loadState, normalizeState, saveState } from './storage';
 
 type Action =
@@ -15,6 +15,8 @@ type Action =
   | { type: 'addInterview'; attempt: InterviewAttempt }
   | { type: 'kbRead'; id: string }
   | { type: 'addKb'; article: KbArticle }
+  | { type: 'startExam'; scenarioIds: string[] }
+  | { type: 'endExam'; certificate?: Certificate }
   | { type: 'saveScenario'; scenario: Scenario }
   | { type: 'deleteScenario'; id: string }
   | { type: 'startShift'; durationMin: number }
@@ -80,7 +82,12 @@ function reducer(state: AppState, action: Action): AppState {
         ...state.reopens.filter((r) => r.attemptId !== a.reopenOf),
         ...(a.reopenReason ? [{ attemptId: a.id, scenarioId: a.scenarioId, dueAt: Date.now() + REOPEN_AFTER_MS, reason: a.reopenReason }] : []),
       ];
-      return withBadges({ ...state, tickets: [...state.tickets, a], activeShift, reopens, ...withoutWork(state, a.scenarioId) });
+      // Exam tickets are recorded against the exam in progress.
+      const exam =
+        state.exam && a.mode === 'exam' && state.exam.scenarioIds.includes(a.scenarioId) && !state.exam.attempts[a.scenarioId]
+          ? { ...state.exam, attempts: { ...state.exam.attempts, [a.scenarioId]: a.id } }
+          : state.exam;
+      return withBadges({ ...state, tickets: [...state.tickets, a], activeShift, reopens, exam, ...withoutWork(state, a.scenarioId) });
     }
     case 'startWork': {
       const sc = findScenario(action.scenarioId, state.customScenarios);
@@ -123,6 +130,20 @@ function reducer(state: AppState, action: Action): AppState {
       return withBadges({ ...state, calls: [...state.calls, action.attempt] });
     case 'addInterview':
       return withBadges({ ...state, interviews: [...state.interviews, action.attempt] });
+    case 'startExam':
+      return { ...state, exam: { id: `exam-${Date.now().toString(36)}`, startedAt: new Date().toISOString(), scenarioIds: action.scenarioIds, attempts: {} } };
+    case 'endExam': {
+      // Exam tickets still open are dropped with the exam.
+      const ids = state.exam?.scenarioIds ?? [];
+      const works = state.works.filter((w) => !(w.mode === 'exam' && ids.includes(w.scenarioId)));
+      return withBadges({
+        ...state,
+        exam: null,
+        works,
+        focusedWork: works.some((w) => w.scenarioId === state.focusedWork) ? state.focusedWork : (works[0]?.scenarioId ?? null),
+        certificates: action.certificate ? [...state.certificates, action.certificate] : state.certificates,
+      });
+    }
     case 'addKb':
       return withBadges({ ...state, customKb: [...state.customKb.filter((a) => a.id !== action.article.id), action.article] });
     case 'kbRead':

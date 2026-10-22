@@ -7,6 +7,7 @@ import { BUILTIN_SCENARIOS } from '../data/scenarios';
 import { TEAMS, type Level, type Priority, type Scenario, type TicketSubmission } from '../types';
 import { loggedPriority, priorityFor } from './triage';
 import { handoffVerdict, reopenReason } from './followup';
+import { EXAM_SIZE, coachSteps, examResult, pickExam, recommendTicket, targetDifficulty } from './coach';
 import { callScore, maxCallPoints, validateCall } from './calls';
 import { scoreAnswer } from './interview';
 import { BADGES, newlyEarned, rankFor } from './progress';
@@ -330,6 +331,38 @@ describe('follow-up', () => {
     const other = TEAMS.find((t) => t !== sc.escalateTo)!;
     expect(handoffVerdict(sc, attempt(other))!.verdict).toBe('reassigned');
     expect(handoffVerdict(sc, attempt(sc.escalateTo!, 'Escalated.'))!.verdict).toBe('returned');
+  });
+});
+
+describe('coach, exam and recommendations', () => {
+  const t = (total: number, difficulty: 1 | 2 | 3) => ({ result: { total }, difficulty }) as never;
+
+  it('recommended difficulty follows recent scores', () => {
+    expect(targetDifficulty([])).toBe(1);
+    expect(targetDifficulty([t(90, 1), t(95, 1), t(88, 1)])).toBe(2);
+    expect(targetDifficulty([t(40, 3), t(50, 3), t(55, 3)])).toBe(2);
+    expect(targetDifficulty([t(70, 2)])).toBe(2);
+    const pick = recommendTicket(BUILTIN_SCENARIOS, {}, 'Network', [t(95, 2), t(92, 2), t(90, 2)]);
+    expect(pick!.category).toBe('Network');
+    expect(pick!.difficulty).toBe(3);
+  });
+
+  it('the coach ticks steps off as the ideal path is played', () => {
+    const sc = BUILTIN_SCENARIOS.find((x) => x.id === 'hw-slow-disk')!;
+    const before = coachSteps(sc, initSession(sc));
+    expect(before.every((x) => !x.done)).toBe(true);
+    const after = coachSteps(sc, playIdeal(sc));
+    expect(after.filter((x) => !x.done).map((x) => x.label)).toEqual(['Resolve with notes and a reply']);
+  });
+
+  it('the exam picks five tickets from five categories and needs 80 average, none below 60', () => {
+    const ids = pickExam(BUILTIN_SCENARIOS, {}, 1234);
+    expect(ids).toHaveLength(EXAM_SIZE);
+    const cats = ids.map((id) => BUILTIN_SCENARIOS.find((x) => x.id === id)!.category);
+    expect(new Set(cats).size).toBe(EXAM_SIZE);
+    expect(examResult([90, 85, 80, 75, 82]).passed).toBe(true);
+    expect(examResult([100, 100, 100, 100, 55]).passed).toBe(false);
+    expect(examResult([90, 90]).complete).toBe(false);
   });
 });
 

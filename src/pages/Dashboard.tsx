@@ -15,6 +15,7 @@ import {
   Trophy,
   type LucideIcon,
 } from 'lucide-react';
+import { recommendTicket } from '../engine/coach';
 import { BUILTIN_SCENARIOS } from '../data/scenarios';
 import { BADGES, bestByScenario, categoryStats, overallStats, rankFor, totalXp } from '../engine/progress';
 import { shiftEndsAt } from '../engine/shift';
@@ -53,11 +54,9 @@ export function Dashboard() {
   const cats = categoryStats(state);
   const best = bestByScenario(state);
 
-  // Recommend: an unattempted ticket in the weakest category, easiest first.
+  // Recommend: an unpassed ticket in the weakest category, at a difficulty that follows your recent scores.
   const weakest = [...CATEGORIES].sort((a, b) => cats[a].completed / cats[a].total - cats[b].completed / cats[b].total)[0];
-  const recommended =
-    BUILTIN_SCENARIOS.filter((s) => s.category === weakest && (best[s.id] ?? 0) < 70).sort((a, b) => a.difficulty - b.difficulty)[0] ??
-    BUILTIN_SCENARIOS.find((s) => (best[s.id] ?? 0) < 70);
+  const recommended = recommendTicket(BUILTIN_SCENARIOS, best, weakest, state.tickets);
 
   const recent = [...state.tickets].reverse().slice(0, 5);
   const firstName = state.profile?.name.trim().split(/\s+/)[0];

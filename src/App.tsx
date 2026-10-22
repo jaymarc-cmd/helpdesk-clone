@@ -10,6 +10,7 @@ import { RemoteDesktop } from './pages/RemoteDesktop';
 import { Deployment } from './pages/Deployment';
 import { ApprovalsPage } from './pages/Approvals';
 import { AssetsPage } from './pages/Assets';
+import { CertificationPage } from './pages/Certification';
 import { TicketReview } from './pages/TicketReview';
 import { ShiftPage } from './pages/Shift';
 import { CallsPage } from './pages/Calls';
@@ -37,6 +38,8 @@ export function App() {
             <Route path="deploy" element={<Deployment />} />
             <Route path="approvals" element={<ApprovalsPage />} />
             <Route path="assets" element={<AssetsPage />} />
+            <Route path="certification" element={<CertificationPage />} />
+            <Route path="certification/:id" element={<CertificationPage />} />
             <Route path="review/:attemptId" element={<TicketReview />} />
             <Route path="shift" element={<ShiftPage />} />
             <Route path="calls" element={<CallsPage />} />

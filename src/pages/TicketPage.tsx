@@ -5,6 +5,7 @@ import {
   ArrowRight,
   ArrowUpRight,
   BookOpen,
+  Check,
   CheckCheck,
   CircleAlert,
   CircleCheck,
@@ -48,6 +49,7 @@ import {
 import { actionsForTool } from '../data/actions';
 import { KB_BY_ID } from '../data/kb';
 import { HINT_PENALTY, firstResponseTarget, gradeTicket } from '../engine/scoring';
+import { coachSteps } from '../engine/coach';
 import { reopenReason } from '../engine/followup';
 import { useSpeaker } from '../components/speech';
 import { nextHint, type ChatMessage, type SessionState } from '../engine/session';
@@ -146,6 +148,7 @@ function UnassignedTicket({ scenario }: { scenario: Scenario }) {
   const full = works.length >= MAX_OPEN_TICKETS;
   const reopenId = params.get('reopen');
   const reopen = reopenId ? state.reopens.find((r) => r.attemptId === reopenId && r.scenarioId === scenario.id && r.dueAt <= Date.now()) : undefined;
+  const inExam = params.get('mode') === 'exam' && !!state.exam?.scenarioIds.includes(scenario.id) && !state.exam.attempts[scenario.id];
   const inShift =
     params.get('mode') === 'shift' && !!state.activeShift?.tickets.some((t) => t.scenarioId === scenario.id && t.status === 'waiting');
   const best = state.tickets.filter((t) => t.scenarioId === scenario.id).reduce<number | null>((m, t) => Math.max(m ?? 0, t.result.total), null);
@@ -155,7 +158,7 @@ function UnassignedTicket({ scenario }: { scenario: Scenario }) {
     dispatch({
       type: 'startWork',
       scenarioId: scenario.id,
-      mode: inShift ? 'shift' : 'practice',
+      mode: inExam ? 'exam' : inShift ? 'shift' : 'practice',
       now: Date.now(),
       reopen: reopen ? { attemptId: reopen.attemptId, ticket: ticketNumber(scenario.id) } : undefined,
     });
@@ -328,7 +331,7 @@ function AssignedTicket({ work }: { work: Work }) {
         }
         actions={
           <>
-            {state.settings.hints && (
+            {state.settings.hints && work.mode !== 'exam' && (
               <button className="btn" onClick={showHint} title={`Costs ${HINT_PENALTY} points`}>
                 <Lightbulb size={16} aria-hidden />
                 Hint (−{HINT_PENALTY})
@@ -386,6 +389,7 @@ function AssignedTicket({ work }: { work: Work }) {
           <Conversation work={work} />
         </div>
         <aside className="wk-ticket-side">
+          {state.settings.coach && work.mode !== 'exam' && <CoachCard work={work} />}
           <TicketDetailsCard work={work} />
           {sc.related?.length ? <RelatedTicketsCard work={work} /> : null}
           <ToolsCard work={work} />
@@ -459,6 +463,36 @@ function AssignedTicket({ work }: { work: Work }) {
         </Modal>
       )}
     </div>
+  );
+}
+
+/** Step-by-step coach: what a good analyst does next on this ticket. Ticks itself off as you go. */
+function CoachCard({ work }: { work: Work }) {
+  const { dispatch } = useStore();
+  const steps = coachSteps(work.scenario, work.session);
+  const next = steps.findIndex((x) => !x.done);
+  return (
+    <section className="card wk-coach" aria-label="Coach">
+      <div className="card-head">
+        <h3>Coach</h3>
+        <button className="btn btn-ghost btn-sm" onClick={() => dispatch({ type: 'settings', patch: { coach: false } })}>
+          Hide
+        </button>
+      </div>
+      <ol className="wk-coach-steps">
+        {steps.map((st, i) => (
+          <li key={st.label} className={st.done ? 'done' : i === next ? 'next' : ''}>
+            <span className="wk-coach-mark" aria-hidden>
+              {st.done ? <Check size={12} /> : i + 1}
+            </span>
+            <span className="wk-coach-text">
+              <span>{st.label}</span>
+              {i === next && <span className="small muted">{st.hint}</span>}
+            </span>
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 }
 
