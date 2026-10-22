@@ -3,6 +3,8 @@ import type { KbArticle } from '../types';
 /**
  * Lightweight markdown: "## " headings, "- " bullets, "1. " numbered steps, **bold**, `code`.
  */
+import { EXTRA_KB } from './kb-extra';
+
 export const KB_ARTICLES: KbArticle[] = [
   // ---------- General practice ----------
   {
@@ -422,6 +424,7 @@ Don't reset the password again; it makes things worse.`,
 4. Optional: run an antivirus scan for peace of mind.
 5. Praise the user for calling IT first.`,
   },
+  ...EXTRA_KB,
 ];
 
 export const KB_BY_ID: Record<string, KbArticle> = Object.fromEntries(KB_ARTICLES.map((a) => [a.id, a]));

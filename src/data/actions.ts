@@ -1,5 +1,6 @@
 import type { CatalogAction, ToolId } from '../types';
 import { PRIVILEGED_GROUPS } from './directory';
+import { EXTRA_ACTIONS } from './actions-extra';
 import { isDisruptiveServerAction, isKnownServerAction, parseServerAction, serverActionLabel } from './servers';
 
 /**
@@ -277,6 +278,7 @@ export const ACTIONS: CatalogAction[] = [
     description: 'Unplug the cable / turn Wi-Fi off, but leave the device powered on.',
     result: 'The user disconnected the device from the network.',
   },
+  ...EXTRA_ACTIONS,
 ];
 
 export const ACTION_BY_ID: Record<string, CatalogAction> = Object.fromEntries(ACTIONS.map((a) => [a.id, a]));

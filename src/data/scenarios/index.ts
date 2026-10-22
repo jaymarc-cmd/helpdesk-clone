@@ -4,6 +4,7 @@ import { networkScenarios } from './network';
 import { hardwareScenarios } from './hardware';
 import { softwareScenarios } from './software';
 import { emailScenarios, securityScenarios } from './email-security';
+import { extraScenarios } from './extra';
 
 export const BUILTIN_SCENARIOS: Scenario[] = [
   ...accountScenarios,
@@ -12,6 +13,7 @@ export const BUILTIN_SCENARIOS: Scenario[] = [
   ...softwareScenarios,
   ...emailScenarios,
   ...securityScenarios,
+  ...extraScenarios,
 ];
 
 export function allScenarios(custom: Scenario[] = []): Scenario[] {
