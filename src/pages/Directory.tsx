@@ -5,22 +5,25 @@ import {
   CircleCheck,
   History,
   KeyRound,
+  Laptop,
   Lock,
+  type LucideIcon,
   Mail,
   Minus,
   Plus,
   Search,
   SearchX,
   ShieldAlert,
+  Ticket,
   TriangleAlert,
   UserRound,
   Users,
-  type LucideIcon,
 } from 'lucide-react';
 import { ACTION_BY_ID, groupActionId } from '../data/actions';
 import { ALL_GROUPS, PRIVILEGED_GROUPS, directoryPeople, type DirectoryPerson } from '../data/directory';
 import { useStore } from '../state/store';
-import type { AccountState } from '../types';
+import { allAssets } from '../data/assets';
+import type { AccountState, PastTicket, Scenario } from '../types';
 import { EmptyState, PageHeader, initials } from '../components/ui';
 import { ActingFor, ActionList, NoTicketNotice, SignInLog, type ActionItem } from '../components/work';
 import '../styles/workspace.css';
@@ -119,17 +122,33 @@ function PeopleList() {
   );
 }
 
-type Tab = 'overview' | 'auth' | 'groups' | 'mailbox' | 'signin';
+type Tab = 'overview' | 'auth' | 'groups' | 'mailbox' | 'devices' | 'tickets' | 'signin';
 const TABS: { id: Tab; label: string; icon: LucideIcon }[] = [
   { id: 'overview', label: 'Overview', icon: UserRound },
   { id: 'auth', label: 'Authentication', icon: KeyRound },
   { id: 'groups', label: 'Groups', icon: Users },
   { id: 'mailbox', label: 'Mailbox', icon: Mail },
+  { id: 'devices', label: 'Devices', icon: Laptop },
+  { id: 'tickets', label: 'Tickets', icon: Ticket },
   { id: 'signin', label: 'Sign-in log', icon: History },
 ];
 
-const AUTH_ACTIONS = ['unlock_account', 'reset_password', 'enable_account', 'reset_mfa', 'revoke_sessions'];
-const MAILBOX_ACTIONS = ['enable_archive', 'raise_quota'];
+const AUTH_ACTIONS = ['unlock_account', 'reset_password', 'enable_account', 'disable_account', 'reset_mfa', 'revoke_sessions'];
+const MAILBOX_ACTIONS = ['enable_archive', 'raise_quota', 'grant_mailbox_access'];
+const DEVICE_ACTIONS = ['view_bitlocker_key', 'mdm_wipe_device'];
+
+/** Earlier tickets for a person: the scenario's own history, or a plausible quiet record. */
+function pastTickets(person: DirectoryPerson, scenarios: Scenario[]): PastTicket[] {
+  const sc = scenarios.find((x) => x.account.username === person.username && x.history?.length);
+  if (sc) return sc.history!;
+  const h = Math.abs([...person.username].reduce((n, c) => (n * 31 + c.charCodeAt(0)) | 0, 3));
+  const pool: PastTicket[] = [
+    { ticket: `INC-${40000 + (h % 9000)}`, daysAgo: 20 + (h % 40), title: 'Outlook search not returning results', resolution: 'Rebuilt the search index. Confirmed with the user.' },
+    { ticket: `INC-${30000 + (h % 9000)}`, daysAgo: 90 + (h % 60), title: 'New monitor setup', resolution: 'Delivered and connected a 27" monitor.' },
+    { ticket: `INC-${20000 + (h % 9000)}`, daysAgo: 150 + (h % 90), title: 'Password reset', resolution: 'Reset after identity verification.' },
+  ];
+  return pool.slice(0, h % 3);
+}
 
 function catalogItems(ids: string[]): ActionItem[] {
   return ids
@@ -147,6 +166,14 @@ function PersonPage({ username }: { username: string }) {
   const person = people.find((p) => p.username === username);
   const editable = !!work && work.scenario.account.username === username;
   const s = editable ? work.session : null;
+  const { scenarios } = useStore();
+  const devices = useMemo(() => (person ? allAssets(scenarios).filter((a) => a.assignedTo === person.name) : []), [person, scenarios]);
+  const past = useMemo(() => (person ? pastTickets(person, scenarios) : []), [person, scenarios]);
+  // Reading someone's ticket history is evidence on their ticket.
+  useEffect(() => {
+    if (tab === 'tickets' && editable) work.emit({ type: 'openTool', tool: 'history' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, editable]);
 
   useEffect(() => {
     if (editable) work.emit({ type: 'openTool', tool: 'directory' });
@@ -276,6 +303,54 @@ function PersonPage({ username }: { username: string }) {
                 <dd>{a.archive ?? '–'}</dd>
               </dl>
               <ActionList items={catalogItems(MAILBOX_ACTIONS)} session={s} onRun={run} disabled={!editable} />
+            </div>
+          )}
+
+          {tab === 'devices' && (
+            <div className="stack">
+              {devices.length === 0 ? (
+                <p className="ws-empty-hint">No managed devices are assigned to {person.name}.</p>
+              ) : (
+                <ul className="wk-device-list">
+                  {devices.map((d) => (
+                    <li key={d.tag}>
+                      <span className="mono">{d.tag}</span>
+                      <span>
+                        {d.type} · {d.model}
+                        {d.hostname && (
+                          <>
+                            {' · '}
+                            <Link to={`/devices/${d.hostname}`} className="mono">
+                              {d.hostname}
+                            </Link>
+                          </>
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <ActionList items={catalogItems(DEVICE_ACTIONS)} session={s} onRun={run} disabled={!editable} />
+            </div>
+          )}
+
+          {tab === 'tickets' && (
+            <div className="stack">
+              {past.length === 0 ? (
+                <p className="ws-empty-hint">No earlier tickets from {person.name}.</p>
+              ) : (
+                <ol className="wk-history">
+                  {past.map((t) => (
+                    <li key={t.ticket}>
+                      <span className="wk-history-head">
+                        <span className="mono">{t.ticket}</span> <strong>{t.title}</strong>
+                        <span className="muted"> · {t.daysAgo === 1 ? 'yesterday' : `${t.daysAgo} days ago`}</span>
+                      </span>
+                      <span className="small muted">{t.resolution}</span>
+                    </li>
+                  ))}
+                </ol>
+              )}
             </div>
           )}
 

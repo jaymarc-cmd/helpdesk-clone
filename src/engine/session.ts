@@ -597,6 +597,8 @@ export function nextHint(scenario: Scenario, s: SessionState): string {
     if (scenario.signInLog?.reveals?.includes(factId) && !s.signInLogViewed)
       return `Open Directory, find ${user} and check the Sign-in log tab.`;
     if (scenario.toolReveals?.servers?.includes(factId)) return 'Check the Server room for problems with shared infrastructure.';
+    if (scenario.toolReveals?.approvals?.includes(factId)) return 'Check the Approvals app for a sign-off on this request.';
+    if (scenario.toolReveals?.history?.includes(factId)) return `Open ${user} in Directory and read the Tickets tab for earlier tickets.`;
     if (scenario.toolReveals?.directory?.includes(factId)) return `Open ${user} in Directory and review the account.`;
     if (scenario.toolReveals?.endpoint?.includes(factId)) return `Connect to ${host} in Remote desktop and check its health and inventory.`;
     const cmd = Object.entries(scenario.terminal ?? {}).find(([, o]) => o.reveals?.includes(factId));

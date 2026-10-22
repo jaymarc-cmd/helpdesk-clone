@@ -4,7 +4,7 @@ import { BADGES, newlyEarned } from '../engine/progress';
 import { REOPEN_AFTER_MS } from '../engine/followup';
 import { buildShiftReport, completeShiftTicket, createShift, tickShift } from '../engine/shift';
 import { hydrateSession, initSession, sessionReducer, type SessionEventInput, type SessionState } from '../engine/session';
-import type { ActiveWork, AppState, CallAttempt, HoldReason, InterviewAttempt, Scenario, Settings, ShiftReport, TicketAttempt } from '../types';
+import type { ActiveWork, AppState, CallAttempt, HoldReason, KbArticle, InterviewAttempt, Scenario, Settings, ShiftReport, TicketAttempt } from '../types';
 import { DEFAULT_STATE, loadState, normalizeState, saveState } from './storage';
 
 type Action =
@@ -14,6 +14,7 @@ type Action =
   | { type: 'addCall'; attempt: CallAttempt }
   | { type: 'addInterview'; attempt: InterviewAttempt }
   | { type: 'kbRead'; id: string }
+  | { type: 'addKb'; article: KbArticle }
   | { type: 'saveScenario'; scenario: Scenario }
   | { type: 'deleteScenario'; id: string }
   | { type: 'startShift'; durationMin: number }
@@ -122,6 +123,8 @@ function reducer(state: AppState, action: Action): AppState {
       return withBadges({ ...state, calls: [...state.calls, action.attempt] });
     case 'addInterview':
       return withBadges({ ...state, interviews: [...state.interviews, action.attempt] });
+    case 'addKb':
+      return withBadges({ ...state, customKb: [...state.customKb.filter((a) => a.id !== action.article.id), action.article] });
     case 'kbRead':
       if (state.kbRead.includes(action.id)) return state;
       return withBadges({ ...state, kbRead: [...state.kbRead, action.id] });

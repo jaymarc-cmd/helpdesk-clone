@@ -115,6 +115,8 @@ export function validateScenario(input: unknown, takenIds: string[] = []): Valid
     checkFacts(tr.directory, '"toolReveals.directory"');
     checkFacts(tr.endpoint, '"toolReveals.endpoint"');
     checkFacts(tr.servers, '"toolReveals.servers"');
+    checkFacts(tr.approvals, '"toolReveals.approvals"');
+    checkFacts(tr.history, '"toolReveals.history"');
   }
 
   // Resolution

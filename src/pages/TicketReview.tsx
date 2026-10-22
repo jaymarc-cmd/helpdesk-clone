@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -17,6 +18,7 @@ import {
   type LucideIcon,
   MessageCircleQuestion,
   MousePointerClick,
+  PenLine,
   Printer,
   RotateCcw,
   SearchX,
@@ -32,11 +34,12 @@ import { handoffVerdict } from '../engine/followup';
 import { HINT_PENALTY } from '../engine/scoring';
 import { slaDeadline } from '../engine/shift';
 import { useStore } from '../state/store';
-import type { Outcome, ScoreSection, WorkLogEntry } from '../types';
+import type { Outcome, Scenario, ScoreSection, WorkLogEntry } from '../types';
 import {
   CategoryPill,
   DifficultyDots,
   EmptyState,
+  Modal,
   ModePill,
   PageHeader,
   PriorityPill,
@@ -378,6 +381,8 @@ export function TicketReview() {
         </section>
       </div>
 
+      {scenario && <KbWriter attemptId={attempt.id} scenario={scenario} ticket={ticketNumber(attempt.scenarioId)} />}
+
       {attempt.transcript && attempt.transcript.length > 0 && (
         <section className="card" aria-labelledby="review-transcript-h">
           <div className="card-head">
@@ -412,5 +417,87 @@ export function TicketReview() {
         </section>
       )}
     </div>
+  );
+}
+
+/** Turn a solved ticket into a knowledge base article for the next analyst. */
+function KbWriter({ attemptId, scenario, ticket }: { attemptId: string; scenario: Scenario; ticket: string }) {
+  const { state, dispatch } = useStore();
+  const navigate = useNavigate();
+  const id = `kb-mine-${attemptId}`;
+  const existing = state.customKb.find((a) => a.id === id);
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState(scenario.title);
+  const [symptoms, setSymptoms] = useState('');
+  const [cause, setCause] = useState('');
+  const [fix, setFix] = useState('');
+  const ready = title.trim().length > 5 && symptoms.trim().length > 10 && cause.trim().length > 5 && fix.trim().length > 10;
+  return (
+    <section className="card review-kb">
+      <div className="card-head">
+        <h2>Share what you learned</h2>
+      </div>
+      {existing ? (
+        <p>
+          You wrote <Link to={`/kb/${existing.id}`}>{existing.title}</Link> from this ticket. It is in the knowledge base for the next analyst.
+        </p>
+      ) : (
+        <div className="row">
+          <p className="muted">Unusual fix? Write it up as a knowledge base article so the next analyst solves it faster.</p>
+          <button className="btn" onClick={() => setOpen(true)}>
+            <PenLine size={16} aria-hidden />
+            Write a KB article
+          </button>
+        </div>
+      )}
+      {open && (
+        <Modal title="New knowledge base article" onClose={() => setOpen(false)}>
+          <div className="stack">
+            <label className="field">
+              <span>Title</span>
+              <input value={title} onChange={(e) => setTitle(e.target.value)} />
+            </label>
+            <label className="field">
+              <span>Symptoms (what the user sees)</span>
+              <textarea rows={3} value={symptoms} onChange={(e) => setSymptoms(e.target.value)} />
+            </label>
+            <label className="field">
+              <span>Cause</span>
+              <textarea rows={2} value={cause} onChange={(e) => setCause(e.target.value)} />
+            </label>
+            <label className="field">
+              <span>Resolution steps</span>
+              <textarea rows={4} value={fix} onChange={(e) => setFix(e.target.value)} />
+            </label>
+            <div className="modal-actions">
+              <button className="btn" onClick={() => setOpen(false)}>
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                disabled={!ready}
+                onClick={() => {
+                  dispatch({
+                    type: 'addKb',
+                    article: {
+                      id,
+                      title: title.trim(),
+                      category: scenario.category,
+                      tags: [scenario.category.toLowerCase(), 'written by you'],
+                      body: `## Symptoms\n\n${symptoms.trim()}\n\n## Cause\n\n${cause.trim()}\n\n## Resolution\n\n${fix.trim()}\n\n_From ${ticket}._`,
+                      custom: { fromTicket: ticket, writtenAt: new Date().toISOString() },
+                    },
+                  });
+                  setOpen(false);
+                  navigate(`/kb/${id}`);
+                }}
+              >
+                Publish article
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </section>
   );
 }

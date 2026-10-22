@@ -85,7 +85,12 @@ export const accountScenarios: Scenario[] = [
       ],
       reveals: ['lockout_source'],
     },
-    toolReveals: { directory: ['locked'] },
+    toolReveals: { directory: ['locked'], history: ['changed_pw'] },
+    history: [
+      { ticket: 'INC-52210', daysAgo: 2, title: 'Account locked out', resolution: 'Unlocked the account. User had changed her password on Monday; locked again within the hour.' },
+      { ticket: 'INC-51987', daysAgo: 3, title: 'Locked out of Windows', resolution: 'Unlocked the account and advised the user to wait 15 minutes. No cause found.' },
+      { ticket: 'INC-47755', daysAgo: 64, title: 'Printer not showing', resolution: 'Added FL2-MFP from the print server.' },
+    ],
     actionResults: {
       unlock_account: {
         result:
@@ -310,7 +315,10 @@ export const accountScenarios: Scenario[] = [
           'Status       Local     Remote                       Network\n-------------------------------------------------------------\nUnavailable  F:        \\\\fs01\\finance-reports       Microsoft Windows Network\nOK           H:        \\\\fs01\\home$\\aisha.kamara   Microsoft Windows Network\nThe command completed successfully.',
       },
     },
-    toolReveals: { directory: ['missing_group'] },
+    toolReveals: { directory: ['missing_group'], approvals: ['approval'] },
+    approvals: [
+      { id: 'APR-3187', item: 'Group: FIN-Reports-RW (modify)', requestedFor: 'Aisha Kamara', approver: 'Grace Lindqvist (data owner)', status: 'Approved', daysAgo: 1, note: 'New starter in Finance reporting. Approved.' },
+    ],
     actionResults: {
       'grp+:FIN-Reports-RW': {
         result:

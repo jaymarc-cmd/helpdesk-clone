@@ -270,7 +270,7 @@ export const hardwareScenarios: Scenario[] = [
       remote_restart: { result: 'Command failed: the device is powered off and unreachable.' },
     },
     requiredActions: ['guide_check_power'],
-    helpfulActions: [],
+    helpfulActions: ['issue_loaner', 'order_part'],
     harmfulActions: ['reimage'],
     rootCauses: [
       { id: 'adapter', label: 'Failed / damaged power adapter' },

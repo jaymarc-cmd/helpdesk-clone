@@ -8,6 +8,8 @@ import { DirectoryPage } from './pages/Directory';
 import { ServerRoom } from './pages/ServerRoom';
 import { RemoteDesktop } from './pages/RemoteDesktop';
 import { Deployment } from './pages/Deployment';
+import { ApprovalsPage } from './pages/Approvals';
+import { AssetsPage } from './pages/Assets';
 import { TicketReview } from './pages/TicketReview';
 import { ShiftPage } from './pages/Shift';
 import { CallsPage } from './pages/Calls';
@@ -33,6 +35,8 @@ export function App() {
             <Route path="devices" element={<RemoteDesktop />} />
             <Route path="devices/:hostname" element={<RemoteDesktop />} />
             <Route path="deploy" element={<Deployment />} />
+            <Route path="approvals" element={<ApprovalsPage />} />
+            <Route path="assets" element={<AssetsPage />} />
             <Route path="review/:attemptId" element={<TicketReview />} />
             <Route path="shift" element={<ShiftPage />} />
             <Route path="calls" element={<CallsPage />} />

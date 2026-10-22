@@ -35,6 +35,8 @@ function playIdeal(sc: Scenario): SessionState {
   s = step(s, { type: 'say', text: "I'm going to start a remote session on your computer now, is that okay?", at: 3 });
   s = step(s, { type: 'openTool', tool: 'endpoint', at: 3 });
   s = step(s, { type: 'openTool', tool: 'servers', at: 3 });
+  s = step(s, { type: 'openTool', tool: 'approvals', at: 3 });
+  s = step(s, { type: 'openTool', tool: 'history', at: 3 });
   s = step(s, { type: 'viewSignInLog', at: 3 });
   for (const cmd of Object.keys(sc.terminal ?? {})) s = step(s, { type: 'command', raw: cmd, at: 4 });
   for (const req of sc.requiredActions) s = step(s, { type: 'action', actionId: req.split('|')[0], at: 5 });

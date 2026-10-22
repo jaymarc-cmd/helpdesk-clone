@@ -799,3 +799,43 @@
   gap: 2px;
   font-size: 0.86rem;
 }
+
+/* Approvals / Assets / Directory extras */
+.wk-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.wk-filter-row .wk-search {
+  flex: 1 1 260px;
+  margin-bottom: 0;
+}
+.wk-expired {
+  color: var(--danger);
+}
+.wk-device-list,
+.wk-history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.wk-device-list li {
+  display: flex;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+.wk-history li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.wk-history li:last-child,
+.wk-device-list li:last-child {
+  border-bottom: 0;
+}

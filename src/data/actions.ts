@@ -278,6 +278,21 @@ export const ACTIONS: CatalogAction[] = [
     description: 'Unplug the cable / turn Wi-Fi off, but leave the device powered on.',
     result: 'The user disconnected the device from the network.',
   },
+  // ----- Asset management -----
+  {
+    id: 'issue_loaner',
+    tool: 'assets',
+    label: 'Issue a loaner laptop',
+    description: 'Assigns a laptop from the loaner pool so the user can keep working while theirs is repaired.',
+    result: 'Loaner LN-0412 assigned and imaged with the standard build. Ready to collect from the service desk.',
+  },
+  {
+    id: 'order_part',
+    tool: 'assets',
+    label: 'Order a replacement part',
+    description: 'Orders a replacement accessory (power adapter, dock, headset) from stock or the supplier.',
+    result: 'Replacement ordered from stock. It will be at the service desk for collection today.',
+  },
   ...EXTRA_ACTIONS,
 ];
 
@@ -288,6 +303,7 @@ export const TOOL_LABELS: Record<ToolId, string> = {
   endpoint: 'Endpoint Manager',
   guide: 'Guided steps',
   deploy: 'Deployment',
+  assets: 'Asset management',
 };
 
 /** Workstation app where each kind of action is performed (used in hints and feedback). */
@@ -296,6 +312,7 @@ export const TOOL_APP: Record<ToolId | 'servers' | 'groups', string> = {
   endpoint: 'Remote desktop',
   guide: 'the ticket conversation',
   deploy: 'Deployment',
+  assets: 'Assets',
   servers: 'Server room',
   groups: 'Directory (Groups tab)',
 };
@@ -332,6 +349,7 @@ export function actionLabel(id: string): string {
 /** Which app an action lives in. */
 export function actionApp(id: string): string {
   const a = ACTION_BY_ID[id];
+  if (id === 'mdm_wipe_device' || id === 'view_bitlocker_key') return 'Directory (Devices tab)';
   if (a) return TOOL_APP[a.tool];
   if (parseGroupAction(id)) return TOOL_APP.groups;
   if (parseServerAction(id)) return TOOL_APP.servers;

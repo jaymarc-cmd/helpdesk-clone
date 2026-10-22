@@ -289,7 +289,7 @@ export const extraScenarios: Scenario[] = [
         quality: 'bad',
       },
     ],
-    toolReveals: { directory: ['no_permission'] },
+    toolReveals: { approvals: ['owner_approved'], directory: ['no_permission'] },
     actionResults: {
       grant_mailbox_access: {
         result:
@@ -304,6 +304,9 @@ export const extraScenarios: Scenario[] = [
         result: 'Ruth is now in Finance - Admin, which grants payment approval rights she was never meant to have, and it still does not open the mailbox.',
       },
     },
+    approvals: [
+      { id: 'APR-3192', item: 'Mailbox: accounts-payable@ (Full Access)', requestedFor: 'Ruth Adeyemi', approver: 'Priya Raman (mailbox owner)', status: 'Approved', daysAgo: 1 },
+    ],
     requiredActions: ['grant_mailbox_access', 'guide_restart'],
     helpfulActions: [],
     harmfulActions: ['grp+:Finance - Admin', 'reset_password'],

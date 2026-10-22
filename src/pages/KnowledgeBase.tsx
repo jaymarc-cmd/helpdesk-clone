@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowRight, BookOpen, Check, CircleCheck, Clock, FileText, Search, SearchX, Tag, X, type LucideIcon } from 'lucide-react';
-import { KB_ARTICLES, KB_BY_ID } from '../data/kb';
+import { KB_ARTICLES } from '../data/kb';
 import { useStore } from '../state/store';
 import { CategoryPill, EmptyState, IconTile, Markdown, PageHeader, ProgressBar } from '../components/ui';
 import { CATEGORY_ICON } from '../components/icons';
@@ -28,7 +28,9 @@ export function KnowledgeBase() {
   const { state, dispatch, work } = useStore();
   const [q, setQ] = useState('');
   const [cat, setCat] = useState<Cat>('All');
-  const article = id ? KB_BY_ID[id] : undefined;
+  // Articles you wrote from tickets sit alongside the built-in runbooks.
+  const articles = useMemo<KbArticle[]>(() => [...KB_ARTICLES, ...state.customKb], [state.customKb]);
+  const article = id ? articles.find((a) => a.id === id) : undefined;
   const articleRef = useRef<HTMLElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
 
@@ -59,33 +61,33 @@ export function KnowledgeBase() {
     }
   }, [id]);
 
-  const list = KB_ARTICLES.filter(
+  const list = articles.filter(
     (a) =>
       (cat === 'All' || a.category === cat) &&
       (!q || `${a.title} ${a.tags.join(' ')} ${a.body}`.toLowerCase().includes(q.toLowerCase())),
   );
 
   const isReadId = (aid: string) => state.kbRead.includes(aid);
-  const readCount = KB_ARTICLES.filter((a) => isReadId(a.id)).length;
+  const readCount = articles.filter((a) => isReadId(a.id)).length;
   const filtered = q !== '' || cat !== 'All';
   const isRead = article ? isReadId(article.id) : false;
-  const nextUnread = KB_ARTICLES.find((a) => !isReadId(a.id));
+  const nextUnread = articles.find((a) => !isReadId(a.id));
 
   return (
     <div className="page kb-page">
       <PageHeader
         title="Knowledge base"
-        description={`${KB_ARTICLES.length} runbooks and policies used across the service desk. Related articles also open from inside any ticket.`}
+        description={`${articles.length} runbooks and policies used across the service desk. Related articles also open from inside any ticket.`}
         actions={
           <div className="kb-progress">
             <div className="kb-progress-top">
               <span className="label">Articles read</span>
               <span className="kb-progress-count num">
                 {readCount}
-                <span className="faint">/{KB_ARTICLES.length}</span>
+                <span className="faint">/{articles.length}</span>
               </span>
             </div>
-            <ProgressBar value={readCount / Math.max(1, KB_ARTICLES.length)} tone={readCount === KB_ARTICLES.length ? 'success' : undefined} />
+            <ProgressBar value={readCount / Math.max(1, articles.length)} tone={readCount === articles.length ? 'success' : undefined} />
           </div>
         }
       />
@@ -135,6 +137,7 @@ export function KnowledgeBase() {
                       <FileText size={16} className="kb-row-icon" aria-hidden />
                       <span className="kb-row-text">
                         <span className="kb-row-title">{a.title}</span>
+                        {a.custom && <span className="kb-row-cat">Written by you</span>}
                         {cat === 'All' && <span className="kb-row-cat">{a.category}</span>}
                       </span>
                       {read && (
@@ -205,7 +208,7 @@ export function KnowledgeBase() {
                   </span>
                   <ul className="kb-cats" aria-labelledby="kb-cats-label">
                     {ARTICLE_CATS.map((c) => {
-                      const inCat = KB_ARTICLES.filter((a) => a.category === c);
+                      const inCat = articles.filter((a) => a.category === c);
                       const readInCat = inCat.filter((a) => isReadId(a.id)).length;
                       const done = inCat.length > 0 && readInCat === inCat.length;
                       return (

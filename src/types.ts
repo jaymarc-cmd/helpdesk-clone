@@ -31,10 +31,10 @@ export const TEAMS: Team[] = [
 
 export type Outcome = 'resolve' | 'escalate' | 'pending';
 
-export type ToolId = 'directory' | 'endpoint' | 'guide' | 'deploy';
+export type ToolId = 'directory' | 'endpoint' | 'guide' | 'deploy' | 'assets';
 
 /** Workstation apps that can reveal facts just by being opened on the ticket's user/device. */
-export type RevealTool = 'directory' | 'endpoint' | 'servers';
+export type RevealTool = 'directory' | 'endpoint' | 'servers' | 'approvals' | 'history';
 
 export type ServerStatus = 'Healthy' | 'Degraded' | 'Down' | 'Unreachable';
 
@@ -168,6 +168,10 @@ export interface Scenario {
   related?: RelatedTicket[];
   /** What the requester says if a bad resolution makes the ticket come back. */
   reopenText?: string;
+  /** Approval records in the Approvals app that belong to this ticket. */
+  approvals?: ApprovalRecord[];
+  /** The requester's earlier tickets, shown in Directory. */
+  history?: PastTicket[];
   channel: Channel;
   /** Target handling time in real minutes. */
   targetMinutes: number;
@@ -245,6 +249,23 @@ export interface WorkLogEntry {
   at: number; // seconds since ticket opened
   kind: 'question' | 'action' | 'terminal' | 'kb' | 'hint' | 'system' | 'note';
   text: string;
+}
+
+export interface ApprovalRecord {
+  id: string;
+  item: string;
+  requestedFor: string;
+  approver: string;
+  status: 'Approved' | 'Pending' | 'Rejected';
+  daysAgo: number;
+  note?: string;
+}
+
+export interface PastTicket {
+  ticket: string;
+  daysAgo: number;
+  title: string;
+  resolution: string;
 }
 
 export interface RelatedTicket {
@@ -370,6 +391,8 @@ export interface KbArticle {
   category: Category | 'General';
   tags: string[];
   body: string;
+  /** Written by the analyst from a ticket. */
+  custom?: { fromTicket: string; writtenAt: string };
 }
 
 // ---------- Shift ----------
@@ -430,6 +453,8 @@ export interface AppState {
   focusedWork: string | null;
   /** Resolved tickets that are coming back. */
   reopens: Reopen[];
+  /** Knowledge base articles the analyst wrote after a ticket. */
+  customKb: KbArticle[];
 }
 
 export type HoldReason = 'Awaiting user' | 'Awaiting approval' | 'Awaiting vendor';

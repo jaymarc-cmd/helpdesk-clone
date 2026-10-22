@@ -17,6 +17,7 @@ export const DEFAULT_STATE: AppState = {
   works: [],
   focusedWork: null,
   reopens: [],
+  customKb: [],
 };
 
 const isWork = (w: unknown): w is ActiveWork => !!w && typeof w === 'object' && typeof (w as ActiveWork).scenarioId === 'string';
@@ -46,6 +47,7 @@ export function normalizeState(raw: unknown): AppState {
     activeShift: r.activeShift ?? null,
     ...normalizeWorks(r),
     reopens: Array.isArray(r.reopens) ? r.reopens : [],
+    customKb: Array.isArray(r.customKb) ? r.customKb : [],
   };
 }
 
