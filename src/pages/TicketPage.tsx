@@ -20,7 +20,9 @@ import {
   Info,
   Lightbulb,
   ListChecks,
+  type LucideIcon,
   MessageCircleQuestion,
+  MessageSquareText,
   MonitorSmartphone,
   PackageCheck,
   Play,
@@ -31,15 +33,15 @@ import {
   ShieldQuestion,
   ShieldX,
   SquareTerminal,
+  StickyNote,
   ThumbsUp,
   Timer,
   Wrench,
   X,
-  type LucideIcon,
 } from 'lucide-react';
 import { actionsForTool } from '../data/actions';
 import { KB_BY_ID } from '../data/kb';
-import { HINT_PENALTY, gradeTicket } from '../engine/scoring';
+import { FIRST_RESPONSE_SEC, HINT_PENALTY, gradeTicket } from '../engine/scoring';
 import { nextHint, type ChatMessage, type SessionState } from '../engine/session';
 import { useStore, type Work } from '../state/store';
 import { uid } from '../state/storage';
@@ -59,6 +61,7 @@ import {
 } from '../components/ui';
 import { CHANNEL_LABEL, ChannelIcon } from '../components/icons';
 import { ActionList, useElapsed } from '../components/work';
+import { moodLabel } from '../engine/chat';
 import '../styles/workspace.css';
 import '../styles/workstation.css';
 
@@ -69,6 +72,7 @@ const LOG_ICON: Record<WorkLogEntry['kind'], LucideIcon> = {
   kb: BookOpen,
   hint: Lightbulb,
   system: Info,
+  note: StickyNote,
 };
 
 const OUTCOMES: { id: Outcome; label: string; desc: string; icon: LucideIcon }[] = [
@@ -289,6 +293,7 @@ function AssignedTicket({ work }: { work: Work }) {
         },
       ],
       hintsUsed: s.hintsUsed,
+      transcript: s.chat,
     };
     dispatch({ type: 'addTicket', attempt });
     navigate(`/review/${attempt.id}`, { replace: true });
@@ -436,6 +441,19 @@ function RequesterCard({ scenario, s }: { scenario: Scenario; s?: SessionState }
         </div>
       </div>
       <dl className="kv">
+        {s && (
+          <>
+            <dt>Mood</dt>
+            <dd>
+              <span className={`wk-mood ${moodLabel(s.patience ?? 70).tone}`}>
+                <span className="wk-mood-bar">
+                  <i style={{ width: `${s.patience ?? 70}%` }} />
+                </span>
+                {moodLabel(s.patience ?? 70).label}
+              </span>
+            </dd>
+          </>
+        )}
         <dt>Department</dt>
         <dd>{r.department}</dd>
         <dt>Location</dt>
@@ -560,7 +578,43 @@ function ActivityCard({ s }: { s: SessionState }) {
 
 // ---------------- Conversation ----------------
 
-function ChatBubble({ m, name }: { m: ChatMessage; name: string }) {
+/** Canned responses: the phrases analysts keep in their back pocket. {first} and {me} are filled in. */
+const CANNED: { label: string; text: string; note?: boolean }[] = [
+  { label: 'Greeting', text: "Hi {first}, thanks for contacting the Service Desk. My name is {me} and I'll be helping you today." },
+  { label: 'Empathy', text: "I'm sorry for the trouble, I understand how disruptive this is. Let's get it sorted." },
+  { label: 'Hold', text: 'Let me check a few things on my side. Please bear with me for a moment.' },
+  { label: 'Ask to connect remotely', text: 'Would it be okay if I connect to your computer remotely to take a look?' },
+  { label: 'Warn before restart', text: "I'm going to restart your computer now. Please save anything you're working on first." },
+  { label: 'Progress update', text: "Quick update: I've found what's causing this and I'm working on the fix now." },
+  { label: 'Anything else?', text: 'Is there anything else I can help you with today?' },
+];
+
+function clockAt(startedAt: number, at: number | undefined) {
+  return new Date(startedAt + (at ?? 0) * 1000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+/** Simulated reading and typing time for a requester message. */
+function typingDelay(text: string) {
+  return 550 + Math.min(3200, text.length * 22);
+}
+
+function ChatMessageRow({
+  m,
+  name,
+  startedAt,
+  first,
+  last,
+  receipt,
+}: {
+  m: ChatMessage;
+  name: string;
+  startedAt: number;
+  /** First of a run of messages from the same sender (shows the avatar). */
+  first: boolean;
+  /** Last of the run (shows the time). */
+  last: boolean;
+  receipt?: 'Seen' | 'Delivered';
+}) {
   if (m.from === 'system') {
     const ok = m.text.startsWith('Identity verified');
     const bad = m.text.startsWith('Identity NOT');
@@ -572,42 +626,89 @@ function ChatBubble({ m, name }: { m: ChatMessage; name: string }) {
       </div>
     );
   }
+  if (m.from === 'note') {
+    return (
+      <div className="wk-note">
+        <span className="wk-note-head">
+          <StickyNote size={13} aria-hidden />
+          Internal note · {clockAt(startedAt, m.at)}
+        </span>
+        {m.text}
+      </div>
+    );
+  }
   const step = m.from === 'agent' && m.text.startsWith(GUIDED_PREFIX);
   return (
-    <div className={`msg ${m.from}`}>
-      <span className="who">{m.from === 'agent' ? 'You' : name}</span>
-      {step ? (
-        <>
-          <span className="ws-step-tag">
-            <Compass size={12} aria-hidden />
-            Asked the user to
+    <div className={`wk-row ${m.from} ${first ? 'first' : ''}`}>
+      {m.from === 'requester' &&
+        (first ? (
+          <span className="avatar wk-avatar" aria-hidden>
+            {initials(name)}
           </span>
-          {m.text.slice(GUIDED_PREFIX.length)}
-        </>
-      ) : (
-        m.text
-      )}
+        ) : (
+          <span className="wk-avatar-gap" aria-hidden />
+        ))}
+      <div className="wk-bubble-col">
+        <div className={`msg ${m.from}`}>
+          <span className="sr-only">{m.from === 'agent' ? 'You' : name}: </span>
+          {step ? (
+            <>
+              <span className="ws-step-tag">
+                <Compass size={12} aria-hidden />
+                Asked the user to
+              </span>
+              {m.text.slice(GUIDED_PREFIX.length)}
+            </>
+          ) : (
+            m.text
+          )}
+        </div>
+        {last && (
+          <span className="wk-meta">
+            {clockAt(startedAt, m.at)}
+            {receipt && (
+              <>
+                {' · '}
+                {receipt === 'Seen' ? <CheckCheck size={12} aria-hidden /> : null}
+                {receipt}
+              </>
+            )}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
 
+const CHANNEL_VERB: Record<string, string> = { chat: 'Live chat', phone: 'Phone call', email: 'Email thread', portal: 'Portal ticket' };
+
 function Conversation({ work }: { work: Work }) {
+  const { state } = useStore();
   const sc = work.scenario;
   const s = work.session;
   const [text, setText] = useState('');
+  const [mode, setMode] = useState<'reply' | 'note'>('reply');
+  const [canned, setCanned] = useState(false);
   const [visible, setVisible] = useState(s.chat.length);
   const endRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const firstName = sc.requester.name.split(' ')[0];
+  const me = state.profile?.name.split(' ')[0] ?? 'the Service Desk';
 
-  // Simulated typing delay for requester replies.
+  // Requester messages appear one at a time, after a reading-and-typing pause that grows with their length.
   useEffect(() => {
     if (s.chat.length <= visible) {
       setVisible(s.chat.length);
       return;
     }
-    const t = setTimeout(() => setVisible(s.chat.length), 650 + Math.random() * 500);
+    const nextMsg = s.chat[visible];
+    if (nextMsg.from !== 'requester') {
+      setVisible((v) => v + 1);
+      return;
+    }
+    const t = setTimeout(() => setVisible((v) => v + 1), typingDelay(nextMsg.text));
     return () => clearTimeout(t);
-  }, [s.chat.length, visible]);
+  }, [s.chat, visible]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'nearest' });
@@ -619,72 +720,152 @@ function Conversation({ work }: { work: Work }) {
   });
   const shown = s.chat.slice(0, Math.max(visible, lastNonRequester + 1));
   const typing = shown.length < s.chat.length;
+  const lastAgent = shown.map((m) => m.from).lastIndexOf('agent');
   const available = sc.questions.filter((q) => !s.asked.includes(q.id) && (q.requires ?? []).every((f) => s.revealed.includes(f)));
   const guided = actionsForTool('guide').map((a) => ({ id: a.id, label: a.label, description: a.description }));
+  const mood = moodLabel(s.patience ?? 70);
+  const elapsed = useElapsed(work.startedAt);
+  const firstReply = s.chat.find((m) => m.from === 'agent');
+  const mmss = (n: number) => `${Math.floor(n / 60)}:${String(Math.floor(n % 60)).padStart(2, '0')}`;
+  const sla = firstReply
+    ? { tone: (firstReply.at ?? 0) <= FIRST_RESPONSE_SEC ? 'success' : 'danger', text: `First reply in ${mmss(firstReply.at ?? 0)}` }
+    : elapsed < FIRST_RESPONSE_SEC
+      ? { tone: 'warning', text: `Reply within ${mmss(FIRST_RESPONSE_SEC - elapsed)}` }
+      : { tone: 'danger', text: 'First reply overdue' };
+
+  const send = () => {
+    const t = text.trim();
+    if (!t) return;
+    work.emit(mode === 'note' ? { type: 'note', text: t } : { type: 'say', text: t });
+    setText('');
+  };
+  const insert = (raw: string) => {
+    const filled = raw.replace(/\{first\}/g, firstName).replace(/\{me\}/g, me);
+    setText((cur) => (cur.trim() ? `${cur.trim()} ${filled}` : filled));
+    setMode('reply');
+    setCanned(false);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  };
 
   return (
     <section className="card wk-convo" aria-label="Conversation">
-      <div className="card-head">
-        <h2>
-          <ChannelIcon channel={sc.channel} size={18} />
-          Conversation with {sc.requester.name}
-        </h2>
+      <div className="wk-chat-head">
+        <span className="avatar wk-avatar-lg" aria-hidden>
+          {initials(sc.requester.name)}
+        </span>
+        <div className="wk-chat-who">
+          <h2>{sc.requester.name}</h2>
+          <span className="wk-presence">
+            <span className="status-dot ok" aria-hidden />
+            {typing ? `${firstName} is typing…` : `Online · ${CHANNEL_VERB[sc.channel] ?? 'Conversation'}`}
+          </span>
+        </div>
+        <span className={`pill pill-${sla.tone} num`} title={`Live chat target: first reply within ${mmss(FIRST_RESPONSE_SEC)}`}>
+          <Timer aria-hidden />
+          {sla.text}
+        </span>
+        <span className={`pill pill-${mood.tone}`} title="How the requester is feeling">
+          {mood.label}
+        </span>
         <IdentityPill s={s} />
       </div>
+
       <div className="ws-chat-frame">
         <div className="chat wk-chat" aria-live="polite">
-          {shown.map((m, i) => (
-            <ChatBubble key={i} m={m} name={sc.requester.name} />
-          ))}
+          {shown.map((m, i) => {
+            const prev = shown[i - 1];
+            const nextM = shown[i + 1];
+            const firstOfRun = !prev || prev.from !== m.from;
+            const lastOfRun = !nextM || nextM.from !== m.from;
+            const receipt = i === lastAgent ? (shown.slice(i + 1).some((x) => x.from === 'requester') || typing ? 'Seen' : 'Delivered') : undefined;
+            return <ChatMessageRow key={i} m={m} name={sc.requester.name} startedAt={work.startedAt} first={firstOfRun} last={lastOfRun} receipt={receipt} />;
+          })}
           {typing && (
-            <div className="typing">
-              <span className="typing-dots" aria-hidden>
-                <i />
-                <i />
-                <i />
+            <div className="wk-row requester first">
+              <span className="avatar wk-avatar" aria-hidden>
+                {initials(sc.requester.name)}
               </span>
-              {firstName} is typing
+              <div className="msg requester wk-typing" aria-label={`${firstName} is typing`}>
+                <span className="typing-dots" aria-hidden>
+                  <i />
+                  <i />
+                  <i />
+                </span>
+              </div>
             </div>
           )}
           <div ref={endRef} />
         </div>
       </div>
 
-      <form
-        className="ws-composer wk-composer"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!text.trim() || typing) return;
-          work.emit({ type: 'say', text });
-          setText('');
-        }}
-      >
-        <input type="text" value={text} onChange={(e) => setText(e.target.value)} placeholder={`Reply to ${firstName}…`} aria-label="Message" />
-        <button type="submit" className="btn btn-primary" disabled={!text.trim() || typing}>
-          <Send size={16} aria-hidden />
-          Send
-        </button>
-      </form>
+      <div className={`wk-composer-box ${mode === 'note' ? 'note' : ''}`}>
+        <div className="wk-composer-tabs" role="tablist" aria-label="Message type">
+          <button type="button" role="tab" aria-selected={mode === 'reply'} className={mode === 'reply' ? 'on' : ''} onClick={() => setMode('reply')}>
+            Reply to {firstName}
+          </button>
+          <button type="button" role="tab" aria-selected={mode === 'note'} className={mode === 'note' ? 'on' : ''} onClick={() => setMode('note')}>
+            <StickyNote size={13} aria-hidden />
+            Work note
+          </button>
+        </div>
+        <textarea
+          ref={inputRef}
+          rows={2}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              send();
+            }
+          }}
+          placeholder={mode === 'note' ? 'Internal note: findings, what you tried. Only IT sees this.' : `Message ${firstName}…`}
+          aria-label={mode === 'note' ? 'Work note' : 'Message'}
+        />
+        <div className="wk-composer-bar">
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setCanned((c) => !c)} aria-expanded={canned}>
+            <MessageSquareText size={14} aria-hidden />
+            Canned responses
+          </button>
+          <span className="wk-composer-hint">Enter to send · Shift+Enter for a new line</span>
+          <button type="button" className="btn btn-primary btn-sm" onClick={send} disabled={!text.trim()}>
+            {mode === 'note' ? <StickyNote size={14} aria-hidden /> : <Send size={14} aria-hidden />}
+            {mode === 'note' ? 'Add note' : 'Send'}
+          </button>
+        </div>
+        {canned && (
+          <ul className="wk-canned" aria-label="Canned responses">
+            {CANNED.map((c) => (
+              <li key={c.label}>
+                <button type="button" onClick={() => insert(c.text)}>
+                  <strong>{c.label}</strong>
+                  <span>{c.text.replace(/\{first\}/g, firstName).replace(/\{me\}/g, me)}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       <div className="wk-quick">
         <div className="label ws-label-row">
           <MessageCircleQuestion size={14} aria-hidden />
-          Suggested replies
+          Suggested questions
         </div>
         <div className="suggestions ws-questions">
           {!s.verifyAttempted && (
-            <button className="suggestion verify" disabled={typing} onClick={() => work.emit({ type: 'verify' })}>
+            <button className="suggestion verify" onClick={() => work.emit({ type: 'verify' })}>
               <Fingerprint size={16} aria-hidden />
               <span>Verify identity</span>
             </button>
           )}
           {available.map((q) => (
-            <button key={q.id} className="suggestion" disabled={typing} onClick={() => work.emit({ type: 'ask', questionId: q.id })}>
+            <button key={q.id} className="suggestion" onClick={() => work.emit({ type: 'ask', questionId: q.id })}>
               <MessageCircleQuestion size={16} aria-hidden />
               <span>{q.text}</span>
             </button>
           ))}
-          <button className="suggestion wk-confirm" disabled={typing} onClick={() => work.emit({ type: 'confirm' })}>
+          <button className="suggestion wk-confirm" onClick={() => work.emit({ type: 'confirm' })}>
             <ThumbsUp size={16} aria-hidden />
             <span>{s.confirmed ? 'Fix confirmed' : 'Ask them to confirm the fix'}</span>
           </button>
@@ -723,7 +904,12 @@ function ResolveForm({
   const [rootCause, setRootCause] = useState('');
   const [outcome, setOutcome] = useState<Outcome>('resolve');
   const [team, setTeam] = useState<Team | ''>('');
-  const [note, setNote] = useState('');
+  const [note, setNote] = useState(() =>
+    s.chat
+      .filter((m) => m.from === 'note')
+      .map((m) => m.text)
+      .join('\n'),
+  );
   const [reply, setReply] = useState('');
   const [error, setError] = useState<{ field: Field; text: string } | null>(null);
   const firstName = scenario.requester.name.split(' ')[0];

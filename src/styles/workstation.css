@@ -395,3 +395,315 @@
   font-size: 0.8rem;
   color: var(--text-muted);
 }
+
+/* ---------- Live chat workspace ---------- */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.wk-chat-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.wk-chat-who {
+  flex: 1 1 160px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.wk-chat-who h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+.wk-presence {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.avatar.wk-avatar-lg {
+  width: 40px;
+  height: 40px;
+  font-size: 0.85rem;
+}
+.avatar.wk-avatar,
+.wk-avatar-gap {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  font-size: 0.68rem;
+}
+.ws-root .wk-chat {
+  gap: 2px;
+}
+.wk-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+.wk-row.first {
+  margin-top: 10px;
+}
+.wk-row.agent {
+  justify-content: flex-end;
+}
+.wk-row .avatar.wk-avatar {
+  align-self: flex-start;
+}
+.wk-bubble-col {
+  display: flex;
+  flex-direction: column;
+  max-width: min(78%, 62ch);
+  min-width: 0;
+}
+.wk-row.agent .wk-bubble-col {
+  align-items: flex-end;
+}
+.wk-row .msg {
+  max-width: 100%;
+}
+.wk-row.requester:not(.first) .msg.requester {
+  border-top-left-radius: 4px;
+}
+.wk-row.agent:not(.first) .msg.agent {
+  border-top-right-radius: 4px;
+}
+.wk-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin: 3px 4px 0;
+  font-size: 0.75rem;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+.msg.wk-typing {
+  padding: 12px 14px;
+}
+.wk-note {
+  align-self: stretch;
+  margin: 10px 0 0;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--warning-soft);
+  color: var(--text);
+  font-size: 0.86rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.wk-note-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--warning);
+}
+
+/* Composer: reply or internal work note */
+.wk-composer-box {
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  transition: border-color 0.15s ease-out, background 0.15s ease-out;
+}
+.wk-composer-box:focus-within {
+  border-color: var(--primary);
+}
+.wk-composer-box.note {
+  background: color-mix(in srgb, var(--warning-soft) 55%, var(--surface));
+  border-color: color-mix(in srgb, var(--warning) 45%, var(--border));
+}
+.wk-composer-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 6px 6px 0;
+}
+.wk-composer-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.wk-composer-tabs button:hover {
+  color: var(--text);
+}
+.wk-composer-tabs button.on {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.wk-composer-box.note .wk-composer-tabs button.on {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+.wk-composer-box textarea {
+  display: block;
+  width: 100%;
+  min-height: 56px;
+  padding: 8px 12px;
+  border: 0;
+  outline: none;
+  resize: vertical;
+  background: transparent;
+  font: inherit;
+  font-size: 0.92rem;
+  color: var(--text);
+}
+.wk-composer-box textarea:focus-visible {
+  outline: none;
+}
+.wk-composer-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 8px;
+}
+.wk-composer-hint {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--text-faint);
+}
+.wk-canned {
+  list-style: none;
+  margin: 0;
+  padding: 4px 8px 8px;
+  border-top: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 2px 8px;
+}
+.wk-canned button {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: 100%;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  color: var(--text);
+  cursor: pointer;
+}
+.wk-canned button:hover,
+.wk-canned button:focus-visible {
+  background: var(--surface-2);
+}
+.wk-canned strong {
+  font-size: 0.82rem;
+}
+.wk-canned span {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Requester mood */
+.wk-mood {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+.wk-mood-bar {
+  width: 64px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+.wk-mood-bar i {
+  display: block;
+  height: 100%;
+  transition: width 0.4s ease-out;
+}
+.wk-mood.success { color: var(--success); }
+.wk-mood.success i { background: var(--success); }
+.wk-mood.warning { color: var(--warning); }
+.wk-mood.warning i { background: var(--warning); }
+.wk-mood.danger { color: var(--danger); }
+.wk-mood.danger i { background: var(--danger); }
+
+/* New message in the ticket bar while you work in another app */
+.wk-bar-msg {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 420px;
+  flex: 0 1 auto;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--text);
+  text-decoration: none;
+  animation: pop-in 0.2s ease-out;
+}
+.wk-bar-msg svg {
+  color: var(--primary);
+  flex-shrink: 0;
+}
+.wk-bar-msg:hover {
+  text-decoration: none;
+  background: color-mix(in srgb, var(--primary) 18%, var(--surface));
+}
+.wk-bar-msg-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.wk-bar-count {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+@media (max-width: 640px) {
+  .wk-composer-hint {
+    display: none;
+  }
+  .wk-bubble-col {
+    max-width: 86%;
+  }
+  .wk-bar-msg {
+    max-width: 100%;
+    flex-basis: 100%;
+  }
+}
+
+/* Review: the saved conversation, read in full */
+.ws-root .review-transcript,
+.review-transcript.chat {
+  max-height: none;
+  overflow: visible;
+  padding: 4px 0;
+}

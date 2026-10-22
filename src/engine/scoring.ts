@@ -2,6 +2,9 @@ import { ACTION_BY_ID, actionLabel, isInherentlyHarmful } from '../data/actions'
 import type { Scenario, ScoreItem, ScoreSection, TicketResult, TicketSubmission } from '../types';
 import { requirementMet, type SessionState } from './session';
 
+/** Live-chat first-response target, in seconds. */
+export const FIRST_RESPONSE_SEC = 60;
+
 export const HINT_PENALTY = 3;
 
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
@@ -212,6 +215,19 @@ export function gradeTicket(
       items.push({ ok: true, text: 'Professional, blame-free tone' });
     }
 
+    // Live-chat etiquette: tell people before you touch their device, and don't leave them waiting.
+    const surprised = s.unannounced ?? [];
+    if (surprised.length) {
+      score -= 2 * surprised.length;
+      const what = surprised.map((x) => (x === 'remote' ? 'connected to' : 'restarted')).join(' and ');
+      items.push({ ok: false, text: `You ${what} ${firstName}'s device without telling them first` });
+    }
+    const nudges = s.nudges ?? 0;
+    if (nudges) {
+      score -= nudges >= 2 ? 2 : 1;
+      items.push({ ok: false, text: `${firstName} had to chase you for an update ${nudges === 1 ? 'once' : `${nudges} times`}. Say "let me check, one moment" before going quiet.` });
+    }
+
     const bad = s.asked.filter((id) => scenario.questions.find((q) => q.id === id)?.quality === 'bad');
     if (bad.length) {
       score -= 2 * bad.length;
@@ -247,18 +263,28 @@ export function gradeTicket(
     sections.push({ key: 'documentation', label: 'Documentation', score: round1(clamp(score, 0, 10)), max: 10, items });
   }
 
-  // ---- Time (10)
+  // ---- Time (10): 8 for handling time, 2 for a prompt first response
   {
     const target = scenario.targetMinutes * 60;
-    let score = 10;
-    if (elapsedSec > target) score = clamp(10 * (1 - (elapsedSec - target) / target), 0, 10);
+    let handling = 8;
+    if (elapsedSec > target) handling = clamp(8 * (1 - (elapsedSec - target) / target), 0, 8);
     const mm = (n: number) => `${Math.floor(n / 60)}:${String(Math.round(n % 60)).padStart(2, '0')}`;
+    const firstReply = s.chat.find((m) => m.from === 'agent');
+    // Sessions saved before messages were timestamped count as prompt.
+    const firstAt = firstReply ? (firstReply.at ?? 0) : Infinity;
+    const prompt = firstAt <= FIRST_RESPONSE_SEC;
     sections.push({
       key: 'time',
       label: 'Handling time',
-      score: round1(score),
+      score: round1(handling + (prompt ? 2 : 0)),
       max: 10,
       items: [
+        {
+          ok: prompt,
+          text: firstReply
+            ? `First response after ${mm(firstAt)} (target under ${mm(FIRST_RESPONSE_SEC)})`
+            : `You never replied to ${scenario.requester.name.split(' ')[0]} in the conversation`,
+        },
         {
           ok: elapsedSec <= target,
           text: `Handled in ${mm(elapsedSec)} (target ${scenario.targetMinutes}:00)`,
@@ -274,7 +300,9 @@ export function gradeTicket(
     const sec = sections.find((x) => x.key === k)!;
     return sec.score / sec.max;
   };
-  const csatRaw = 1 + 4 * (0.4 * pct('communication') + 0.4 * pct('resolution') + 0.2 * pct('time'));
+  // How the requester felt during the chat counts as much as the final reply.
+  const mood = (s.patience ?? 70) / 100;
+  const csatRaw = 1 + 4 * (0.3 * pct('communication') + 0.35 * pct('resolution') + 0.15 * pct('time') + 0.2 * mood);
   const csat = Math.round(clamp(csatRaw, 1, 5) * 2) / 2;
 
   return { total, grade: gradeLetter(total), csat, sections, xp: xpFor(total, scenario.difficulty) };

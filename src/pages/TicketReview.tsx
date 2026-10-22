@@ -23,7 +23,7 @@ import {
   TimerOff,
   X,
   type LucideIcon,
-  Sparkles,
+  Sparkles, StickyNote
 } from 'lucide-react';
 import { KB_BY_ID } from '../data/kb';
 import { HINT_PENALTY } from '../engine/scoring';
@@ -46,6 +46,7 @@ import {
   ticketNumber,
 } from '../components/ui';
 import '../styles/queue-review.css';
+import '../styles/workstation.css';
 
 /** Display labels in sentence case (stored attempts keep the grader's original labels). */
 const SECTION_LABEL: Partial<Record<ScoreSection['key'], string>> = {
@@ -60,6 +61,7 @@ const LOG_ICON: Record<WorkLogEntry['kind'], LucideIcon> = {
   kb: BookOpen,
   hint: Lightbulb,
   system: Info,
+  note: StickyNote,
 };
 
 const OUTCOME_ICON: Record<Outcome, LucideIcon> = {
@@ -74,6 +76,7 @@ export function TicketReview() {
   const navigate = useNavigate();
   const attempt = state.tickets.find((t) => t.id === attemptId);
   const scenario = attempt ? getScenario(attempt.scenarioId) : undefined;
+  const requesterName = scenario?.requester.name.split(' ')[0] ?? 'Requester';
   const back = state.activeShift ? { to: '/shift', label: 'Shift board' } : { to: '/tickets', label: 'Ticket queue' };
 
   if (!attempt) {
@@ -353,6 +356,40 @@ export function TicketReview() {
           )}
         </section>
       </div>
+
+      {attempt.transcript && attempt.transcript.length > 0 && (
+        <section className="card" aria-labelledby="review-transcript-h">
+          <div className="card-head">
+            <h2 id="review-transcript-h">Conversation</h2>
+            <span className="pill num">
+              {attempt.transcript.filter((m) => m.from === 'agent').length} messages from you
+            </span>
+          </div>
+          <div className="chat wk-chat review-transcript">
+            {attempt.transcript.map((m, i) =>
+              m.from === 'system' ? (
+                <div key={i} className="msg system">
+                  {m.text}
+                </div>
+              ) : m.from === 'note' ? (
+                <div key={i} className="wk-note">
+                  <span className="wk-note-head">Internal note · {formatClock(m.at ?? 0)}</span>
+                  {m.text}
+                </div>
+              ) : (
+                <div key={i} className={`wk-row ${m.from} first`}>
+                  <div className="wk-bubble-col">
+                    <div className={`msg ${m.from}`}>{m.text.replace(/^\[Guided step\] /, 'Asked the user to: ')}</div>
+                    <span className="wk-meta">
+                      {m.from === 'agent' ? 'You' : requesterName} · {formatClock(m.at ?? 0)}
+                    </span>
+                  </div>
+                </div>
+              ),
+            )}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

@@ -230,8 +230,16 @@ export interface TicketSubmission {
 
 export interface WorkLogEntry {
   at: number; // seconds since ticket opened
-  kind: 'question' | 'action' | 'terminal' | 'kb' | 'hint' | 'system';
+  kind: 'question' | 'action' | 'terminal' | 'kb' | 'hint' | 'system' | 'note';
   text: string;
+}
+
+/** One line of the ticket conversation as it was saved with the attempt. */
+export interface TranscriptLine {
+  from: 'agent' | 'requester' | 'system' | 'note';
+  text: string;
+  /** Seconds since the ticket was assigned. */
+  at?: number;
 }
 
 export interface TicketAttempt {
@@ -247,6 +255,8 @@ export interface TicketAttempt {
   submission: TicketSubmission;
   log: WorkLogEntry[];
   hintsUsed: number;
+  /** The conversation with the requester, including internal notes. Missing on older attempts. */
+  transcript?: TranscriptLine[];
 }
 
 // ---------- Calls ----------

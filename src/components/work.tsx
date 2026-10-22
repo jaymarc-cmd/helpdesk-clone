@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ArrowRight, Check, CornerDownRight, Inbox, Info, Lock, SquareTerminal, Timer, TriangleAlert } from 'lucide-react';
+import { ArrowRight, Check, CornerDownRight, Inbox, Info, Lock, MessageSquare, SquareTerminal, Timer, TriangleAlert } from 'lucide-react';
 import { actionLabel } from '../data/actions';
 import { TERMINAL_HELP } from '../engine/terminal';
-import type { SessionState } from '../engine/session';
+import { lastChatAt, quietAllowance, type SessionState } from '../engine/session';
+import { MAX_NUDGES } from '../engine/chat';
 import { useStore, type Work } from '../state/store';
 import { Modal, PriorityPill, formatClock, ticketNumber, useNow } from './ui';
 
@@ -13,17 +14,37 @@ export function useElapsed(startedAt: number | undefined): number {
   return startedAt ? Math.max(0, (now - startedAt) / 1000) : 0;
 }
 
-/** Strip across the top of every app while a ticket is assigned, so you can switch tools and come back. */
+/**
+ * Strip across the top of every app while a ticket is assigned, so you can switch tools and come back.
+ * It also keeps the conversation alive: the requester chases when left waiting, and new messages show here.
+ */
 export function ActiveTicketBar() {
   const { work } = useStore();
   const { pathname } = useLocation();
   const elapsed = useElapsed(work?.startedAt);
-  if (!work) return null;
-  const sc = work.scenario;
-  const onTicket = pathname === `/ticket/${sc.id}`;
+  const [seen, setSeen] = useState(work?.session.chat.length ?? 0);
+  const sc = work?.scenario;
+  const s = work?.session;
+  const onTicket = !!sc && pathname === `/ticket/${sc.id}`;
+  const chatLength = s?.chat.length ?? 0;
+
+  useEffect(() => {
+    if (onTicket) setSeen(chatLength);
+  }, [onTicket, chatLength]);
+
+  // Time passing: the reducer decides whether the requester has waited long enough to chase.
+  const sec = Math.floor(elapsed);
+  useEffect(() => {
+    if (!work || !s || s.confirmed || (s.nudges ?? 0) >= MAX_NUDGES) return;
+    if (sec - lastChatAt(s) >= quietAllowance(s)) work.emit({ type: 'nudge' });
+  }, [sec, work, s]);
+
+  if (!work || !sc || !s) return null;
   const over = elapsed > sc.targetMinutes * 60;
+  const unread = onTicket ? [] : s.chat.slice(seen).filter((m) => m.from === 'requester');
+  const latest = unread[unread.length - 1];
   return (
-    <div className="wk-bar" role="status" aria-label="Ticket in progress">
+    <div className={`wk-bar ${unread.length ? 'has-unread' : ''}`} role="status" aria-label="Ticket in progress">
       <span className="wk-bar-label">
         <span className="live-dot">Working</span>
       </span>
@@ -32,7 +53,17 @@ export function ActiveTicketBar() {
         <PriorityPill p={sc.priority} />
         <span className="wk-bar-title">{sc.title}</span>
       </span>
-      <span className="wk-bar-who">{sc.requester.name}</span>
+      {latest ? (
+        <Link to={`/ticket/${sc.id}`} className="wk-bar-msg" title={latest.text}>
+          <MessageSquare size={14} aria-hidden />
+          <span className="wk-bar-msg-text">
+            <strong>{sc.requester.name.split(' ')[0]}:</strong> {latest.text}
+          </span>
+          {unread.length > 1 && <span className="wk-bar-count num">{unread.length}</span>}
+        </Link>
+      ) : (
+        <span className="wk-bar-who">{sc.requester.name}</span>
+      )}
       <span className={`wk-bar-timer ${over ? 'over' : ''}`}>
         <Timer size={14} aria-hidden />
         {formatClock(elapsed)}

@@ -22,6 +22,7 @@ function playIdeal(sc: Scenario): SessionState {
   s = step(s, { type: 'verify', at: 1 });
   for (const q of sc.questions) if (q.quality !== 'bad') s = step(s, { type: 'ask', questionId: q.id, at: 2 });
   s = step(s, { type: 'openTool', tool: 'directory', at: 3 });
+  s = step(s, { type: 'say', text: "I'm going to start a remote session on your computer now, is that okay?", at: 3 });
   s = step(s, { type: 'openTool', tool: 'endpoint', at: 3 });
   s = step(s, { type: 'openTool', tool: 'servers', at: 3 });
   s = step(s, { type: 'viewSignInLog', at: 3 });
@@ -132,7 +133,17 @@ describe('grading', () => {
     const fast = gradeTicket(lockout, s, idealSubmission(lockout), 60);
     const slow = gradeTicket(lockout, s, idealSubmission(lockout), lockout.targetMinutes * 60 * 2);
     expect(fast.sections.find((x) => x.key === 'time')!.score).toBe(10);
-    expect(slow.sections.find((x) => x.key === 'time')!.score).toBe(0);
+    // Slow to resolve, but the first reply was prompt.
+    expect(slow.sections.find((x) => x.key === 'time')!.score).toBe(2);
+  });
+
+  it('expects a first response within a minute', () => {
+    const step = sessionReducer(lockout);
+    const late = step(initSession(lockout), { type: 'say', text: 'Hi Dana, looking into this now.', at: 240 });
+    const time = (st: SessionState) => gradeTicket(lockout, st, idealSubmission(lockout), 60).sections.find((x) => x.key === 'time')!;
+    expect(time(late).score).toBe(8);
+    expect(time(late).items[0].ok).toBe(false);
+    expect(time(initSession(lockout)).items[0].text).toMatch(/never replied/);
   });
 
   it('penalizes blame in the customer reply', () => {
@@ -248,6 +259,64 @@ describe('workstation tools', () => {
     const confirmed = gradeTicket(printServer, s, idealSubmission(printServer), 30);
     const proc = (r: typeof confirmed) => r.sections.find((x) => x.key === 'process')!.score;
     expect(proc(confirmed) - proc(unconfirmed)).toBe(3);
+  });
+});
+
+describe('live chat', () => {
+  const sc = BUILTIN_SCENARIOS.find((x) => x.id === 'hw-slow-disk')!;
+  const step = sessionReducer(sc);
+  const last = (s: SessionState) => s.chat[s.chat.length - 1];
+
+  it('stamps every message with the time it was sent', () => {
+    const s = step(initSession(sc), { type: 'say', text: 'Hello Rafael, thanks for reaching out!', at: 42 });
+    expect(s.chat.slice(-2).map((m) => m.at)).toEqual([42, 42]);
+    expect(s.greeted).toBe(true);
+    expect(last(s).from).toBe('requester');
+  });
+
+  it('answers small talk naturally instead of "I do not understand"', () => {
+    const s = step(initSession(sc), { type: 'say', text: 'Let me check a few things, one moment please.', at: 10 });
+    expect(last(s).text).not.toMatch(/not sure what you mean/i);
+    expect(s.holdUntil).toBeGreaterThan(10);
+  });
+
+  it('chases after a long silence, but not while the analyst said they were checking', () => {
+    let s = step(initSession(sc), { type: 'say', text: 'Hi Rafael!', at: 0 });
+    expect(step(s, { type: 'nudge', at: 60 }).nudges).toBe(0);
+    const chased = step(s, { type: 'nudge', at: 100 });
+    expect(chased.nudges).toBe(1);
+    expect(chased.patience).toBeLessThan(s.patience);
+    s = step(s, { type: 'say', text: 'Let me have a look, bear with me.', at: 10 });
+    expect(step(s, { type: 'nudge', at: 120 }).nudges).toBe(0);
+    expect(step(s, { type: 'nudge', at: 200 }).nudges).toBe(1);
+  });
+
+  it('stops chasing after three nudges', () => {
+    let s = initSession(sc);
+    for (let t = 100; t <= 1000; t += 100) s = step(s, { type: 'nudge', at: t });
+    expect(s.nudges).toBe(3);
+  });
+
+  it('notices an unannounced remote session and costs communication points', () => {
+    const surprised = step(initSession(sc), { type: 'openTool', tool: 'endpoint', at: 5 });
+    expect(last(surprised).text).toMatch(/is that you/i);
+    expect(surprised.unannounced).toEqual(['remote']);
+    const told = step(step(initSession(sc), { type: 'say', text: 'Can I remote into your laptop to take a look?', at: 4 }), { type: 'openTool', tool: 'endpoint', at: 5 });
+    expect(told.unannounced).toEqual([]);
+    const comm = (st: SessionState) => gradeTicket(sc, st, idealSubmission(sc), 30).sections.find((x) => x.key === 'communication')!.score;
+    expect(comm(surprised)).toBeLessThan(comm(told));
+  });
+
+  it('a typed restart request is the guided restart step', () => {
+    const s = step(initSession(sc), { type: 'say', text: 'Could you restart your laptop for me?', at: 8 });
+    expect(s.actions).toContain('guide_restart');
+    expect(s.chat.filter((m) => m.text.startsWith('[Guided step]'))).toEqual([]);
+  });
+
+  it('work notes stay internal', () => {
+    const s = step(initSession(sc), { type: 'note', text: 'C: has 1.1 GB free', at: 9 });
+    expect(last(s)).toMatchObject({ from: 'note', at: 9 });
+    expect(s.chat.filter((m) => m.from === 'requester')).toHaveLength(1);
   });
 });
 
