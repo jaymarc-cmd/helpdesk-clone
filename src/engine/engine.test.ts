@@ -4,8 +4,9 @@ import { CALLS } from '../data/calls';
 import { INTERVIEW_QUESTIONS } from '../data/interview';
 import { KB_BY_ID } from '../data/kb';
 import { BUILTIN_SCENARIOS } from '../data/scenarios';
-import type { Level, Priority, Scenario, TicketSubmission } from '../types';
+import { TEAMS, type Level, type Priority, type Scenario, type TicketSubmission } from '../types';
 import { loggedPriority, priorityFor } from './triage';
+import { handoffVerdict, reopenReason } from './followup';
 import { callScore, maxCallPoints, validateCall } from './calls';
 import { scoreAnswer } from './interview';
 import { BADGES, newlyEarned, rankFor } from './progress';
@@ -48,6 +49,8 @@ function playIdeal(sc: Scenario): SessionState {
       s = step(s, { type: 'action', actionId: id, at: 6 });
     }
   }
+  for (const r of sc.related ?? []) s = step(s, { type: 'link', id: r.id, at: 6 });
+  if (sc.related?.length) s = step(s, { type: 'notify', text: 'We know about the outage and are working on it. Next update in 30 minutes.', at: 6 });
   s = step(s, { type: 'confirm', at: 7 });
   return s;
 }
@@ -289,6 +292,42 @@ describe('triage', () => {
     expect(doc(corrected).score - doc(asLogged).score).toBe(2);
     expect(doc(asLogged).items.find((i) => i.text.startsWith('Priority'))!.ok).toBe(false);
     expect(doc(initSession(sc)).items.some((i) => /Set the ticket category/.test(i.text))).toBe(true);
+  });
+});
+
+describe('follow-up', () => {
+  const outage = BUILTIN_SCENARIOS.find((x) => x.id === 'net-floor-outage')!;
+
+  it('expects related tickets to be linked and everyone updated', () => {
+    const proc = (st: SessionState) => gradeTicket(outage, st, idealSubmission(outage), 30).sections.find((x) => x.key === 'process')!;
+    const full = playIdeal(outage);
+    expect(full.linked).toHaveLength(outage.related!.length);
+    const lone = { ...full, linked: [], notified: '' };
+    expect(proc(full).score - proc(lone).score).toBe(4);
+  });
+
+  it('a resolution that was never confirmed or applied comes back reopened, once', () => {
+    const sc = BUILTIN_SCENARIOS.find((x) => x.id === 'hw-slow-disk')!;
+    const ideal = playIdeal(sc);
+    expect(reopenReason(sc, ideal, 'resolve', sc.correctRootCause)).toBeUndefined();
+    expect(reopenReason(sc, initSession(sc), 'resolve', sc.correctRootCause)).toMatch(/never actually applied/);
+    expect(reopenReason(sc, { ...ideal, confirmed: false }, 'resolve', sc.correctRootCause)).toMatch(/Nobody checked/);
+    const reopened = sessionReducer(sc)(initSession(sc), { type: 'reopen', attemptId: 't1', ticket: 'INC-1', at: 0 });
+    expect(reopened.chat[0].text).toMatch(/Reopened/);
+    expect(reopenReason(sc, reopened, 'resolve', 'x')).toBeUndefined();
+  });
+
+  it('the receiving team judges an escalation', () => {
+    const sc = BUILTIN_SCENARIOS.find((x) => x.correctOutcome === 'escalate' && x.escalateTo)!;
+    const s = playIdeal(sc);
+    const attempt = (team: string, note = idealSubmission(sc).note) => {
+      const sub = { ...idealSubmission(sc), team: team as never, note };
+      return { submission: sub, result: gradeTicket(sc, s, sub, 30) } as never;
+    };
+    expect(handoffVerdict(sc, attempt(sc.escalateTo!))!.verdict).toBe('accepted');
+    const other = TEAMS.find((t) => t !== sc.escalateTo)!;
+    expect(handoffVerdict(sc, attempt(other))!.verdict).toBe('reassigned');
+    expect(handoffVerdict(sc, attempt(sc.escalateTo!, 'Escalated.'))!.verdict).toBe('returned');
   });
 });
 

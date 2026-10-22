@@ -325,6 +325,11 @@ export const networkScenarios: Scenario[] = [
     priority: 'P1',
     reportedPriority: 'P3',
     triageNote: 'One caller logged it as their own connection, but a whole floor is down: high impact, high urgency.',
+    related: [
+      { id: 'INC-31877', name: 'Priya Shah', department: 'Finance', minutesAgo: 6, text: 'No internet on my desk PC since about 9:40. Wi-Fi on my phone works.' },
+      { id: 'INC-31879', name: 'Marcus Hill', department: 'Operations', minutesAgo: 5, text: "Can't reach any shared drives or Teams from my desk. Floor 3 east." },
+      { id: 'INC-31884', name: 'Chloe Martin', department: 'Digital', minutesAgo: 2, text: 'Is the network down? Nobody near me can get online.' },
+    ],
     channel: 'phone',
     targetMinutes: 5,
     requester: person('Samuel Achebe', 'Operations Team Lead', 'Operations', 'HQ, Floor 3 (east)'),

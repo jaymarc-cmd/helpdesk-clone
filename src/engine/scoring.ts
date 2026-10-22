@@ -158,6 +158,20 @@ export function gradeTicket(
     } else if (!uniqueHarmful.length) {
       items.push({ ok: true, text: 'Targeted troubleshooting, with no shotgun changes' });
     }
+    // Major incidents: one ticket owns the problem and everyone affected hears about it.
+    if (scenario.related?.length) {
+      const linked = (s.linked ?? []).length;
+      if (linked === scenario.related.length) items.push({ ok: true, text: `Linked all ${linked} related tickets` });
+      else {
+        score -= 2;
+        items.push({ ok: false, text: `Link the related tickets from other users (${linked} of ${scenario.related.length} linked)` });
+      }
+      if (s.notified) items.push({ ok: true, text: 'Sent one update to everyone affected' });
+      else {
+        score -= 2;
+        items.push({ ok: false, text: 'Send an update to everyone on the linked tickets' });
+      }
+    }
     if (scenario.correctOutcome === 'resolve' && sub.outcome === 'resolve') {
       if (s.confirmed) items.push({ ok: true, text: 'Confirmed the fix with the user before resolving' });
       else {

@@ -9,23 +9,26 @@ import {
   CircleCheck,
   Clock,
   FileText,
+  Forward,
   History,
   Hourglass,
   Info,
   Lightbulb,
+  type LucideIcon,
   MessageCircleQuestion,
   MousePointerClick,
   Printer,
   RotateCcw,
   SearchX,
+  Sparkles,
   SquareTerminal,
+  StickyNote,
   Timer,
   TimerOff,
   X,
-  type LucideIcon,
-  Sparkles, StickyNote
 } from 'lucide-react';
 import { KB_BY_ID } from '../data/kb';
+import { handoffVerdict } from '../engine/followup';
 import { HINT_PENALTY } from '../engine/scoring';
 import { slaDeadline } from '../engine/shift';
 import { useStore } from '../state/store';
@@ -77,6 +80,7 @@ export function TicketReview() {
   const navigate = useNavigate();
   const attempt = state.tickets.find((t) => t.id === attemptId);
   const scenario = attempt ? getScenario(attempt.scenarioId) : undefined;
+  const handoff = attempt && scenario ? handoffVerdict(scenario, attempt) : undefined;
   const requesterName = scenario?.requester.name.split(' ')[0] ?? 'Requester';
   const back = state.activeShift ? { to: '/shift', label: 'Shift board' } : { to: '/tickets', label: 'Ticket queue' };
 
@@ -170,6 +174,22 @@ export function TicketReview() {
         }
       />
 
+      {attempt.reopenReason && (
+        <div className="callout warning">
+          <RotateCcw size={18} aria-hidden />
+          <div className="callout-body">
+            <strong>This resolution won't hold.</strong> {attempt.reopenReason} The ticket comes back to your queue as reopened in a few minutes.
+          </div>
+        </div>
+      )}
+      {handoff && (
+        <div className={`callout ${handoff.verdict === 'accepted' ? 'success' : 'warning'}`}>
+          <Forward size={18} aria-hidden />
+          <div className="callout-body">
+            <strong>{handoff.verdict === 'accepted' ? 'Hand-off accepted.' : handoff.verdict === 'reassigned' ? 'Hand-off bounced.' : 'Hand-off returned.'}</strong> {handoff.message}
+          </div>
+        </div>
+      )}
       <section className="card review-summary" aria-label="Result summary">
         <ScoreRing score={r.total} label={`Grade ${r.grade}`} />
         <div className="review-summary-body">

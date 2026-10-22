@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Clock, FilterX, LayoutGrid, List, Search, SearchX, Shuffle, Timer } from 'lucide-react';
+import { Clock, FilterX, LayoutGrid, List, RotateCcw, Search, SearchX, Shuffle, Timer } from 'lucide-react';
 import { bestByScenario } from '../engine/progress';
 import { useStore } from '../state/store';
 import { CATEGORIES, type Category } from '../types';
-import { BestScorePill, CategoryPill, DifficultyDots, EmptyState, NewPill, PageHeader, PriorityPill, ticketNumber } from '../components/ui';
+import { BestScorePill, CategoryPill, DifficultyDots, EmptyState, NewPill, PageHeader, PriorityPill, ticketNumber, useNow } from '../components/ui';
 import { CHANNEL_LABEL, CategoryIcon, ChannelIcon } from '../components/icons';
 import '../styles/queue-review.css';
 import { loggedPriority } from '../engine/triage';
@@ -44,6 +44,14 @@ const VIEW_KEY = 'tierone-queue-view';
 export function Queue() {
   const { state, scenarios, works } = useStore();
   const navigate = useNavigate();
+  const now = useNow(5000);
+  // Resolutions that did not hold come back once they are due.
+  const reopened = state.reopens
+    .filter((r) => r.dueAt <= now && !works.some((w) => w.scenario.id === r.scenarioId))
+    .flatMap((r) => {
+      const sc = scenarios.find((x) => x.id === r.scenarioId);
+      return sc ? [{ r, sc }] : [];
+    });
   const best = bestByScenario(state);
   const [cat, setCat] = useState<Category | 'All'>('All');
   const [diff, setDiff] = useState<0 | 1 | 2 | 3>(0);
@@ -113,6 +121,28 @@ export function Queue() {
           </button>
         }
       />
+
+      {reopened.length > 0 && (
+        <section className="card queue-reopened" aria-labelledby="queue-reopened-h">
+          <div className="card-head">
+            <h2 id="queue-reopened-h">Reopened</h2>
+            <span className="pill pill-danger num">{reopened.length}</span>
+          </div>
+          <ul className="queue-reopened-list">
+            {reopened.map(({ r, sc }) => (
+              <li key={r.attemptId}>
+                <Link to={`/ticket/${sc.id}?reopen=${r.attemptId}`} className="queue-reopened-row">
+                  <RotateCcw size={16} aria-hidden />
+                  <span>
+                    <span className="mono">{ticketNumber(sc.id)}</span> <strong>{sc.title}</strong>
+                    <span className="muted"> · {r.reason}</span>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="card card-tight queue-filters" aria-label="Filter tickets">
         <div className="queue-filter-row">

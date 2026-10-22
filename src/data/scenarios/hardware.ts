@@ -10,6 +10,10 @@ export const hardwareScenarios: Scenario[] = [
     priority: 'P2',
     reportedPriority: 'P3',
     triageNote: 'Printing is down for the whole building, so impact is high even though people can still work.',
+    related: [
+      { id: 'INC-40213', name: 'Hannah Brooks', department: 'People & Culture', minutesAgo: 14, text: "Nothing I send to the printer comes out. It just says 'printer unavailable'." },
+      { id: 'INC-40220', name: 'Aisha Kamara', department: 'Finance', minutesAgo: 9, text: "Can't print the payment run. Tried two different printers." },
+    ],
     channel: 'phone',
     targetMinutes: 6,
     requester: person('Kwame Asante', 'Office Coordinator', 'Facilities', 'HQ, Ground floor'),

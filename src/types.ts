@@ -164,6 +164,10 @@ export interface Scenario {
   reportedPriority?: Priority;
   /** Why the correct priority is what it is, shown in the review. */
   triageNote?: string;
+  /** Other users' tickets about the same problem; they should be linked to this one and kept informed. */
+  related?: RelatedTicket[];
+  /** What the requester says if a bad resolution makes the ticket come back. */
+  reopenText?: string;
   channel: Channel;
   /** Target handling time in real minutes. */
   targetMinutes: number;
@@ -243,6 +247,14 @@ export interface WorkLogEntry {
   text: string;
 }
 
+export interface RelatedTicket {
+  id: string;
+  name: string;
+  department: string;
+  minutesAgo: number;
+  text: string;
+}
+
 /** One line of the ticket conversation as it was saved with the attempt. */
 export interface TranscriptLine {
   from: 'agent' | 'requester' | 'system' | 'note';
@@ -266,6 +278,18 @@ export interface TicketAttempt {
   hintsUsed: number;
   /** The conversation with the requester, including internal notes. Missing on older attempts. */
   transcript?: TranscriptLine[];
+  /** This attempt works a ticket that came back after an earlier attempt. */
+  reopenOf?: string;
+  /** Why this resolution will not hold; the ticket comes back. */
+  reopenReason?: string;
+}
+
+/** A resolved ticket that is coming back. */
+export interface Reopen {
+  attemptId: string;
+  scenarioId: string;
+  dueAt: number;
+  reason: string;
 }
 
 // ---------- Calls ----------
@@ -404,6 +428,8 @@ export interface AppState {
   works: ActiveWork[];
   /** The ticket the workstation apps act on. */
   focusedWork: string | null;
+  /** Resolved tickets that are coming back. */
+  reopens: Reopen[];
 }
 
 export type HoldReason = 'Awaiting user' | 'Awaiting approval' | 'Awaiting vendor';

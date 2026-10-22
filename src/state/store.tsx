@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from 'react';
 import { allScenarios, findScenario } from '../data/scenarios';
 import { BADGES, newlyEarned } from '../engine/progress';
+import { REOPEN_AFTER_MS } from '../engine/followup';
 import { buildShiftReport, completeShiftTicket, createShift, tickShift } from '../engine/shift';
 import { hydrateSession, initSession, sessionReducer, type SessionEventInput, type SessionState } from '../engine/session';
 import type { ActiveWork, AppState, CallAttempt, HoldReason, InterviewAttempt, Scenario, Settings, ShiftReport, TicketAttempt } from '../types';
@@ -19,7 +20,7 @@ type Action =
   | { type: 'tickShift'; now: number }
   | { type: 'endShift'; report: ShiftReport }
   | { type: 'abandonShift' }
-  | { type: 'startWork'; scenarioId: string; mode: 'practice' | 'shift' | 'exam'; now: number }
+  | { type: 'startWork'; scenarioId: string; mode: 'practice' | 'shift' | 'exam'; now: number; reopen?: { attemptId: string; ticket: string } }
   | { type: 'workEvent'; event: SessionEventInput; now: number; scenarioId?: string }
   | { type: 'releaseWork'; scenarioId?: string }
   | { type: 'focusWork'; scenarioId: string }
@@ -72,14 +73,22 @@ function reducer(state: AppState, action: Action): AppState {
         const sc = findScenario(action.attempt.scenarioId, state.customScenarios);
         if (sc) activeShift = completeShiftTicket(activeShift, sc, action.attempt);
       }
-      return withBadges({ ...state, tickets: [...state.tickets, action.attempt], activeShift, ...withoutWork(state, action.attempt.scenarioId) });
+      const a = action.attempt;
+      // A resolution that will not hold comes back later; working a reopened ticket clears it.
+      const reopens = [
+        ...state.reopens.filter((r) => r.attemptId !== a.reopenOf),
+        ...(a.reopenReason ? [{ attemptId: a.id, scenarioId: a.scenarioId, dueAt: Date.now() + REOPEN_AFTER_MS, reason: a.reopenReason }] : []),
+      ];
+      return withBadges({ ...state, tickets: [...state.tickets, a], activeShift, reopens, ...withoutWork(state, a.scenarioId) });
     }
     case 'startWork': {
       const sc = findScenario(action.scenarioId, state.customScenarios);
       if (!sc) return state;
       if (state.works.some((w) => w.scenarioId === sc.id)) return { ...state, focusedWork: sc.id };
       if (state.works.length >= MAX_OPEN_TICKETS) return state;
-      const work: ActiveWork = { scenarioId: sc.id, mode: action.mode, startedAt: action.now, session: initSession(sc) };
+      const fresh = initSession(sc);
+      const session = action.reopen ? sessionReducer(sc)(fresh, { type: 'reopen', attemptId: action.reopen.attemptId, ticket: action.reopen.ticket, at: 0 }) : fresh;
+      const work: ActiveWork = { scenarioId: sc.id, mode: action.mode, startedAt: action.now, session };
       return { ...state, works: [...state.works, work], focusedWork: sc.id };
     }
     case 'workEvent':

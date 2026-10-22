@@ -19,14 +19,17 @@ import {
   IdCard,
   Info,
   Lightbulb,
+  Link2,
   ListChecks,
   type LucideIcon,
+  Megaphone,
   MessageCircleQuestion,
   MessageSquareText,
   MonitorSmartphone,
   PackageCheck,
   Pause,
   Play,
+  RotateCcw,
   SearchX,
   Send,
   Server,
@@ -43,6 +46,7 @@ import {
 import { actionsForTool } from '../data/actions';
 import { KB_BY_ID } from '../data/kb';
 import { HINT_PENALTY, firstResponseTarget, gradeTicket } from '../engine/scoring';
+import { reopenReason } from '../engine/followup';
 import { nextHint, type ChatMessage, type SessionState } from '../engine/session';
 import { MAX_OPEN_TICKETS, useStore, type Work } from '../state/store';
 import { uid } from '../state/storage';
@@ -137,13 +141,21 @@ function UnassignedTicket({ scenario }: { scenario: Scenario }) {
   const { state, works, dispatch } = useStore();
   const [params] = useSearchParams();
   const full = works.length >= MAX_OPEN_TICKETS;
+  const reopenId = params.get('reopen');
+  const reopen = reopenId ? state.reopens.find((r) => r.attemptId === reopenId && r.scenarioId === scenario.id && r.dueAt <= Date.now()) : undefined;
   const inShift =
     params.get('mode') === 'shift' && !!state.activeShift?.tickets.some((t) => t.scenarioId === scenario.id && t.status === 'waiting');
   const best = state.tickets.filter((t) => t.scenarioId === scenario.id).reduce<number | null>((m, t) => Math.max(m ?? 0, t.result.total), null);
   const r = scenario.requester;
 
   const assign = () => {
-    dispatch({ type: 'startWork', scenarioId: scenario.id, mode: inShift ? 'shift' : 'practice', now: Date.now() });
+    dispatch({
+      type: 'startWork',
+      scenarioId: scenario.id,
+      mode: inShift ? 'shift' : 'practice',
+      now: Date.now(),
+      reopen: reopen ? { attemptId: reopen.attemptId, ticket: ticketNumber(scenario.id) } : undefined,
+    });
   };
 
   return (
@@ -189,6 +201,14 @@ function UnassignedTicket({ scenario }: { scenario: Scenario }) {
             </div>
           </section>
 
+          {reopen && (
+            <div className="callout warning">
+              <RotateCcw size={18} aria-hidden />
+              <div className="callout-body">
+                <strong>Reopened.</strong> {reopen.reason} <Link to={`/review/${reopen.attemptId}`}>See the earlier attempt</Link>.
+              </div>
+            </div>
+          )}
           <section className="card wk-assign">
             {full ? (
               <>
@@ -281,6 +301,8 @@ function AssignedTicket({ work }: { work: Work }) {
       ],
       hintsUsed: s.hintsUsed,
       transcript: s.chat,
+      reopenOf: s.reopenOf,
+      reopenReason: reopenReason(sc, s, sub.outcome, sub.rootCause),
     };
     dispatch({ type: 'addTicket', attempt });
     navigate(`/review/${attempt.id}`, { replace: true });
@@ -362,6 +384,7 @@ function AssignedTicket({ work }: { work: Work }) {
         </div>
         <aside className="wk-ticket-side">
           <TicketDetailsCard work={work} />
+          {sc.related?.length ? <RelatedTicketsCard work={work} /> : null}
           <ToolsCard work={work} />
           <RequesterCard scenario={sc} s={s} />
           <FindingsCard scenario={sc} s={s} />
@@ -499,6 +522,90 @@ function TicketDetailsCard({ work }: { work: Work }) {
           <span className="tiny muted">{p ? (p !== logged ? `Logged as ${logged}` : 'From impact x urgency') : `As logged; set impact and urgency`}</span>
         </dd>
       </dl>
+    </section>
+  );
+}
+
+/** Other users' tickets about the same problem: link them here and update everyone at once. */
+function RelatedTicketsCard({ work }: { work: Work }) {
+  const sc = work.scenario;
+  const s = work.session;
+  const related = sc.related ?? [];
+  const [writing, setWriting] = useState(false);
+  const [text, setText] = useState('');
+  const linked = s.linked ?? [];
+  return (
+    <section className="card">
+      <div className="card-head">
+        <h3>Similar tickets</h3>
+        <span className="pill pill-warning num">{related.length} in the last 15 min</span>
+      </div>
+      <p className="card-sub">Other people are reporting the same problem. Link their tickets to this one so it is handled once, then keep everyone updated.</p>
+      <ul className="wk-related">
+        {related.map((r) => {
+          const done = linked.includes(r.id);
+          return (
+            <li key={r.id}>
+              <div className="wk-related-text">
+                <span>
+                  <span className="mono">{r.id}</span> · <strong>{r.name}</strong> <span className="muted">({r.department}, {r.minutesAgo} min ago)</span>
+                </span>
+                <span className="muted">{r.text}</span>
+              </div>
+              {done ? (
+                <span className="pill pill-success">
+                  <Link2 aria-hidden />
+                  Linked
+                </span>
+              ) : (
+                <button className="btn btn-sm" onClick={() => work.emit({ type: 'link', id: r.id })}>
+                  <Link2 size={14} aria-hidden />
+                  Link
+                </button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {s.notified ? (
+        <p className="tiny muted">Update sent to {linked.length + 1} people.</p>
+      ) : (
+        <button
+          className="btn btn-sm btn-block"
+          disabled={!linked.length}
+          onClick={() => {
+            setText(
+              `We're aware of a problem affecting ${sc.category === 'Network' ? 'network access' : 'this service'} and are working on it now. We'll send another update within 30 minutes. You don't need to raise a separate ticket. Thank you for your patience.`,
+            );
+            setWriting(true);
+          }}
+        >
+          <Megaphone size={14} aria-hidden />
+          Update everyone affected
+        </button>
+      )}
+      {writing && (
+        <Modal title="Update everyone affected" onClose={() => setWriting(false)}>
+          <p className="muted">Sent to {sc.requester.name} and the {linked.length} linked requesters. Say what is known, what you are doing and when the next update comes.</p>
+          <textarea rows={5} value={text} onChange={(e) => setText(e.target.value)} aria-label="Update" />
+          <div className="modal-actions">
+            <button className="btn" onClick={() => setWriting(false)}>
+              Cancel
+            </button>
+            <button
+              className="btn btn-primary"
+              disabled={text.trim().length < 20}
+              onClick={() => {
+                work.emit({ type: 'notify', text });
+                setWriting(false);
+              }}
+            >
+              <Send size={14} aria-hidden />
+              Send update
+            </button>
+          </div>
+        </Modal>
+      )}
     </section>
   );
 }

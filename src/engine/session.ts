@@ -59,6 +59,12 @@ export interface SessionState {
   triage: Triage;
   /** Email and portal requesters answer later, not in real time. */
   async: boolean;
+  /** Related tickets linked to this one. */
+  linked: string[];
+  /** Update sent to everyone on the linked tickets. */
+  notified: string;
+  /** The attempt this ticket was reopened from. */
+  reopenOf?: string;
 }
 
 export type SessionEvent =
@@ -80,7 +86,12 @@ export type SessionEvent =
   | { type: 'triage'; patch: Triage; at: number }
   | { type: 'hold'; reason: HoldReason; at: number }
   /** Back in progress; `byUser` when the requester replied to a ticket on hold for them. */
-  | { type: 'resume'; reason: HoldReason; byUser: boolean; at: number };
+  | { type: 'resume'; reason: HoldReason; byUser: boolean; at: number }
+  | { type: 'link'; id: string; at: number }
+  /** One update to every requester on the linked tickets. */
+  | { type: 'notify'; text: string; at: number }
+  /** The ticket came back after an earlier resolution. */
+  | { type: 'reopen'; attemptId: string; ticket: string; at: number };
 
 /** Distributes Omit across the union so each event keeps its own fields. */
 export type SessionEventInput = SessionEvent extends infer E ? (E extends SessionEvent ? Omit<E, 'at'> : never) : never;
@@ -115,6 +126,8 @@ export function initSession(scenario: Scenario): SessionState {
     remoteNoticed: false,
     triage: {},
     async: isAsyncChannel(scenario.channel),
+    linked: [],
+    notified: '',
   };
 }
 
@@ -349,6 +362,38 @@ function innerReducer(scenario: Scenario) {
           log: [...state.log, { at: ev.at, kind: 'system', text: ev.byUser ? `${firstName} replied; taken off hold` : `Taken off hold (${ev.reason})` }],
         };
       }
+      case 'link': {
+        const r = scenario.related?.find((x) => x.id === ev.id);
+        if (!r || state.linked.includes(r.id)) return state;
+        return {
+          ...state,
+          linked: [...state.linked, r.id],
+          log: [...state.log, { at: ev.at, kind: 'action', text: `Linked ${r.id} (${r.name}) to this ticket` }],
+        };
+      }
+      case 'notify': {
+        const text = ev.text.trim();
+        if (!text || !state.linked.length) return state;
+        return {
+          ...state,
+          notified: text,
+          chat: [...state.chat, { from: 'system', text: `Update sent to ${state.linked.length + 1} affected users` }],
+          log: [...state.log, { at: ev.at, kind: 'action', text: `Update sent to everyone on linked tickets: ${text}` }],
+        };
+      }
+      case 'reopen':
+        return {
+          ...state,
+          reopenOf: ev.attemptId,
+          chat: [
+            { from: 'system', text: `Reopened: ${ev.ticket} was resolved earlier, but the problem is back.` },
+            {
+              from: 'requester',
+              text: scenario.reopenText ?? `Hi, it's me again about ${ev.ticket}. It's still not working, or it stopped working again. Can you take another look?`,
+            },
+          ],
+          log: [...state.log, { at: ev.at, kind: 'system', text: `Reopened from an earlier resolution (${ev.ticket})` }],
+        };
       case 'nudge': {
         if (state.nudges >= MAX_NUDGES || state.confirmed) return state;
         if (ev.at - lastChatAt(state) < quietAllowance(state)) return state;
