@@ -30,7 +30,7 @@ import { rankFor, totalXp } from '../engine/progress';
 import { useStore } from '../state/store';
 import { BadgeGlyph } from './icons';
 import { IconTile, Modal, ProgressBar, initials } from './ui';
-import { ActiveTicketBar } from './work';
+import { ActiveTicketBar, ShiftAlerts } from './work';
 import '../styles/shell-dashboard.css';
 
 type NavItem = { section: string } | { to: string; icon: LucideIcon; label: string; end?: boolean };
@@ -150,6 +150,7 @@ export function Layout() {
       <main className="main">
         <div className="main-inner">
           <ActiveTicketBar />
+          <ShiftAlerts />
           <Outlet />
         </div>
       </main>

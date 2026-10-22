@@ -40,6 +40,8 @@ import {
   StickyNote,
   ThumbsUp,
   Timer,
+  Volume2,
+  VolumeX,
   Wrench,
   X,
 } from 'lucide-react';
@@ -47,6 +49,7 @@ import { actionsForTool } from '../data/actions';
 import { KB_BY_ID } from '../data/kb';
 import { HINT_PENALTY, firstResponseTarget, gradeTicket } from '../engine/scoring';
 import { reopenReason } from '../engine/followup';
+import { useSpeaker } from '../components/speech';
 import { nextHint, type ChatMessage, type SessionState } from '../engine/session';
 import { MAX_OPEN_TICKETS, useStore, type Work } from '../state/store';
 import { uid } from '../state/storage';
@@ -939,6 +942,12 @@ function Conversation({ work }: { work: Work }) {
     if (m.from !== 'requester') lastNonRequester = i;
   });
   const elapsedNow = useElapsed(work.startedAt);
+  // Phone tickets: the caller's replies are spoken, like being on the call.
+  const { state: appState, dispatch: appDispatch } = useStore();
+  const phone = sc.channel === 'phone';
+  const voiceOn = phone && appState.settings.voice;
+  const speaker = useSpeaker(voiceOn);
+  const spokenUpTo = useRef(s.chat.length);
   // Email and portal: replies show up when their time comes, in time order. Live chat: one at a time, with typing.
   const shown = s.async
     ? s.chat
@@ -948,6 +957,13 @@ function Conversation({ work }: { work: Work }) {
         .map(({ m }) => m)
     : s.chat.slice(0, Math.max(visible, lastNonRequester + 1));
   const typing = !s.async && shown.length < s.chat.length;
+  useEffect(() => {
+    if (shown.length <= spokenUpTo.current) return;
+    const fresh = shown.slice(spokenUpTo.current).filter((m) => m.from === 'requester');
+    spokenUpTo.current = shown.length;
+    if (fresh.length) speaker.speak(fresh.map((m) => m.text).join(' '), { pitch: 0.85 + ([...sc.requester.name].reduce((n, c) => n + c.charCodeAt(0), 0) % 4) * 0.1 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shown.length]);
   const awaiting = s.async && shown.length < s.chat.length;
   const lastAgent = shown.map((m) => m.from).lastIndexOf('agent');
   const available = sc.questions.filter((q) => !s.asked.includes(q.id) && (q.requires ?? []).every((f) => s.revealed.includes(f)));
@@ -987,13 +1003,28 @@ function Conversation({ work }: { work: Work }) {
           <h2>{sc.requester.name}</h2>
           <span className="wk-presence">
             <span className={`status-dot ${s.async ? 'warn' : 'ok'}`} aria-hidden />
-            {typing ? `${firstName} is typing…` : s.async ? `${CHANNEL_VERB[sc.channel]} · replies when they check it` : `Online · ${CHANNEL_VERB[sc.channel] ?? 'Conversation'}`}
+            {typing ? (phone ? `${firstName} is talking…` : `${firstName} is typing…`) : phone ? `On the phone · ${mmss(elapsedNow)}` : s.async ? `${CHANNEL_VERB[sc.channel]} · replies when they check it` : `Online · ${CHANNEL_VERB[sc.channel] ?? 'Conversation'}`}
           </span>
         </div>
         <span className={`pill pill-${sla.tone} num`} title={`First reply target for ${CHANNEL_LABEL[sc.channel].toLowerCase()}: ${mmss(target)}`}>
           <Timer aria-hidden />
           {sla.text}
         </span>
+        {phone && speaker.supported && (
+          <button
+            type="button"
+            className={`btn btn-sm ${voiceOn ? '' : 'btn-ghost'}`}
+            onClick={() => {
+              if (voiceOn) speaker.stop();
+              appDispatch({ type: 'settings', patch: { voice: !appState.settings.voice } });
+            }}
+            aria-pressed={voiceOn}
+            title="Hear the caller's replies"
+          >
+            {voiceOn ? <Volume2 size={14} aria-hidden /> : <VolumeX size={14} aria-hidden />}
+            {speaker.speaking ? 'Speaking…' : 'Caller voice'}
+          </button>
+        )}
         <span className={`pill pill-${mood.tone}`} title="How the requester is feeling">
           {mood.label}
         </span>

@@ -1,13 +1,26 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ArrowRight, Check, CornerDownRight, Inbox, Info, Lock, MessageSquare, SquareTerminal, Timer, TriangleAlert } from 'lucide-react';
+import {
+  ArrowRight,
+  Check,
+  CornerDownRight,
+  Inbox,
+  Info,
+  Lock,
+  MessageSquare,
+  Siren,
+  SquareTerminal,
+  Timer,
+  TriangleAlert,
+  X,
+} from 'lucide-react';
 import { actionLabel } from '../data/actions';
 import { TERMINAL_HELP } from '../engine/terminal';
 import { lastChatAt, quietAllowance, type SessionState } from '../engine/session';
 import { MAX_NUDGES } from '../engine/chat';
 import { useStore, type Work } from '../state/store';
 import { Modal, PriorityPill, formatClock, ticketNumber, useNow } from './ui';
-import { currentPriority } from '../engine/triage';
+import { currentPriority, loggedPriority } from '../engine/triage';
 
 /** Seconds since the active ticket was assigned. */
 export function useElapsed(startedAt: number | undefined): number {
@@ -400,5 +413,65 @@ export function SignInLog({ lines }: { lines: string[] }) {
         );
       })}
     </ul>
+  );
+}
+
+/**
+ * Interruptions during a shift: a new ticket arriving, louder when it is urgent or a VIP turns up at your desk.
+ * Renders a small stack of alerts in the corner.
+ */
+export function ShiftAlerts() {
+  const { state, getScenario } = useStore();
+  const tickets = state.activeShift?.tickets ?? [];
+  const [seen, setSeen] = useState(tickets.length);
+  const [alerts, setAlerts] = useState<{ id: string; scenarioId: string; title: string; text: string; urgent: boolean }[]>([]);
+
+  useEffect(() => {
+    if (!state.activeShift) {
+      setSeen(0);
+      return;
+    }
+    if (tickets.length <= seen) return;
+    const fresh = tickets.slice(seen).flatMap((t) => {
+      const sc = getScenario(t.scenarioId);
+      if (!sc) return [];
+      const p = loggedPriority(sc);
+      const urgent = p === 'P1' || p === 'P2' || !!sc.requester.vip;
+      const who = sc.requester.name;
+      const title = sc.requester.vip ? `${who} (VIP) is at your desk` : p === 'P1' ? 'P1 just came in' : urgent ? `${p} ticket arrived` : 'New ticket in the queue';
+      return [{ id: `${t.scenarioId}-${t.arrivedAt}`, scenarioId: sc.id, title, text: `${ticketNumber(sc.id)} · ${sc.title}`, urgent }];
+    });
+    setSeen(tickets.length);
+    setAlerts((a) => [...a, ...fresh].slice(-3));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tickets.length, !!state.activeShift]);
+
+  // Routine arrivals fade on their own; urgent ones stay until handled or dismissed.
+  useEffect(() => {
+    if (!alerts.some((a) => !a.urgent)) return;
+    const t = setTimeout(() => setAlerts((a) => a.filter((x) => x.urgent)), 8000);
+    return () => clearTimeout(t);
+  }, [alerts]);
+
+  if (!alerts.length) return null;
+  const dismiss = (id: string) => setAlerts((a) => a.filter((x) => x.id !== id));
+  return (
+    <div className="wk-alerts" aria-live="assertive">
+      {alerts.map((a) => (
+        <div key={a.id} className={`wk-alert ${a.urgent ? 'urgent' : ''}`} role="alert">
+          {a.urgent ? <Siren size={18} aria-hidden /> : <Inbox size={18} aria-hidden />}
+          <div className="wk-alert-text">
+            <strong>{a.title}</strong>
+            <span>{a.text}</span>
+          </div>
+          <Link to={`/ticket/${a.scenarioId}?mode=shift`} className="btn btn-sm" onClick={() => dismiss(a.id)}>
+            Open
+          </Link>
+          <button className="icon-btn" onClick={() => dismiss(a.id)} aria-label="Dismiss">
+            <X size={14} />
+          </button>
+        </div>
+      ))}
+    </div>
   );
 }
