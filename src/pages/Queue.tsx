@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Clock, FilterX, LayoutGrid, List, RotateCcw, Search, SearchX, Shuffle, Timer } from 'lucide-react';
 import { bestByScenario } from '../engine/progress';
 import { useStore } from '../state/store';
@@ -53,10 +53,32 @@ export function Queue() {
       return sc ? [{ r, sc }] : [];
     });
   const best = bestByScenario(state);
-  const [cat, setCat] = useState<Category | 'All'>('All');
-  const [diff, setDiff] = useState<0 | 1 | 2 | 3>(0);
-  const [status, setStatus] = useState<'all' | 'new' | 'passed' | 'retry'>('all');
-  const [q, setQ] = useState('');
+  // Filters live in the address (?cat=Network&level=2&status=new&q=vpn): Back from a ticket returns to the same
+  // list, and a filtered queue can be bookmarked. Changes replace the entry so typing doesn't fill the history.
+  const [params, setParams] = useSearchParams();
+  const catParam = params.get('cat') ?? '';
+  const cat: Category | 'All' = (CATEGORIES as string[]).includes(catParam) ? (catParam as Category) : 'All';
+  const levelParam = Number(params.get('level'));
+  const diff = ([1, 2, 3].includes(levelParam) ? levelParam : 0) as 0 | 1 | 2 | 3;
+  const statusParam = params.get('status') ?? '';
+  const status = (['new', 'passed', 'retry'].includes(statusParam) ? statusParam : 'all') as 'all' | 'new' | 'passed' | 'retry';
+  const q = params.get('q') ?? '';
+  const setFilters = (patch: Record<string, string | null>) =>
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        for (const [k, v] of Object.entries(patch)) {
+          if (v) next.set(k, v);
+          else next.delete(k);
+        }
+        return next;
+      },
+      { replace: true },
+    );
+  const setCat = (c: Category | 'All') => setFilters({ cat: c === 'All' ? null : c });
+  const setDiff = (d: 0 | 1 | 2 | 3) => setFilters({ level: d ? String(d) : null });
+  const setStatus = (v: 'all' | 'new' | 'passed' | 'retry') => setFilters({ status: v === 'all' ? null : v });
+  const setQ = (v: string) => setFilters({ q: v || null });
   const [view, setView] = useState<'cards' | 'list'>(() => {
     try {
       return localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'cards';
@@ -96,12 +118,7 @@ export function Queue() {
   }, [scenarios]);
 
   const filtersActive = cat !== 'All' || diff !== 0 || status !== 'all' || q !== '';
-  const clearFilters = () => {
-    setCat('All');
-    setDiff(0);
-    setStatus('all');
-    setQ('');
-  };
+  const clearFilters = () => setFilters({ cat: null, level: null, status: null, q: null });
 
   const random = () => {
     const pool = list.length ? list : scenarios;
