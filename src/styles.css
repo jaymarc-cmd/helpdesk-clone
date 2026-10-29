@@ -415,15 +415,11 @@ svg {
   .brand {
     border-bottom: 0;
   }
-  .brand-text,
-  .nav-section,
-  .sidebar-footer,
-  .nav .nav-label {
+  /* The sidebar becomes a top bar; its links move into the Menu drawer. */
+  .sidebar .brand-text small,
+  .sidebar > .nav,
+  .sidebar > .sidebar-footer {
     display: none;
-  }
-  .nav {
-    flex-direction: row;
-    gap: 2px;
   }
   :root {
     --page-gap: 22px;
