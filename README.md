@@ -20,7 +20,8 @@ Everything runs locally in the browser. No account or backend is needed, and pro
 | 📈 **Progress** | XP, a seven-rank career ladder, 18 badges, skill breakdown with a focus recommendation, history, and a printable training record. |
 | 🛠️ **Scenario builder** | Author your own tickets as JSON with live validation; import/export packs to share with a class or team. |
 | 💡 **Hints** | A hint engine suggests your next best step (−3 points each, can be turned off). |
-| 🌓 **Polish** | Light/dark themes, responsive down to phone width, export/import progress. |
+| ⌨️ **Quick to use** | **Ctrl/⌘ K** searches and jumps to any ticket, person, device, article or page. Keyboard shortcuts (press **?**): `g` then a letter to switch apps, `c` / `n` / `r` on a ticket. Unsent replies and resolve forms are kept per ticket. Queue filters stay in the address, so Back returns to the same list. |
+| 🌓 **Polish** | Light/dark themes, three text sizes, a labelled menu on phones, skip link and focus that follows page changes, export/import progress. |
 
 ## Getting started
 
