@@ -436,6 +436,8 @@ export interface Settings {
   hints: boolean;
   /** Step-by-step coach on tickets (on until you turn it off). */
   coach: boolean;
+  /** Scales all text in the app (not the simulated remote desktop). */
+  textSize: 'default' | 'large' | 'larger';
 }
 
 export interface ExamState {

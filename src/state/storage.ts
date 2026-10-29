@@ -5,7 +5,7 @@ const KEY = 'tierone-state-v1';
 export const DEFAULT_STATE: AppState = {
   version: 1,
   profile: null,
-  settings: { theme: 'system', voice: true, voiceRate: 1, hints: true, coach: true },
+  settings: { theme: 'system', voice: true, voiceRate: 1, hints: true, coach: true, textSize: 'default' },
   tickets: [],
   calls: [],
   interviews: [],

@@ -246,6 +246,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     else root.setAttribute('data-theme', state.settings.theme);
   }, [state.settings.theme]);
 
+  // Text size: rem-based sizes all follow the root font size.
+  useEffect(() => {
+    const root = document.documentElement;
+    if (state.settings.textSize === 'default') root.removeAttribute('data-text-size');
+    else root.setAttribute('data-text-size', state.settings.textSize);
+  }, [state.settings.textSize]);
+
   // Shift clock: deliver new tickets while a shift is running.
   useEffect(() => {
     if (!state.activeShift) return;

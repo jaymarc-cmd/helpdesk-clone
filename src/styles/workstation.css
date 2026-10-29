@@ -68,7 +68,8 @@
 /* ---------- Ticket page ---------- */
 .wk-ticket-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
+  /* rem, so the side panel widens with the text size setting */
+  grid-template-columns: minmax(0, 1fr) 22.5rem;
   gap: 24px;
   align-items: start;
 }
@@ -81,7 +82,7 @@
 }
 @media (max-width: 1180px) {
   .wk-ticket-grid {
-    grid-template-columns: minmax(0, 1fr) 320px;
+    grid-template-columns: minmax(0, 1fr) 20rem;
   }
 }
 

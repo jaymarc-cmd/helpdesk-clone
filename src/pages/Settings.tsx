@@ -11,6 +11,7 @@ import {
   Monitor,
   Moon,
   Palette,
+  Type,
   Save,
   Settings as Sun,
   Trash2,
@@ -31,6 +32,12 @@ const THEMES: { value: Settings['theme']; label: string; icon: LucideIcon }[] = 
   { value: 'system', label: 'System', icon: Monitor },
   { value: 'light', label: 'Light', icon: Sun },
   { value: 'dark', label: 'Dark', icon: Moon },
+];
+
+const TEXT_SIZES: { value: Settings['textSize']; label: string }[] = [
+  { value: 'default', label: 'Default' },
+  { value: 'large', label: 'Large' },
+  { value: 'larger', label: 'Larger' },
 ];
 
 function StatusNote({ notice }: { notice: Notice }) {
@@ -140,6 +147,31 @@ export function SettingsPage() {
                     onClick={() => dispatch({ type: 'settings', patch: { theme: value } })}
                   >
                     <Icon size={16} aria-hidden />
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="pbs-pref pbs-pref-wide">
+            <IconTile icon={Type} tone="neutral" size="sm" />
+            <div className="pbs-pref-text">
+              <span className="pbs-pref-title" id="pbs-text-label">
+                Text size
+              </span>
+              <span className="pbs-pref-desc">Make all text in the app bigger. Your browser's zoom works too.</span>
+            </div>
+            <div className="pbs-pref-control">
+              <div className="seg" role="group" aria-labelledby="pbs-text-label">
+                {TEXT_SIZES.map(({ value, label }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className={s.textSize === value ? 'active' : ''}
+                    aria-pressed={s.textSize === value}
+                    onClick={() => dispatch({ type: 'settings', patch: { textSize: value } })}
+                  >
                     {label}
                   </button>
                 ))}
