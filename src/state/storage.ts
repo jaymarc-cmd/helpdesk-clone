@@ -64,11 +64,13 @@ export function loadState(): AppState {
   }
 }
 
-export function saveState(state: AppState): void {
+/** False when storage is unavailable (private mode, quota). The app keeps working in memory either way. */
+export function saveState(state: AppState): boolean {
   try {
     localStorage.setItem(KEY, JSON.stringify(state));
+    return true;
   } catch {
-    // Storage unavailable (private mode, quota). The app keeps working in memory.
+    return false;
   }
 }
 

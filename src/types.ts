@@ -403,6 +403,8 @@ export interface ShiftTicket {
   status: 'waiting' | 'done';
   attemptId?: string;
   slaBreached?: boolean;
+  /** The priority its SLA ran on when it was closed: as logged, or as the analyst re-triaged it. */
+  priority?: Priority;
 }
 
 export interface ActiveShift {

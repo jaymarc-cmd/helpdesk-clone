@@ -2,7 +2,7 @@ import { ACTION_BY_ID, actionApp, actionLabel, parseGroupAction } from '../data/
 import { applyServerOp, parseServerAction, serversFor } from '../data/servers';
 import type { AccountState, Channel, DeviceState, HoldReason, Question, RevealTool, Scenario, ServerState, WorkLogEntry } from '../types';
 import { runCommand } from './terminal';
-import { triagedPriority, type Triage } from './triage';
+import { loggedPriority, triagedPriority, type Triage } from './triage';
 import { ASYNC_NUDGE_AFTER_SEC, HOLD_GRACE_SEC, MAX_NUDGES, NUDGE_AFTER_SEC, intentsOf, line, nudgeLine, pick, startingPatience, toneFor, type Intent } from './chat';
 
 export const VERIFY_QUESTION_ID = '__verify';
@@ -28,6 +28,8 @@ export interface SessionState {
   asked: string[];
   chat: ChatMessage[];
   revealed: string[];
+  /** When a finding becomes known, in seconds; an email or portal answer arrives later, and so does what it tells you. */
+  revealAt: Record<string, number>;
   actions: string[];
   actionResults: { id: string; text: string }[];
   verified: boolean;
@@ -104,6 +106,7 @@ export function initSession(scenario: Scenario): SessionState {
     asked: [],
     chat: [{ from: 'requester', text: scenario.description, at: 0 }],
     revealed: [],
+    revealAt: {},
     actions: [],
     actionResults: [],
     verified: false,
@@ -114,7 +117,7 @@ export function initSession(scenario: Scenario): SessionState {
     signInLogViewed: false,
     confirmed: false,
     confirmAttempts: 0,
-    log: [{ at: 0, kind: 'system', text: `Ticket assigned to you (${scenario.channel}, ${scenario.priority})` }],
+    log: [{ at: 0, kind: 'system', text: `Ticket assigned to you (${scenario.channel}, logged as ${loggedPriority(scenario)})` }],
     hintsUsed: 0,
     patience: startingPatience(scenario),
     nudges: 0,
@@ -142,6 +145,13 @@ const uniq = (xs: string[]) => [...new Set(xs)];
 
 function reveal(state: SessionState, ids: string[] | undefined): string[] {
   return ids?.length ? uniq([...state.revealed, ...ids]) : state.revealed;
+}
+
+/** The session as the analyst can see it `nowSec` into the ticket: findings still in an unanswered email are left out. */
+export function seenAt(s: SessionState, nowSec: number): SessionState {
+  const at = s.revealAt ?? {};
+  if (!s.revealed.some((id) => (at[id] ?? 0) > nowSec)) return s;
+  return { ...s, revealed: s.revealed.filter((id) => (at[id] ?? 0) <= nowSec) };
 }
 
 /** Best-matching unasked question for a free-typed message, by keyword hits. */
@@ -231,7 +241,13 @@ export function sessionReducer(scenario: Scenario) {
     const chat = next.chat.map((m, i) =>
       i >= state.chat.length && m.at === undefined ? { ...m, at: m.from === 'requester' ? ev.at + delay : ev.at } : m,
     );
-    return { ...next, chat };
+    // What the requester tells you arrives with their reply. Tool output is immediate.
+    const told = ev.type === 'action' ? ev.actionId.startsWith('guide_') : ev.type !== 'openTool';
+    const fresh = delay && told ? next.revealed.filter((id) => !state.revealed.includes(id)) : [];
+    if (!fresh.length) return { ...next, chat };
+    const revealAt = { ...(next.revealAt ?? {}) };
+    for (const id of fresh) revealAt[id] = ev.at + delay;
+    return { ...next, chat, revealAt };
   };
 }
 

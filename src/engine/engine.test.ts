@@ -4,7 +4,7 @@ import { CALLS } from '../data/calls';
 import { INTERVIEW_QUESTIONS } from '../data/interview';
 import { KB_BY_ID } from '../data/kb';
 import { BUILTIN_SCENARIOS } from '../data/scenarios';
-import { TEAMS, type Level, type Priority, type Scenario, type TicketSubmission } from '../types';
+import { TEAMS, type ActiveShift, type Level, type Priority, type Scenario, type TicketSubmission } from '../types';
 import { loggedPriority, priorityFor } from './triage';
 import { handoffVerdict, reopenReason } from './followup';
 import { EXAM_SIZE, coachSteps, examResult, pickExam, recommendTicket, targetDifficulty } from './coach';
@@ -12,7 +12,7 @@ import { callScore, maxCallPoints, validateCall } from './calls';
 import { scoreAnswer } from './interview';
 import { BADGES, newlyEarned, rankFor } from './progress';
 import { HINT_PENALTY, gradeTicket } from './scoring';
-import { initSession, matchQuestion, nextHint, sessionReducer, type SessionState } from './session';
+import { initSession, matchQuestion, nextHint, seenAt, sessionReducer, type SessionState } from './session';
 import { buildShiftReport, completeShiftTicket, createShift, tickShift } from './shift';
 import { runCommand } from './terminal';
 import { SCENARIO_TEMPLATE, validateScenario } from './validate';
@@ -426,6 +426,20 @@ describe('live chat', () => {
     expect(last(live).at).toBe(10);
   });
 
+  it('an email answer brings its findings when it arrives, not when the question is sent', () => {
+    const portal = BUILTIN_SCENARIOS.find((x) => x.id === 'hw-slow-disk')!;
+    const s = sessionReducer(portal)(initSession(portal), { type: 'ask', questionId: 'q_files', at: 30 });
+    const arrives = last(s).at!;
+    expect(s.revealed).toContain('videos');
+    expect(seenAt(s, arrives - 1).revealed).not.toContain('videos');
+    expect(seenAt(s, arrives).revealed).toContain('videos');
+    // Live chat: known straight away.
+    const chat = BUILTIN_SCENARIOS.find((x) => x.channel === 'chat' && x.questions.some((q) => q.reveals?.length))!;
+    const q = chat.questions.find((x) => x.reveals?.length && !x.requires?.length)!;
+    const c = sessionReducer(chat)(initSession(chat), { type: 'ask', questionId: q.id, at: 30 });
+    expect(seenAt(c, 30).revealed).toEqual(c.revealed);
+  });
+
   it('on hold for the user: they reply when they come back, and do not chase straight away', () => {
     let s = step(initSession(sc), { type: 'hold', reason: 'Awaiting user', at: 20 });
     expect(last(s)).toMatchObject({ from: 'system', text: 'Ticket on hold: Awaiting user' });
@@ -471,6 +485,12 @@ describe('shift engine', () => {
     expect(report.handled).toBe(1);
     expect(report.avgScore).toBeGreaterThanOrEqual(90);
     expect(report.breaches).toBe(0);
+
+    // Re-triaged up to P1 (8 min SLA): closing after 9 minutes breaches, though the logged priority would not.
+    const s2: ActiveShift = { startedAt: t0, durationMin: 25, tickets: [{ scenarioId: sc.id, arrivedAt: t0, status: 'waiting' }], pending: [], nextArrivalAt: t0 + 1e9 };
+    const at9 = t0 + 9 * 60_000;
+    expect(completeShiftTicket(s2, sc, attempt, at9, 'P1').tickets[0]).toMatchObject({ slaBreached: true, priority: 'P1' });
+    expect(completeShiftTicket(s2, sc, attempt, at9, 'P4').tickets[0].slaBreached).toBe(false);
   });
 });
 

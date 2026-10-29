@@ -247,7 +247,7 @@ export function TicketReview() {
             {shiftTicket && scenario && (
               <span className={`pill ${shiftTicket.slaBreached ? 'pill-danger' : 'pill-success'}`}>
                 {shiftTicket.slaBreached ? <TimerOff aria-hidden /> : <Timer aria-hidden />}
-                SLA {shiftTicket.slaBreached ? 'breached' : 'met'} ({formatClock((slaDeadline(shiftTicket.arrivedAt, loggedPriority(scenario)) - shiftTicket.arrivedAt) / 1000)})
+                SLA {shiftTicket.slaBreached ? 'breached' : 'met'} ({formatClock((slaDeadline(shiftTicket.arrivedAt, shiftTicket.priority ?? loggedPriority(scenario)) - shiftTicket.arrivedAt) / 1000)})
               </span>
             )}
           </div>

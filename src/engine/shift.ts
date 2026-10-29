@@ -52,12 +52,19 @@ export function slaDeadline(arrivedAt: number, priority: Priority): number {
   return arrivedAt + SHIFT_SLA_MIN[priority] * 60_000;
 }
 
-export function completeShiftTicket(shift: ActiveShift, scenario: Scenario, attempt: TicketAttempt, now = Date.now()): ActiveShift {
+/** SLA clocks follow the ticket's current priority, so re-triaging a ticket up or down moves its deadline. */
+export function completeShiftTicket(
+  shift: ActiveShift,
+  scenario: Scenario,
+  attempt: TicketAttempt,
+  now = Date.now(),
+  priority: Priority = loggedPriority(scenario),
+): ActiveShift {
   return {
     ...shift,
     tickets: shift.tickets.map((t) =>
       t.scenarioId === scenario.id && t.status === 'waiting'
-        ? { ...t, status: 'done', attemptId: attempt.id, slaBreached: now > slaDeadline(t.arrivedAt, loggedPriority(scenario)) }
+        ? { ...t, status: 'done', attemptId: attempt.id, priority, slaBreached: now > slaDeadline(t.arrivedAt, priority) }
         : t,
     ),
   };
@@ -68,13 +75,15 @@ export function buildShiftReport(
   attempts: TicketAttempt[],
   findScenario: (id: string) => Scenario | undefined,
   now = Date.now(),
+  /** Current priority of a ticket still being worked, if the analyst re-triaged it. */
+  priorityOf: (id: string) => Priority | undefined = () => undefined,
 ): ShiftReport {
   const done = shift.tickets.filter((t) => t.status === 'done');
   const waiting = shift.tickets.filter((t) => t.status === 'waiting');
   const doneAttempts = done.map((t) => attempts.find((a) => a.id === t.attemptId)).filter(Boolean) as TicketAttempt[];
   const breachedWaiting = waiting.filter((t) => {
     const sc = findScenario(t.scenarioId);
-    return sc ? now > slaDeadline(t.arrivedAt, loggedPriority(sc)) : false;
+    return sc ? now > slaDeadline(t.arrivedAt, priorityOf(t.scenarioId) ?? loggedPriority(sc)) : false;
   });
   const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
   return {

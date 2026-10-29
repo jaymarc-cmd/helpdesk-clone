@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -52,7 +52,7 @@ import { HINT_PENALTY, firstResponseTarget, gradeTicket } from '../engine/scorin
 import { coachSteps } from '../engine/coach';
 import { reopenReason } from '../engine/followup';
 import { useSpeaker } from '../components/speech';
-import { nextHint, type ChatMessage, type SessionState } from '../engine/session';
+import { nextHint, seenAt, type ChatMessage, type SessionState } from '../engine/session';
 import { MAX_OPEN_TICKETS, useStore, type Work } from '../state/store';
 import { uid } from '../state/storage';
 import { CATEGORIES, HOLD_REASONS, LEVELS, TEAMS, type Category, type HoldReason, type Level, type Outcome, type Scenario, type Team, type TicketAttempt, type WorkLogEntry } from '../types';
@@ -254,7 +254,7 @@ function UnassignedTicket({ scenario }: { scenario: Scenario }) {
         </div>
 
         <aside className="wk-ticket-side">
-          <RequesterCard scenario={scenario} />
+          <RequesterCard scenario={scenario} card />
         </aside>
       </div>
 
@@ -278,14 +278,14 @@ function AssignedTicket({ work }: { work: Work }) {
   const over = elapsed > sc.targetMinutes * 60;
 
   const showHint = () => {
-    const text = nextHint(sc, s);
+    const text = nextHint(sc, seenAt(s, elapsed));
     setHint(text);
     work.emit({ type: 'hint', text });
   };
 
   const submit = (sub: { rootCause: string; outcome: Outcome; team?: Team; note: string; reply: string }) => {
     const durationSec = Math.round((Date.now() - work.startedAt) / 1000);
-    const result = gradeTicket(sc, s, sub, durationSec);
+    const result = gradeTicket(sc, seenAt(s, durationSec), sub, durationSec);
     const attempt: TicketAttempt = {
       id: uid('t'),
       scenarioId: sc.id,
@@ -390,13 +390,7 @@ function AssignedTicket({ work }: { work: Work }) {
         </div>
         <aside className="wk-ticket-side">
           {state.settings.coach && work.mode !== 'exam' && <CoachCard work={work} />}
-          <TicketDetailsCard work={work} />
-          {sc.related?.length ? <RelatedTicketsCard work={work} /> : null}
-          <ToolsCard work={work} />
-          <RequesterCard scenario={sc} s={s} />
-          <FindingsCard scenario={sc} s={s} />
-          <RelatedKbCard scenario={sc} s={s} />
-          <ActivityCard s={s} />
+          <TicketSidePanel work={work} />
           <button className="btn btn-ghost btn-sm wk-release" onClick={() => setReleasing(true)}>
             Release ticket back to the queue
           </button>
@@ -466,10 +460,110 @@ function AssignedTicket({ work }: { work: Work }) {
   );
 }
 
+type SideTab = 'details' | 'requester' | 'tools' | 'activity';
+const SIDE_TABS: { id: SideTab; label: string }[] = [
+  { id: 'details', label: 'Details' },
+  { id: 'requester', label: 'Requester' },
+  { id: 'tools', label: 'Tools' },
+  { id: 'activity', label: 'Activity' },
+];
+/** Last tab per ticket, so going off to a tool and back lands where you were. */
+const sideTabMemo = new Map<string, SideTab>();
+
+/** Everything about the ticket beside the conversation, in one tabbed panel instead of a long stack of cards. */
+function TicketSidePanel({ work }: { work: Work }) {
+  const sc = work.scenario;
+  const s = work.session;
+  const ids = useId();
+  const [tab, setTabState] = useState<SideTab>(() => sideTabMemo.get(sc.id) ?? 'details');
+  const setTab = (t: SideTab) => {
+    sideTabMemo.set(sc.id, t);
+    setTabState(t);
+  };
+  const elapsed = useElapsed(work.startedAt);
+  const t = s.triage ?? {};
+  const untriaged = !t.category || !triagedPriority(t);
+  const onKey = (e: KeyboardEvent) => {
+    const i = SIDE_TABS.findIndex((x) => x.id === tab);
+    const step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+    if (!step) return;
+    e.preventDefault();
+    const next = SIDE_TABS[(i + step + SIDE_TABS.length) % SIDE_TABS.length].id;
+    setTab(next);
+    document.getElementById(`${ids}-${next}`)?.focus();
+  };
+  return (
+    <section className="card wk-side" aria-label="Ticket">
+      <div className="tabs wk-side-tabs" role="tablist" aria-label="Ticket sections" onKeyDown={onKey}>
+        {SIDE_TABS.map((x) => (
+          <button
+            key={x.id}
+            id={`${ids}-${x.id}`}
+            role="tab"
+            aria-selected={tab === x.id}
+            aria-controls={`${ids}-panel`}
+            tabIndex={tab === x.id ? 0 : -1}
+            className={`tab ${tab === x.id ? 'active' : ''}`}
+            onClick={() => setTab(x.id)}
+          >
+            {x.label}
+            {x.id === 'details' && untriaged && <span className="wk-side-dot" title="Needs triage" />}
+            {x.id === 'activity' && <span className="count num">{s.log.length}</span>}
+          </button>
+        ))}
+      </div>
+      <div id={`${ids}-panel`} role="tabpanel" aria-labelledby={`${ids}-${tab}`} className="wk-side-body">
+        {tab === 'details' && (
+          <>
+            <TicketDetailsCard work={work} />
+            {sc.related?.length ? <RelatedTicketsCard work={work} /> : null}
+            <FindingsCard scenario={sc} s={seenAt(s, elapsed)} />
+          </>
+        )}
+        {tab === 'requester' && <RequesterCard scenario={sc} s={s} />}
+        {tab === 'tools' && (
+          <>
+            <ToolsCard work={work} />
+            <RelatedKbCard scenario={sc} s={s} />
+          </>
+        )}
+        {tab === 'activity' && <ActivityCard s={s} />}
+      </div>
+    </section>
+  );
+}
+
+/** A titled section of the side panel, or a standalone card. */
+function SideSection({
+  title,
+  aside,
+  card,
+  className = '',
+  children,
+}: {
+  title: string;
+  aside?: ReactNode;
+  card?: boolean;
+  className?: string;
+  children: ReactNode;
+}) {
+  const id = useId();
+  return (
+    <section className={`${card ? 'card' : 'wk-side-sec'} ${className}`.trim()} aria-labelledby={id}>
+      <div className={card ? 'card-head' : 'wk-side-head'}>
+        <h3 id={id}>{title}</h3>
+        {aside}
+      </div>
+      {children}
+    </section>
+  );
+}
+
 /** Step-by-step coach: what a good analyst does next on this ticket. Ticks itself off as you go. */
 function CoachCard({ work }: { work: Work }) {
   const { dispatch } = useStore();
-  const steps = coachSteps(work.scenario, work.session);
+  const elapsed = useElapsed(work.startedAt);
+  const steps = coachSteps(work.scenario, seenAt(work.session, elapsed));
   const next = steps.findIndex((x) => !x.done);
   return (
     <section className="card wk-coach" aria-label="Coach">
@@ -506,11 +600,11 @@ function TicketDetailsCard({ work }: { work: Work }) {
   const set = (patch: Triage) => work.emit({ type: 'triage', patch });
   const untriaged = !t.category || !p;
   return (
-    <section className="card wk-details" aria-labelledby={`${ids}-h`}>
-      <div className="card-head">
-        <h3 id={`${ids}-h`}>Ticket details</h3>
-        {untriaged ? <span className="pill pill-warning">Needs triage</span> : <span className="pill pill-success">Triaged</span>}
-      </div>
+    <SideSection
+      title="Ticket details"
+      className="wk-details"
+      aside={untriaged ? <span className="pill pill-warning">Needs triage</span> : <span className="pill pill-success">Triaged</span>}
+    >
       <dl className="kv wk-details-kv">
         <dt>Number</dt>
         <dd className="mono">{ticketNumber(sc.id)}</dd>
@@ -559,7 +653,7 @@ function TicketDetailsCard({ work }: { work: Work }) {
           <span className="tiny muted">{p ? (p !== logged ? `Logged as ${logged}` : 'From impact x urgency') : `As logged; set impact and urgency`}</span>
         </dd>
       </dl>
-    </section>
+    </SideSection>
   );
 }
 
@@ -572,11 +666,7 @@ function RelatedTicketsCard({ work }: { work: Work }) {
   const [text, setText] = useState('');
   const linked = s.linked ?? [];
   return (
-    <section className="card">
-      <div className="card-head">
-        <h3>Similar tickets</h3>
-        <span className="pill pill-warning num">{related.length} in the last 15 min</span>
-      </div>
+    <SideSection title="Similar tickets" aside={<span className="pill pill-warning num">{related.length} in 15 min</span>}>
       <p className="card-sub">Other people are reporting the same problem. Link their tickets to this one so it is handled once, then keep everyone updated.</p>
       <ul className="wk-related">
         {related.map((r) => {
@@ -584,10 +674,11 @@ function RelatedTicketsCard({ work }: { work: Work }) {
           return (
             <li key={r.id}>
               <div className="wk-related-text">
-                <span>
-                  <span className="mono">{r.id}</span> · <strong>{r.name}</strong> <span className="muted">({r.department}, {r.minutesAgo} min ago)</span>
+                <strong>{r.name}</strong>
+                <span>{r.text}</span>
+                <span className="wk-related-meta">
+                  <span className="mono">{r.id}</span> · {r.department} · {r.minutesAgo} min ago
                 </span>
-                <span className="muted">{r.text}</span>
               </div>
               {done ? (
                 <span className="pill pill-success">
@@ -643,7 +734,7 @@ function RelatedTicketsCard({ work }: { work: Work }) {
           </div>
         </Modal>
       )}
-    </section>
+    </SideSection>
   );
 }
 
@@ -670,16 +761,10 @@ function IdentityPill({ s }: { s?: SessionState }) {
   );
 }
 
-function RequesterCard({ scenario, s }: { scenario: Scenario; s?: SessionState }) {
+function RequesterCard({ scenario, s, card }: { scenario: Scenario; s?: SessionState; card?: boolean }) {
   const r = scenario.requester;
   return (
-    <section className="card">
-      <div className="card-head">
-        <h3>
-          Requester
-        </h3>
-        {s && <IdentityPill s={s} />}
-      </div>
+    <SideSection title="Requester" card={card} aside={s && <IdentityPill s={s} />}>
       <div className="ws-requester-head">
         <div className="avatar" aria-hidden>
           {initials(r.name)}
@@ -720,7 +805,7 @@ function RequesterCard({ scenario, s }: { scenario: Scenario; s?: SessionState }
         <dt>Phone</dt>
         <dd className="num">{r.phone}</dd>
       </dl>
-    </section>
+    </SideSection>
   );
 }
 
@@ -733,10 +818,7 @@ function ToolsCard({ work }: { work: Work }) {
     { to: '/deploy', icon: PackageCheck, label: 'Deployment', sub: 'Push software' },
   ];
   return (
-    <section className="card">
-      <div className="card-head">
-        <h3>Workstation</h3>
-      </div>
+    <SideSection title="Workstation apps">
       <div className="wk-tools">
         {tools.map((t) => (
           <Link key={t.to} to={t.to} className="wk-tool">
@@ -749,20 +831,14 @@ function ToolsCard({ work }: { work: Work }) {
           </Link>
         ))}
       </div>
-    </section>
+    </SideSection>
   );
 }
 
 function FindingsCard({ scenario, s }: { scenario: Scenario; s: SessionState }) {
   const found = scenario.facts.filter((f) => s.revealed.includes(f.id));
   return (
-    <section className="card">
-      <div className="card-head">
-        <h3>
-          Findings
-        </h3>
-        <span className="pill num">{found.length}</span>
-      </div>
+    <SideSection title="Findings" aside={<span className="pill num">{found.length}</span>}>
       {found.length === 0 ? (
         <p className="ws-empty-hint">Evidence you uncover in the conversation and the tools collects here.</p>
       ) : (
@@ -775,7 +851,7 @@ function FindingsCard({ scenario, s }: { scenario: Scenario; s: SessionState }) 
           ))}
         </ul>
       )}
-    </section>
+    </SideSection>
   );
 }
 
@@ -783,12 +859,7 @@ function RelatedKbCard({ scenario, s }: { scenario: Scenario; s: SessionState })
   const related = scenario.kb.filter((k) => KB_BY_ID[k]);
   if (!related.length) return null;
   return (
-    <section className="card">
-      <div className="card-head">
-        <h3>
-          Related articles
-        </h3>
-      </div>
+    <SideSection title="Related articles">
       <div className="wk-tools">
         {related.map((k) => (
           <Link key={k} to={`/kb/${k}`} className="wk-tool">
@@ -800,7 +871,7 @@ function RelatedKbCard({ scenario, s }: { scenario: Scenario; s: SessionState })
           </Link>
         ))}
       </div>
-    </section>
+    </SideSection>
   );
 }
 
@@ -810,14 +881,8 @@ function ActivityCard({ s }: { s: SessionState }) {
     if (ref.current) ref.current.scrollTop = ref.current.scrollHeight;
   }, [s.log.length]);
   return (
-    <section className="card">
-      <div className="card-head">
-        <h3>
-          Activity
-        </h3>
-        <span className="pill num">{s.log.length}</span>
-      </div>
-      <div className="log" ref={ref}>
+    <SideSection title="Activity log">
+      <div className="log wk-side-log" ref={ref}>
         {s.log.map((l, i) => {
           const Icon = LOG_ICON[l.kind] ?? CircleDot;
           return (
@@ -829,7 +894,7 @@ function ActivityCard({ s }: { s: SessionState }) {
           );
         })}
       </div>
-    </section>
+    </SideSection>
   );
 }
 
@@ -1000,7 +1065,8 @@ function Conversation({ work }: { work: Work }) {
   }, [shown.length]);
   const awaiting = s.async && shown.length < s.chat.length;
   const lastAgent = shown.map((m) => m.from).lastIndexOf('agent');
-  const available = sc.questions.filter((q) => !s.asked.includes(q.id) && (q.requires ?? []).every((f) => s.revealed.includes(f)));
+  const known = seenAt(s, elapsedNow).revealed;
+  const available = sc.questions.filter((q) => !s.asked.includes(q.id) && (q.requires ?? []).every((f) => known.includes(f)));
   const guided = actionsForTool('guide').map((a) => ({ id: a.id, label: a.label, description: a.description }));
   const mood = moodLabel(s.patience ?? 70);
   const elapsed = useElapsed(work.startedAt);

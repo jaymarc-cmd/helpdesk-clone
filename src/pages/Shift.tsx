@@ -43,7 +43,7 @@ import {
 } from '../components/ui';
 import { CategoryIcon } from '../components/icons';
 import '../styles/shift-calls.css';
-import { loggedPriority } from '../engine/triage';
+import { currentPriority } from '../engine/triage';
 
 const SCORE_LABEL: Record<'success' | 'warning' | 'danger', string> = {
   success: 'On target',
@@ -65,7 +65,7 @@ type HandledRow = { scenarioId: string; attemptId?: string; slaBreached?: boolea
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 export function ShiftPage() {
-  const { state, dispatch, getScenario, finishShift } = useStore();
+  const { state, dispatch, getScenario, finishShift, works } = useStore();
   const navigate = useNavigate();
   const now = useNow();
   const [report, setReport] = useState<{ report: ShiftReport; handled: HandledRow[] } | null>(null);
@@ -158,12 +158,14 @@ export function ShiftPage() {
     .filter((t) => t.status === 'waiting')
     .map((t) => ({ t, sc: getScenario(t.scenarioId)! }))
     .filter((x) => x.sc)
-    .sort((a, b) => slaDeadline(a.t.arrivedAt, loggedPriority(a.sc)) - slaDeadline(b.t.arrivedAt, loggedPriority(b.sc)));
+    // SLAs run on the current priority: re-triaging a ticket you're working moves its deadline.
+    .map((x) => ({ ...x, p: currentPriority(x.sc, works.find((w) => w.scenario.id === x.sc.id)?.session.triage) }))
+    .sort((a, b) => slaDeadline(a.t.arrivedAt, a.p) - slaDeadline(b.t.arrivedAt, b.p));
   const done = shift.tickets.filter((t) => t.status === 'done');
-  const breached = done.filter((t) => t.slaBreached).length + waiting.filter((x) => now > slaDeadline(x.t.arrivedAt, loggedPriority(x.sc))).length;
+  const breached = done.filter((t) => t.slaBreached).length + waiting.filter((x) => now > slaDeadline(x.t.arrivedAt, x.p)).length;
   const totalTickets = shift.tickets.length + shift.pending.length;
   const atRisk = waiting.filter((x) => {
-    const deadline = slaDeadline(x.t.arrivedAt, loggedPriority(x.sc));
+    const deadline = slaDeadline(x.t.arrivedAt, x.p);
     const left = deadline - now;
     return left > 0 && left / (deadline - x.t.arrivedAt) < 0.35;
   }).length;
@@ -248,8 +250,8 @@ export function ShiftPage() {
           </EmptyState>
         ) : (
           <ul className="sc-queue">
-            {waiting.map(({ t, sc }) => {
-              const deadline = slaDeadline(t.arrivedAt, loggedPriority(sc));
+            {waiting.map(({ t, sc, p }) => {
+              const deadline = slaDeadline(t.arrivedAt, p);
               const total = deadline - t.arrivedAt;
               const left = deadline - now;
               const frac = Math.max(0, left / total);
@@ -264,7 +266,7 @@ export function ShiftPage() {
                       <div className="sc-qrow-text">
                         <span className="sc-qrow-title">{sc.title}</span>
                         <div className="sc-qrow-meta">
-                          <PriorityPill p={loggedPriority(sc)} />
+                          <PriorityPill p={p} />
                           <span className="ticket-id">{ticketNumber(sc.id)}</span>
                           <CategoryPill category={sc.category} />
                           <DifficultyDots d={sc.difficulty} />

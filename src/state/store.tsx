@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useReducer,
 import { allScenarios, findScenario } from '../data/scenarios';
 import { BADGES, newlyEarned } from '../engine/progress';
 import { REOPEN_AFTER_MS } from '../engine/followup';
+import { currentPriority, triagedPriority } from '../engine/triage';
 import { buildShiftReport, completeShiftTicket, createShift, tickShift } from '../engine/shift';
 import { hydrateSession, initSession, sessionReducer, type SessionEventInput, type SessionState } from '../engine/session';
 import type { ActiveWork, AppState, CallAttempt, Certificate, HoldReason, KbArticle, InterviewAttempt, Scenario, Settings, ShiftReport, TicketAttempt } from '../types';
@@ -64,6 +65,11 @@ const withoutWork = (state: AppState, id: string): Pick<AppState, 'works' | 'foc
   return { works, focusedWork: state.focusedWork === id ? (works.find((w) => !w.hold)?.scenarioId ?? works[0]?.scenarioId ?? null) : state.focusedWork };
 };
 
+/** Category, impact and urgency the analyst has set on an open ticket. */
+function triageOf(state: AppState, scenarioId: string) {
+  return (state.works.find((w) => w.scenarioId === scenarioId)?.session as Partial<SessionState> | undefined)?.triage;
+}
+
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'setProfile':
@@ -74,7 +80,7 @@ function reducer(state: AppState, action: Action): AppState {
       let activeShift = state.activeShift;
       if (activeShift && action.attempt.mode === 'shift') {
         const sc = findScenario(action.attempt.scenarioId, state.customScenarios);
-        if (sc) activeShift = completeShiftTicket(activeShift, sc, action.attempt);
+        if (sc) activeShift = completeShiftTicket(activeShift, sc, action.attempt, Date.now(), currentPriority(sc, triageOf(state, sc.id)));
       }
       const a = action.attempt;
       // A resolution that will not hold comes back later; working a reopened ticket clears it.
@@ -198,6 +204,8 @@ interface Store {
   finishShift: () => ShiftReport | null;
   toast: { id: number; text: string; icon: string } | null;
   dismissToast: () => void;
+  /** The last save to browser storage failed: progress only lives in this tab. */
+  saveFailed: boolean;
 }
 
 const Ctx = createContext<Store | null>(null);
@@ -206,8 +214,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, undefined, loadState);
   const [toast, setToast] = useState<Store['toast']>(null);
   const seenBadges = useRef(state.badges.length);
+  const [saveFailed, setSaveFailed] = useState(false);
 
-  useEffect(() => saveState(state), [state]);
+  useEffect(() => setSaveFailed(!saveState(state)), [state]);
 
   // Celebrate newly earned badges.
   useEffect(() => {
@@ -244,10 +253,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const finishShift = useCallback(() => {
     if (!state.activeShift) return null;
-    const report = buildShiftReport(state.activeShift, state.tickets, getScenario);
+    const report = buildShiftReport(state.activeShift, state.tickets, getScenario, Date.now(), (id) => triagedPriority(triageOf(state, id)));
     dispatch({ type: 'endShift', report });
     return report;
-  }, [state.activeShift, state.tickets, getScenario]);
+  }, [state.activeShift, state.tickets, state.works, getScenario]);
 
   // Tickets on hold for the user come back when the user replies.
   const due = state.works.filter((w) => w.hold?.replyAt).map((w) => [w.scenarioId, w.hold!.replyAt!] as const);
@@ -282,8 +291,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const work = works.find((w) => w.scenario.id === state.focusedWork) ?? works[0] ?? null;
 
   const value = useMemo<Store>(
-    () => ({ state, work, works, dispatch, scenarios, getScenario, finishShift, toast, dismissToast: () => setToast(null) }),
-    [state, work, works, scenarios, getScenario, finishShift, toast],
+    () => ({ state, work, works, dispatch, scenarios, getScenario, finishShift, toast, dismissToast: () => setToast(null), saveFailed }),
+    [state, work, works, scenarios, getScenario, finishShift, toast, saveFailed],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

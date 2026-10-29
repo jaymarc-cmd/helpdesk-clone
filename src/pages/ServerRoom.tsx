@@ -86,16 +86,21 @@ function ServerCard({ srv }: { srv: ServerState }) {
           <Icon size={16} aria-label={srv.kind === 'network' ? 'Network switch' : 'Server'} />
           <span className="mono">{srv.id}</span>
         </h2>
-        <span className={`pill ${STATUS_TONE[srv.status]}`}>{srv.status}</span>
+        <span className="row wk-server-pills">
+          {srv.critical && (
+            <span className="pill pill-outline" title="Core service: many users depend on it">
+              <ShieldAlert aria-hidden />
+              Core
+            </span>
+          )}
+          <span className={`pill ${STATUS_TONE[srv.status]}`}>{srv.status}</span>
+        </span>
       </div>
-      <p className="card-sub">
-        {srv.role} · <span className="mono">{srv.ip}</span> · {srv.location}
-        {srv.critical && (
-          <span className="pill pill-outline wk-inline-pill">
-            <ShieldAlert aria-hidden />
-            Core service
-          </span>
-        )}
+      <p className="card-sub wk-server-sub">
+        <span>{srv.role}</span>
+        <span>
+          <span className="mono">{srv.ip}</span> · {srv.location}
+        </span>
       </p>
       {srv.note && (
         <div className={`callout small ${srv.status === 'Healthy' ? '' : 'warning'}`}>

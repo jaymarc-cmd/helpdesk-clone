@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { Link, NavLink, Outlet } from 'react-router-dom';
 import {
   ArrowRight,
   Award,
@@ -22,6 +22,7 @@ import {
   Settings,
   Stamp,
   Timer,
+  TriangleAlert,
   Wrench,
   X,
 } from 'lucide-react';
@@ -77,7 +78,7 @@ const WELCOME_POINTS: { icon: LucideIcon; title: string; text: string }[] = [
 const BADGE_PREFIX = 'Badge earned:';
 
 export function Layout() {
-  const { state, dispatch, toast, dismissToast } = useStore();
+  const { state, dispatch, toast, dismissToast, saveFailed } = useStore();
   const xp = totalXp(state);
   const rank = rankFor(xp);
   const [name, setName] = useState('');
@@ -150,6 +151,15 @@ export function Layout() {
 
       <main className="main">
         <div className="main-inner">
+          {saveFailed && (
+            <div className="callout warning save-warning" role="alert">
+              <TriangleAlert size={18} aria-hidden />
+              <div className="callout-body">
+                <strong>Progress isn't being saved.</strong> This browser's storage is full or blocked, so closing the tab loses your work.{' '}
+                <Link to="/settings">Export a backup</Link> or free up space.
+              </div>
+            </div>
+          )}
           <ActiveTicketBar />
           <ShiftAlerts />
           <Outlet />

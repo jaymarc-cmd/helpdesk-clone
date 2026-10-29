@@ -176,7 +176,8 @@
 }
 .queue-card-desc {
   margin: 0;
-  font-size: 0.86rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
   color: var(--text-muted);
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -186,13 +187,13 @@
 }
 .queue-card-foot {
   margin-top: auto;
-  padding-top: 10px;
+  padding-top: 14px;
   border-top: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  font-size: 0.76rem;
+  gap: 12px;
+  font-size: 0.8rem;
   color: var(--text-muted);
   min-width: 0;
 }
