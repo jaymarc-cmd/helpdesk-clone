@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, BookOpen, CircleCheck, CircleDashed, RotateCcw, Star, StarHalf, Target, Timer, X, type LucideIcon, Award } from 'lucide-react';
@@ -96,6 +96,46 @@ export function ScoreRing({ score, label, size = 120 }: { score: number; label?:
  * Name it with `title` (renders a visible heading) or `labelledBy` (id of a heading inside children).
  * Put confirm/cancel buttons in a <div className="modal-actions">.
  */
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/**
+ * Dialog focus: move focus inside when it opens (an autofocused control, else the first field, else the first control),
+ * keep Tab inside while it is open, and hand focus back to whatever opened it when it closes.
+ */
+export function useDialogFocus(ref: RefObject<HTMLElement>) {
+  useEffect(() => {
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const el = ref.current;
+    if (!el) return;
+    if (!el.contains(document.activeElement)) {
+      const target =
+        el.querySelector<HTMLElement>('input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled])') ??
+        el.querySelector<HTMLElement>(FOCUSABLE) ??
+        el;
+      target.focus({ preventScroll: true });
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      const items = [...el.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((x) => x.offsetParent !== null);
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (e.shiftKey && (document.activeElement === first || !el.contains(document.activeElement))) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (document.activeElement === last || !el.contains(document.activeElement))) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      if (opener?.isConnected) opener.focus({ preventScroll: true });
+    };
+  }, [ref]);
+}
+
 export function Modal({
   children,
   onClose,
@@ -114,9 +154,13 @@ export function Modal({
     return () => window.removeEventListener('keydown', h);
   }, [onClose]);
   const showHead = !!title || (!!onClose && !labelledBy);
+  const ref = useRef<HTMLDivElement>(null);
+  useDialogFocus(ref);
   return createPortal(
     <div className="modal-backdrop" onClick={onClose}>
       <div
+        ref={ref}
+        tabIndex={-1}
         className="modal"
         role="dialog"
         aria-modal="true"
@@ -141,10 +185,6 @@ export function Modal({
   );
 }
 
-/**
- * Consistent page title block. List pages: title, description, actions.
- * Detail pages (ticket, review, call) also pass `back` (link above the header) and `meta` (chips row under the title).
- */
 /** Names the browser tab after the page, so several open tabs and the history list are tellable apart. */
 export function useDocumentTitle(title: string | undefined) {
   useEffect(() => {
@@ -153,6 +193,10 @@ export function useDocumentTitle(title: string | undefined) {
   }, [title]);
 }
 
+/**
+ * Consistent page title block. List pages: title, description, actions.
+ * Detail pages (ticket, review, call) also pass `back` (link above the header) and `meta` (chips row under the title).
+ */
 export function PageHeader({
   title,
   description,

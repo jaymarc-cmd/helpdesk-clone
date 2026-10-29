@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
-import { ArrowRight, Award, ClipboardCheck, HardDrive, Headset, type LucideIcon, ScanSearch, TriangleAlert, X } from 'lucide-react';
+import { ArrowRight, Award, ClipboardCheck, HardDrive, Headset, type LucideIcon, ScanSearch, Search, TriangleAlert, X } from 'lucide-react';
 import { APP_NAME, APP_TAGLINE } from '../config';
 import { rankFor, totalXp } from '../engine/progress';
 import { useStore } from '../state/store';
 import { BadgeGlyph } from './icons';
 import { IconTile, Modal, ProgressBar, initials } from './ui';
 import { ActiveTicketBar, ShiftAlerts } from './work';
-import { NAV, SkipLink, useRouteChange } from './shell';
+import { NAV, ShortcutsDialog, SkipLink, useGlobalShortcuts, useRouteChange } from './shell';
+import { CommandPalette, MOD_KEY } from './palette';
 import '../styles/shell-dashboard.css';
 
 const WELCOME_POINTS: { icon: LucideIcon; title: string; text: string }[] = [
@@ -39,6 +40,14 @@ export function Layout() {
   const shiftLive = !!state.activeShift;
 
   useRouteChange();
+  const [palette, setPalette] = useState(false);
+  const [help, setHelp] = useState(false);
+  const openPalette = useCallback(() => {
+    setHelp(false);
+    setPalette(true);
+  }, []);
+  const openHelp = useCallback(() => setHelp(true), []);
+  useGlobalShortcuts({ openPalette, openHelp });
 
   const toastIsBadge = !!toast && toast.text.startsWith(BADGE_PREFIX);
   const toastTitle = toast ? (toastIsBadge ? toast.text.slice(BADGE_PREFIX.length).trim() : toast.text) : '';
@@ -56,6 +65,12 @@ export function Layout() {
             <small>{APP_TAGLINE}</small>
           </div>
         </div>
+
+        <button type="button" className="nav-search" onClick={openPalette} aria-label="Search and jump to" aria-keyshortcuts="Control+K Meta+K">
+          <Search size={16} aria-hidden />
+          <span className="nav-label">Search</span>
+          <kbd className="nav-label">{MOD_KEY} K</kbd>
+        </button>
 
         <nav className="nav" aria-label="Main">
           {NAV.map((item, i) => {
@@ -177,6 +192,9 @@ export function Layout() {
           </div>
         </Modal>
       )}
+
+      {palette && <CommandPalette onClose={() => setPalette(false)} onShortcuts={openHelp} />}
+      {help && <ShortcutsDialog onClose={() => setHelp(false)} modKey={MOD_KEY} />}
 
       {toast && (
         <div className="toast" role="status" onClick={dismissToast}>

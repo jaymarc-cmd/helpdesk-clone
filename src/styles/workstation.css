@@ -1098,3 +1098,58 @@
     box-shadow: none;
   }
 }
+
+/* Resolve form: what is done and what is missing before submitting */
+.wk-ready {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  background: var(--surface-2);
+}
+.wk-ready-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.wk-ready-head h3 {
+  margin: 0;
+  font-size: 0.92rem;
+}
+.wk-ready ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 0.88rem;
+}
+.wk-ready li {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  line-height: 1.4;
+}
+.wk-ready li > svg {
+  margin-top: 1px;
+}
+.wk-ready li.ok {
+  color: var(--text-muted);
+}
+.wk-ready li.ok > svg {
+  color: var(--success);
+}
+.wk-ready li.todo > svg {
+  color: var(--text-faint);
+}
+.wk-ready li.warn > svg {
+  color: var(--warning);
+}
+.wk-ready-tag {
+  margin-left: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--warning);
+}

@@ -572,3 +572,228 @@
 .main h1[tabindex='-1']:focus {
   outline: none;
 }
+
+/* ---------- Keyboard keys ---------- */
+kbd {
+  display: inline-block;
+  min-width: 1.6em;
+  padding: 1px 6px;
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-family: var(--font);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.5;
+  text-align: center;
+}
+
+/* ---------- Search button in the sidebar ---------- */
+.nav-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin: 4px 0 6px;
+  padding: 9px 10px;
+  border: 1px solid var(--rail-line);
+  border-radius: var(--radius-sm);
+  background: var(--rail-hover);
+  color: var(--rail-muted);
+  font: inherit;
+  font-size: 0.88rem;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s;
+}
+.nav-search:hover {
+  border-color: var(--rail-muted);
+  color: var(--rail-text);
+}
+.nav-search .nav-label:first-of-type {
+  flex: 1;
+}
+.nav-search kbd {
+  background: transparent;
+  border-color: var(--rail-line);
+  color: var(--rail-muted);
+}
+@media (max-width: 900px) {
+  .nav-search {
+    width: auto;
+    margin: 0;
+    padding: 8px;
+    border-color: transparent;
+    background: transparent;
+    color: var(--rail-text);
+  }
+}
+
+/* ---------- Command palette ---------- */
+.cmdk-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  background: var(--overlay);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: max(10vh, 16px) 16px 16px;
+  animation: fade-in 0.12s ease;
+}
+.cmdk {
+  width: min(640px, 100%);
+  max-height: min(560px, 80vh);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  animation: pop-in 0.15s ease;
+}
+.cmdk:focus {
+  outline: none;
+}
+.cmdk-input {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 18px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+}
+.cmdk-input input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  padding: 14px 0;
+  font-size: 1.02rem;
+  color: var(--text);
+  box-shadow: none;
+}
+.cmdk-input input:focus {
+  outline: none;
+  box-shadow: none;
+}
+.cmdk-list {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 8px;
+  scrollbar-width: thin;
+}
+.cmdk-group {
+  padding: 12px 10px 6px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.cmdk-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--text);
+}
+.cmdk-item > svg:first-child {
+  color: var(--text-faint);
+}
+.cmdk-item.active {
+  background: var(--primary-soft);
+}
+.cmdk-item.active > svg:first-child {
+  color: var(--primary);
+}
+.cmdk-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.cmdk-label,
+.cmdk-sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cmdk-label {
+  font-weight: 500;
+  font-size: 0.92rem;
+}
+.cmdk-sub {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+.cmdk-enter {
+  color: var(--primary);
+}
+.cmdk-empty {
+  margin: 0;
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--text-muted);
+}
+.cmdk-foot {
+  display: flex;
+  gap: 18px;
+  padding: 10px 18px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+.cmdk-foot kbd {
+  margin-right: 3px;
+}
+@media (max-width: 640px) {
+  .cmdk-foot {
+    display: none;
+  }
+}
+
+/* ---------- Shortcuts dialog ---------- */
+.keys-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.keys-dialog h3 {
+  margin: 0 0 10px;
+  font-size: 0.92rem;
+}
+.keys-list {
+  display: grid;
+  grid-template-columns: minmax(140px, max-content) minmax(0, 1fr);
+  gap: 9px 18px;
+  margin: 0;
+  font-size: 0.9rem;
+  align-items: center;
+}
+.keys-list dt {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+}
+.keys-list dd {
+  margin: 0;
+  color: var(--text-muted);
+}
+.keys-combo {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.keys-or,
+.keys-then {
+  font-size: 0.75rem;
+  color: var(--text-faint);
+}
+.keys-or {
+  margin-right: 2px;
+}

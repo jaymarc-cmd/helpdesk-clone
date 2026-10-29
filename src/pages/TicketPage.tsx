@@ -55,6 +55,8 @@ import { useSpeaker } from '../components/speech';
 import { nextHint, seenAt, type ChatMessage, type SessionState } from '../engine/session';
 import { MAX_OPEN_TICKETS, useStore, type Work } from '../state/store';
 import { uid } from '../state/storage';
+import { clearDrafts, useDraft } from '../state/drafts';
+import { pageShortcut } from '../components/shell';
 import { CATEGORIES, HOLD_REASONS, LEVELS, TEAMS, type Category, type HoldReason, type Level, type Outcome, type Scenario, type Team, type TicketAttempt, type WorkLogEntry } from '../types';
 import {
   BestScorePill,
@@ -93,6 +95,8 @@ const OUTCOMES: { id: Outcome; label: string; desc: string; icon: LucideIcon }[]
 ];
 
 const GUIDED_PREFIX = '[Guided step] ';
+/** The placeholders in the closing-message template, still there means it was sent unedited. */
+const TEMPLATE_GAPS = /\[(What happened and what I did|Anything you need to do next)\]/;
 
 export function TicketPage() {
   const { id = '' } = useParams();
@@ -277,6 +281,17 @@ function AssignedTicket({ work }: { work: Work }) {
   const [holdReason, setHoldReason] = useState<HoldReason>('Awaiting user');
   const over = elapsed > sc.targetMinutes * 60;
 
+  // r: open the resolve form.
+  useEffect(() => {
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (!pageShortcut(e) || e.key !== 'r') return;
+      e.preventDefault();
+      setResolving(true);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   const showHint = () => {
     const text = nextHint(sc, seenAt(s, elapsed));
     setHint(text);
@@ -310,6 +325,7 @@ function AssignedTicket({ work }: { work: Work }) {
       reopenOf: s.reopenOf,
       reopenReason: reopenReason(sc, s, sub.outcome, sub.rootCause),
     };
+    clearDrafts(sc.id);
     dispatch({ type: 'addTicket', attempt });
     navigate(`/review/${attempt.id}`, { replace: true });
   };
@@ -405,21 +421,23 @@ function AssignedTicket({ work }: { work: Work }) {
       {holding && (
         <Modal title={`Put ${ticketNumber(sc.id)} on hold`} onClose={() => setHolding(false)}>
           <p className="muted">The handling clock pauses while the ticket is on hold. Tell {sc.requester.name.split(' ')[0]} what you are waiting for first.</p>
-          <fieldset className="ws-fieldset">
-            <legend className="ws-legend">Reason</legend>
-            {HOLD_REASONS.map((r) => (
-              <label key={r} className="radio-row">
-                <input type="radio" name="hold-reason" checked={holdReason === r} onChange={() => setHoldReason(r)} />
-                <span>
-                  {r}
-                  <span className="tiny muted">
-                    {' · '}
-                    {r === 'Awaiting user' ? 'they need to do or check something; they will reply' : r === 'Awaiting approval' ? 'a manager or data owner must approve' : 'a supplier or another team is involved'}
+          <div className="ws-root">
+            <fieldset className="ws-fieldset">
+              <legend className="ws-legend">Reason</legend>
+              {HOLD_REASONS.map((r) => (
+                <label key={r} className="radio-row">
+                  <input type="radio" name="hold-reason" checked={holdReason === r} onChange={() => setHoldReason(r)} />
+                  <span>
+                    {r}
+                    <span className="tiny muted">
+                      {' · '}
+                      {r === 'Awaiting user' ? 'they need to do or check something; they will reply' : r === 'Awaiting approval' ? 'a manager or data owner must approve' : 'a supplier or another team is involved'}
+                    </span>
                   </span>
-                </span>
-              </label>
-            ))}
-          </fieldset>
+                </label>
+              ))}
+            </fieldset>
+          </div>
           <div className="modal-actions">
             <button className="btn" onClick={() => setHolding(false)}>
               Cancel
@@ -447,6 +465,7 @@ function AssignedTicket({ work }: { work: Work }) {
             <button
               className="btn btn-danger"
               onClick={() => {
+                clearDrafts(sc.id);
                 dispatch({ type: 'releaseWork', scenarioId: sc.id });
                 navigate(work.mode === 'shift' ? '/shift' : '/tickets');
               }}
@@ -1008,14 +1027,26 @@ function Conversation({ work }: { work: Work }) {
   const { state } = useStore();
   const sc = work.scenario;
   const s = work.session;
-  const [text, setText] = useState('');
-  const [mode, setMode] = useState<'reply' | 'note'>('reply');
+  const [text, setText] = useDraft(sc.id, 'text', '');
+  const [mode, setMode] = useDraft<'reply' | 'note'>(sc.id, 'mode', 'reply');
   const [canned, setCanned] = useState(false);
   const [visible, setVisible] = useState(s.chat.length);
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const firstName = sc.requester.name.split(' ')[0];
   const me = state.profile?.name.split(' ')[0] ?? 'the Service Desk';
+
+  // c: write a reply, n: write a work note.
+  useEffect(() => {
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (!pageShortcut(e) || (e.key !== 'c' && e.key !== 'n')) return;
+      e.preventDefault();
+      setMode(e.key === 'n' ? 'note' : 'reply');
+      inputRef.current?.focus();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [setMode]);
 
   // Requester messages appear one at a time, after a reading-and-typing pause that grows with their length.
   useEffect(() => {
@@ -1268,44 +1299,72 @@ function ResolveForm({
   s: SessionState;
   onSubmit: (sub: { rootCause: string; outcome: Outcome; team?: Team; note: string; reply: string }) => void;
 }) {
-  const [rootCause, setRootCause] = useState('');
-  const [outcome, setOutcome] = useState<Outcome>('resolve');
-  const [team, setTeam] = useState<Team | ''>('');
-  const [note, setNote] = useState(() =>
+  const t = scenario.id;
+  const [rootCause, setRootCause] = useDraft(t, 'rootCause', '');
+  const [outcome, setOutcome] = useDraft<Outcome>(t, 'outcome', 'resolve');
+  const [team, setTeam] = useDraft<Team | ''>(t, 'team', '');
+  const [note, setNote] = useDraft(
+    t,
+    'note',
     s.chat
       .filter((m) => m.from === 'note')
       .map((m) => m.text)
       .join('\n'),
   );
-  const [reply, setReply] = useState('');
+  const [reply, setReply] = useDraft(t, 'reply', '');
   const [error, setError] = useState<{ field: Field; text: string } | null>(null);
   const firstName = scenario.requester.name.split(' ')[0];
   const ids = useId();
   const causes = useMemo(() => [...scenario.rootCauses].sort(() => Math.random() - 0.5), [scenario]);
   const invalid = (f: Field) => (error?.field === f ? 'ws-invalid' : '');
 
+  const gaps = TEMPLATE_GAPS.test(reply);
+  const triaged = !!s.triage?.category && !!triagedPriority(s.triage);
+  const checks: { ok: boolean; text: string; required: boolean }[] = [
+    { ok: triaged, text: 'Category, impact and urgency set in Ticket details', required: false },
+    ...(outcome === 'resolve' ? [{ ok: s.confirmed, text: `${firstName} confirmed the fix works`, required: false }] : []),
+    { ok: !!rootCause, text: 'Root cause chosen', required: true },
+    ...(outcome === 'escalate' ? [{ ok: !!team, text: 'Assignment group chosen', required: true }] : []),
+    { ok: note.trim().length >= 10, text: 'Work notes written', required: true },
+    {
+      ok: reply.trim().length >= 10 && !gaps,
+      text: gaps ? 'Closing message: replace the [bracketed] parts of the template' : `Closing message to ${firstName} written`,
+      required: true,
+    },
+  ];
+  const ready = checks.filter((c) => c.ok).length;
+
   const submit = () => {
     if (!rootCause) return setError({ field: 'rootCause', text: 'Choose a root cause.' });
     if (outcome === 'escalate' && !team) return setError({ field: 'team', text: 'Choose the team to assign it to.' });
     if (note.trim().length < 10) return setError({ field: 'note', text: 'Write some work notes first.' });
     if (reply.trim().length < 10) return setError({ field: 'reply', text: `Write a closing message to ${firstName}.` });
+    if (gaps) return setError({ field: 'reply', text: 'Replace the [bracketed] parts of the template with what happened and what comes next.' });
     onSubmit({ rootCause, outcome, team: outcome === 'escalate' ? (team as Team) : undefined, note, reply });
   };
 
   return (
-    <div className="stack wk-resolve">
-      {outcome === 'resolve' && !s.confirmed && scenario.correctOutcome === 'resolve' && (
-        <div className="callout info small">
-          <Info size={16} aria-hidden />
-          <div className="callout-body">You haven't confirmed the fix with {firstName} yet.</div>
+    <div className="stack wk-resolve ws-root">
+      <section className="wk-ready" aria-labelledby={`${ids}-ready`}>
+        <div className="wk-ready-head">
+          <h3 id={`${ids}-ready`}>Before you submit</h3>
+          <span className="tiny muted num">
+            {ready} of {checks.length} done
+          </span>
         </div>
-      )}
-      {(!s.triage?.category || !triagedPriority(s.triage)) && (
-        <div className="callout warning small">
-          <CircleAlert size={16} aria-hidden />
-          <div className="callout-body">Set the category, impact and urgency in Ticket details first. Triage is part of the grade.</div>
-        </div>
-      )}
+        <ul>
+          {checks.map((c) => (
+            <li key={c.text} className={c.ok ? 'ok' : c.required ? 'todo' : 'warn'}>
+              {c.ok ? <CircleCheck size={16} aria-hidden /> : c.required ? <CircleDot size={16} aria-hidden /> : <CircleAlert size={16} aria-hidden />}
+              <span>
+                {c.text}
+                {(c.ok || c.required) && <span className="sr-only">{c.ok ? ' (done)' : ' (to do)'}</span>}
+                {!c.ok && !c.required && <span className="wk-ready-tag">Recommended</span>}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </section>
       <fieldset className={`ws-fieldset ${invalid('rootCause')}`}>
         <legend className="ws-legend">Root cause</legend>
         <div className="ws-causes">

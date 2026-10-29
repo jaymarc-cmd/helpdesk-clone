@@ -7,6 +7,7 @@ import { buildShiftReport, completeShiftTicket, createShift, tickShift } from '.
 import { hydrateSession, initSession, sessionReducer, type SessionEventInput, type SessionState } from '../engine/session';
 import type { ActiveWork, AppState, CallAttempt, Certificate, HoldReason, KbArticle, InterviewAttempt, Scenario, Settings, ShiftReport, TicketAttempt } from '../types';
 import { DEFAULT_STATE, loadState, normalizeState, saveState } from './storage';
+import { pruneDrafts } from './drafts';
 
 type Action =
   | { type: 'setProfile'; name: string }
@@ -217,6 +218,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [saveFailed, setSaveFailed] = useState(false);
 
   useEffect(() => setSaveFailed(!saveState(state)), [state]);
+
+  // Drafts belong to open tickets only.
+  const openIds = state.works.map((w) => w.scenarioId).join(',');
+  useEffect(() => pruneDrafts(openIds ? openIds.split(',') : []), [openIds]);
 
   // Celebrate newly earned badges.
   useEffect(() => {
