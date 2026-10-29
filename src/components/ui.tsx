@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, BookOpen, CircleCheck, CircleDashed, RotateCcw, Star, StarHalf, Target, Timer, X, type LucideIcon, Award } from 'lucide-react';
 import { CATEGORY_ICON } from './icons';
+import { APP_NAME } from '../config';
 import type { Category, Difficulty, Priority } from '../types';
 
 export function ProgressBar({ value, tone }: { value: number; tone?: 'success' | 'warning' | 'danger' }) {
@@ -144,6 +145,14 @@ export function Modal({
  * Consistent page title block. List pages: title, description, actions.
  * Detail pages (ticket, review, call) also pass `back` (link above the header) and `meta` (chips row under the title).
  */
+/** Names the browser tab after the page, so several open tabs and the history list are tellable apart. */
+export function useDocumentTitle(title: string | undefined) {
+  useEffect(() => {
+    if (!title) return;
+    document.title = `${title} · ${APP_NAME}`;
+  }, [title]);
+}
+
 export function PageHeader({
   title,
   description,
@@ -157,6 +166,7 @@ export function PageHeader({
   back?: { to: string; label: string };
   meta?: ReactNode;
 }) {
+  useDocumentTitle(typeof title === 'string' ? title : undefined);
   return (
     <header className="page-head">
       <div className="page-head-text">

@@ -33,6 +33,7 @@ import {
   scoreTone,
   ticketNumber,
   timeAgo,
+  useDocumentTitle,
   useNow,
 } from '../components/ui';
 
@@ -48,6 +49,7 @@ const SCORE_LABEL: Record<'success' | 'warning' | 'danger', string> = {
 export function Dashboard() {
   const { state } = useStore();
   const navigate = useNavigate();
+  useDocumentTitle('Dashboard');
   const xp = totalXp(state);
   const rank = rankFor(xp);
   const stats = overallStats(state);

@@ -1,61 +1,14 @@
 import { useState } from 'react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
-import {
-  ArrowRight,
-  Award,
-  Boxes,
-  ChartNoAxesColumn,
-  ClipboardCheck,
-  GraduationCap,
-  HardDrive,
-  Headset,
-  IdCard,
-  Inbox,
-  LayoutDashboard,
-  LibraryBig,
-  type LucideIcon,
-  MonitorSmartphone,
-  PackageCheck,
-  PhoneCall,
-  ScanSearch,
-  Server,
-  Settings,
-  Stamp,
-  Timer,
-  TriangleAlert,
-  Wrench,
-  X,
-} from 'lucide-react';
+import { ArrowRight, Award, ClipboardCheck, HardDrive, Headset, type LucideIcon, ScanSearch, TriangleAlert, X } from 'lucide-react';
 import { APP_NAME, APP_TAGLINE } from '../config';
 import { rankFor, totalXp } from '../engine/progress';
 import { useStore } from '../state/store';
 import { BadgeGlyph } from './icons';
 import { IconTile, Modal, ProgressBar, initials } from './ui';
 import { ActiveTicketBar, ShiftAlerts } from './work';
+import { NAV, SkipLink, useRouteChange } from './shell';
 import '../styles/shell-dashboard.css';
-
-type NavItem = { section: string } | { to: string; icon: LucideIcon; label: string; end?: boolean };
-
-const NAV: NavItem[] = [
-  { to: '/', icon: LayoutDashboard, label: 'Dashboard', end: true },
-  { section: 'Workstation' },
-  { to: '/tickets', icon: Inbox, label: 'Ticketing' },
-  { to: '/directory', icon: IdCard, label: 'Directory' },
-  { to: '/servers', icon: Server, label: 'Server room' },
-  { to: '/devices', icon: MonitorSmartphone, label: 'Remote desktop' },
-  { to: '/deploy', icon: PackageCheck, label: 'Deployment' },
-  { to: '/approvals', icon: Stamp, label: 'Approvals' },
-  { to: '/assets', icon: Boxes, label: 'Assets' },
-  { to: '/kb', icon: LibraryBig, label: 'Knowledge base' },
-  { to: '/calls', icon: PhoneCall, label: 'Phone' },
-  { section: 'Training' },
-  { to: '/shift', icon: Timer, label: 'Shift mode' },
-  { to: '/interview', icon: GraduationCap, label: 'Mock interview' },
-  { to: '/certification', icon: Award, label: 'Certification' },
-  { to: '/progress', icon: ChartNoAxesColumn, label: 'Progress' },
-  { to: '/builder', icon: Wrench, label: 'Scenario builder' },
-  { to: '/settings', icon: Settings, label: 'Settings' },
-];
 
 const WELCOME_POINTS: { icon: LucideIcon; title: string; text: string }[] = [
   {
@@ -85,11 +38,14 @@ export function Layout() {
   const displayName = state.profile?.name ?? 'Analyst';
   const shiftLive = !!state.activeShift;
 
+  useRouteChange();
+
   const toastIsBadge = !!toast && toast.text.startsWith(BADGE_PREFIX);
   const toastTitle = toast ? (toastIsBadge ? toast.text.slice(BADGE_PREFIX.length).trim() : toast.text) : '';
 
   return (
     <div className="app">
+      <SkipLink />
       <aside className="sidebar">
         <div className="brand">
           <div className="brand-mark">
@@ -149,7 +105,7 @@ export function Layout() {
         </div>
       </aside>
 
-      <main className="main">
+      <main className="main" id="main" tabIndex={-1}>
         <div className="main-inner">
           {saveFailed && (
             <div className="callout warning save-warning" role="alert">

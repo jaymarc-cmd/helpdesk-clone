@@ -546,3 +546,29 @@
     display: none;
   }
 }
+
+/* ---------- Skip link and focus targets ---------- */
+.skip-link {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 100;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--primary);
+  color: var(--on-primary, #fff);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transform: translateY(-160%);
+  transition: transform 0.15s;
+}
+.skip-link:focus-visible {
+  transform: none;
+}
+/* Focus moved here by the app on a page change: no ring, the heading itself is the cue. */
+.main:focus,
+.main h1[tabindex='-1']:focus {
+  outline: none;
+}
